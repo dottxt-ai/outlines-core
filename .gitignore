@@ -11,3 +11,6 @@ benchmarks/results
 # Remove doc build folders
 .cache/
 build/
+
+target/
+*.so

@@ -1,7 +1,6 @@
 import datetime
 
 import pytest
-
 from outlines_core.fsm.types import (
     BOOLEAN,
     DATE,

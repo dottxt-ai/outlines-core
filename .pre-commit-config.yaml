@@ -31,3 +31,27 @@ repos:
       args: [--allow-redefinition]
       exclude: ^examples/
       additional_dependencies: [types-tqdm, types-Pillow]
+- repo: local
+  hooks:
+    - id: cargo-fmt
+      name: cargo-fmt
+      description: Format files with cargo fmt.
+      entry: cargo fmt
+      language: system
+      types: [rust]
+      args: ["--"]
+    - id: cargo-check
+      name: cargo-check
+      description: Check files with cargo check.
+      entry: cargo check
+      language: system
+      types: [rust]
+      pass_filenames: false
+    - id: cargo-clippy
+      name: cargo-clippy
+      description: Check files with cargo clippy
+      entry: cargo clippy
+      language: system
+      args: ["--", "-D", "warnings"]
+      types: [rust]
+      pass_filenames: false

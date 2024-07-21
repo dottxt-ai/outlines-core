@@ -1,5 +1,4 @@
 import pytest
-
 from outlines_core.models.tokenizer import Tokenizer
 
 

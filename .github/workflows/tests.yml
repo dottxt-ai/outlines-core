@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.8", "3.10"]
+        python-version: ["3.10"]
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python ${{ matrix.python-version }}
@@ -35,7 +35,7 @@ jobs:
         pip install .[test]
     - name: Run tests
       run: |
-        pytest --cov=src/outlines_core
+        pytest --cov=outlines_core
     - name: Upload coverage data
       uses: actions/upload-artifact@v3
       with:

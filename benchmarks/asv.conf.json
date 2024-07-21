@@ -7,6 +7,7 @@
 	"HEAD"
     ],
     "build_command": [
+        "pip install setuptools_rust",
         "python -mpip install .[test]",
         "PIP_NO_BUILD_ISOLATION=false python -mpip wheel --no-deps --no-index -w {build_cache_dir} {build_dir}",
     ],

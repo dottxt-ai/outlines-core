@@ -13,7 +13,6 @@ from typing import (
 
 import interegular
 import torch
-
 from outlines_core.fsm.regex import (
     create_fsm_index_tokenizer,
     make_byte_level_fsm,

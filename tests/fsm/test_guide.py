@@ -1,5 +1,4 @@
 import pytest
-
 from outlines_core.fsm.guide import Generate, RegexGuide, StopAtEOSGuide, Write
 
 

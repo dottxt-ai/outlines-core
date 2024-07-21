@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2"]
+requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2", "setuptools-rust"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -29,7 +29,6 @@ dependencies = [
    "cloudpickle",
    "diskcache",
    "pydantic>=2.0",
-   "numba",
    "referencing",
    "jsonschema",
    "tqdm",
@@ -66,24 +65,25 @@ content-type = "text/markdown"
 
 [tool.setuptools]
 packages = ["outlines_core"]
-package-dir = {"" = "src"}
+package-dir = {"" = "python"}
 
 [tool.setuptools.package-data]
 "outlines" = ["py.typed"]
 
 [tool.setuptools_scm]
-write_to = "src/outlines_core/_version.py"
+write_to = "python/outlines_core/_version.py"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 filterwarnings = [
     "error",
-    "ignore::numba.core.errors.NumbaPendingDeprecationWarning",
     "ignore::pydantic.warnings.PydanticDeprecatedSince20",
     "ignore::FutureWarning:transformers.*",
     "ignore::FutureWarning:huggingface_hub.*",
     "ignore::UserWarning",
-    "ignore::DeprecationWarning:pyairports.*",
+]
+addopts = [
+    "--import-mode=importlib"
 ]
 
 [tool.mypy]
@@ -104,13 +104,16 @@ module = [
     "huggingface_hub",
     "interegular.*",
     "datasets.*",
-    "numba.*",
+    "setuptools.*",
+    "setuptools_rust.*",
+    # TODO: Add type info for the Rust extension
+    "outlines_core.fsm.outlines_core_rs.*",
 ]
 ignore_missing_imports = true
 
 [tool.coverage.run]
 omit = [
-    "src/outlines_core/_version.py",
+    "python/outlines_core/_version.py",
     "tests/*",
 ]
 branch = true
@@ -125,6 +128,13 @@ exclude_lines = [
     "\\.\\.\\.",
 ]
 show_missing = true
+
+[tool.coverage.paths]
+source = [
+    "outlines_core",
+    "**/site-packages/outlines_core",
+]
+
 
 [tool.diff_cover]
 compare_branch = "origin/main"

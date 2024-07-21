@@ -1,9 +1,6 @@
 import interegular
-import numba
 import numpy as np
 import pytest
-from transformers import AutoTokenizer
-
 from outlines_core.fsm.regex import (
     _walk_fsm,
     create_fsm_index_end_to_end,
@@ -20,6 +17,7 @@ from outlines_core.fsm.regex import (
 )
 from outlines_core.integrations.utils import adapt_tokenizer
 from outlines_core.models.transformers import TransformerTokenizer
+from transformers import AutoTokenizer
 
 
 def identity(s):
@@ -56,7 +54,7 @@ def walk_fsm_from_token_str(
     )
 
 
-def walk_fsm_from_token_str_numba(
+def walk_fsm_from_token_str_rust(
     fsm,
     input_string: str,
     start_state: int,
@@ -76,7 +74,7 @@ def walk_fsm_from_token_str_numba(
     "function",
     [
         walk_fsm_from_token_str,
-        walk_fsm_from_token_str_numba,
+        walk_fsm_from_token_str_rust,
     ],
 )
 def test_walk_fsm(function):
@@ -126,7 +124,7 @@ def test_walk_fsm(function):
     "function",
     [
         walk_fsm_from_token_str,
-        walk_fsm_from_token_str_numba,
+        walk_fsm_from_token_str_rust,
     ],
 )
 @pytest.mark.parametrize(
@@ -338,29 +336,26 @@ def test_create_fsm_index_end_to_end():
     regex_fsm, _ = make_deterministic_fsm(regex_pattern.to_fsm().reduce())
 
     vocabulary = {
-        "blah": numba.typed.List([0]),
-        "1a": numba.typed.List([1]),
-        "2": numba.typed.List([2]),
-        "0": numba.typed.List([3]),
-        "<EOS>": numba.typed.List([4]),
+        "blah": [0],
+        "1a": [1],
+        "2": [2],
+        "0": [3],
+        "<EOS>": [4],
     }
 
-    vocabulary_nb = numba.typed.List.empty_list(
-        numba.types.Tuple(
-            (
-                numba.types.unicode_type,
-                numba.int64[:],
-            )
-        )
-    )
+    vocabulary_nb = []
     for token_tuple, token_ids in vocabulary.items():
         token = merge_symbols(token_tuple)
         token_ids_np = np.fromiter(token_ids, dtype=np.dtype("int64"))
         vocabulary_nb.append((token, token_ids_np))
 
-    res = create_fsm_index_end_to_end(regex_fsm.fsm_info, vocabulary_nb)
+    res = create_fsm_index_end_to_end(
+        regex_fsm.fsm_info,
+        vocabulary_nb,
+        frozenset(),
+    )
 
-    assert res == {0: {(2, 2), (3, 1)}, 2: {(2, 2), (3, 2)}}
+    assert res == {0: {2: 2, 3: 1}, 2: {2: 2, 3: 2}}
 
 
 def test_create_fsm_index_end_to_end_multi_byte():
@@ -371,35 +366,30 @@ def test_create_fsm_index_end_to_end_multi_byte():
     byte_fsm = make_byte_level_better_fsm(regex_fsm, keep_utf8=True)
 
     vocabulary = {
-        "blah": numba.typed.List([0]),
-        "😈a": numba.typed.List([1]),
-        "😇": numba.typed.List([2]),
-        "😍": numba.typed.List([3]),
-        merge_symbols(("F0", "9F", "98", "8D")): numba.typed.List([4]),  # '😍'
-        " 😍": numba.typed.List([5]),
-        merge_symbols((" ", "F0", "9F", "98", "8D")): numba.typed.List([6]),  # ' 😍'
-        merge_symbols((" ", "F0", "9F", "98")): numba.typed.List(
-            [7]
-        ),  # ' 😍' incomplete
-        "<EOS>": numba.typed.List([8]),
+        "blah": [0],
+        "😈a": [1],
+        "😇": [2],
+        "😍": [3],
+        merge_symbols(("F0", "9F", "98", "8D")): [4],  # '😍'
+        " 😍": [5],
+        merge_symbols((" ", "F0", "9F", "98", "8D")): [6],  # ' 😍'
+        merge_symbols((" ", "F0", "9F", "98")): [7],  # ' 😍' incomplete
+        "<EOS>": [8],
     }
 
-    vocabulary_nb = numba.typed.List.empty_list(
-        numba.types.Tuple(
-            (
-                numba.types.unicode_type,
-                numba.int64[:],
-            )
-        )
-    )
+    vocabulary_nb = []
     for token_tuple, token_ids in vocabulary.items():
         token_tuple_np = merge_symbols(token_tuple)
         token_ids_np = np.fromiter(token_ids, dtype=np.dtype("int64"))
         vocabulary_nb.append((token_tuple_np, token_ids_np))
 
-    res = create_fsm_index_end_to_end(byte_fsm.fsm_info, vocabulary_nb)
+    res = create_fsm_index_end_to_end(
+        byte_fsm.fsm_info,
+        vocabulary_nb,
+        frozenset(),
+    )
 
-    assert res == {0: {(5, 3), (6, 3), (7, 7), (2, 2)}, 3: {(2, 3), (3, 3), (4, 3)}}
+    assert res == {0: {5: 3, 6: 3, 7: 7, 2: 2}, 3: {2: 3, 3: 3, 4: 3}}
 
 
 @pytest.mark.parametrize(
@@ -511,7 +501,6 @@ def test_regex_index_performance():
     tokenizer = AutoTokenizer.from_pretrained("gpt2")
     tokenizer = TransformerTokenizer(tokenizer)
 
-    # Pre-compile Numba functions
     res, _ = create_fsm_index_tokenizer(regex_fsm, tokenizer)
     assert len(res) > 1
 
@@ -531,10 +520,9 @@ def test_json_index_performance():
     import json
     from enum import Enum
 
+    import outlines_core
     from line_profiler import LineProfiler  # type: ignore [import]
     from pydantic import BaseModel, constr
-
-    import outlines_core
 
     class Weapon(str, Enum):
         sword = "sword"
@@ -599,21 +587,19 @@ def test_token_trans_keys_identical():
     token_trans_keys = get_vocabulary_transition_keys(
         regex_fsm.fsm_info.alphabet_symbol_mapping,
         regex_fsm.fsm_info.alphabet_anything_value,
-        vocabulary,
-        numba.typed.List.empty_list(numba.types.unicode_type),
+        list(vocabulary.items()),
+        frozenset(),
     )
 
     token_str_to_tranition_keys = {
         token_str: trans_key_seq
-        for (token_str, _), trans_key_seq in zip(vocabulary, token_trans_keys)
+        for (token_str, _), trans_key_seq in zip(vocabulary.items(), token_trans_keys)
     }
     # `a` and `b` both are workable, but `z` has distinct transition rules
     assert interegular_fsm.accepts("zaz")
     assert interegular_fsm.accepts("zbz")
-    assert (token_str_to_tranition_keys["a"] == token_str_to_tranition_keys["b"]).all()
-    assert not (
-        token_str_to_tranition_keys["a"] == token_str_to_tranition_keys["z"]
-    ).all()
+    assert token_str_to_tranition_keys["a"] == token_str_to_tranition_keys["b"]
+    assert not token_str_to_tranition_keys["a"] == token_str_to_tranition_keys["z"]
 
 
 def test_token_trans_keys_walk_fsm():
@@ -637,13 +623,13 @@ def test_token_trans_keys_walk_fsm():
     token_trans_keys = get_vocabulary_transition_keys(
         regex_fsm.fsm_info.alphabet_symbol_mapping,
         regex_fsm.fsm_info.alphabet_anything_value,
-        vocabulary,
-        numba.typed.List.empty_list(numba.types.unicode_type),
+        list(vocabulary.items()),
+        frozenset(),
     )
 
     token_str_trans_key_seq = {
         token_str: trans_key_seq
-        for (token_str, _), trans_key_seq in zip(vocabulary, token_trans_keys)
+        for (token_str, _), trans_key_seq in zip(vocabulary.items(), token_trans_keys)
     }
 
     # verify initial state valid only for "ab" and "ac" using transition key seq
@@ -655,40 +641,11 @@ def test_token_trans_keys_walk_fsm():
             regex_fsm.fsm_info.initial,
             regex_fsm.fsm_info.finals,
             token_trans_key_seq,
-            regex_fsm.fsm_info.initial,
+            regex_fsm.initial,
             False,
         )
         is_accepted = len(state_seq) >= len(token_trans_key_seq)
         assert should_accept == is_accepted
-
-
-def test_numba_leading_null_byte_UnicodeCharSeq_remains_broken():
-    """Assert numba UnicodeCharSeq w/ leading \x00 is still broken"""
-    # EXPLANATION:
-    # https://github.com/outlines_core-dev/outlines/pull/930#issuecomment-2143535968
-
-    # from https://github.com/numba/numba/issues/9542
-    d = numba.typed.typeddict.Dict.empty(numba.types.UnicodeCharSeq(1), numba.int64)
-    d["一"] = 10  # \xe4\xb8\x80
-    with pytest.raises(KeyError):
-        str(d)
-
-    # most characters are fine, but "\x00" is converted to ""
-    l = np.fromiter(["\x99", "\x00"], dtype=np.dtype("U2"))
-    assert str(l[0]) == "\x99"  # fine
-    assert str(l[1]) == ""  # 1-byte null converted to 0-bytes
-
-
-@pytest.mark.parametrize("input_key", ["一", "\x00"])
-def test_numba_leading_null_byte_unicode_type_sane(input_key):
-    """Assert numba unicode_type w/ leading \x00 is working"""
-    # EXPLANATION:
-    # https://github.com/outlines_core-dev/outlines/pull/930#issuecomment-2143535968
-
-    # from https://github.com/numba/numba/issues/9542
-    d = numba.typed.typeddict.Dict.empty(numba.types.unicode_type, numba.int64)
-    d["一"] = 10  # \xe4\xb8\x80
-    str(d)  # assert successfully interprets
 
 
 @pytest.mark.parametrize(

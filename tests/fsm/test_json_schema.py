@@ -4,8 +4,6 @@ from typing import List, Literal, Union
 
 import interegular
 import pytest
-from pydantic import BaseModel, Field, constr
-
 from outlines_core.fsm.json_schema import (
     BOOLEAN,
     DATE,
@@ -22,6 +20,7 @@ from outlines_core.fsm.json_schema import (
     get_schema_from_signature,
     to_regex,
 )
+from pydantic import BaseModel, Field, constr
 
 
 def test_function_basic():

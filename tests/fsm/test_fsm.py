@@ -1,5 +1,4 @@
 import pytest
-
 from outlines_core.fsm.fsm import RegexFSM, StopAtEosFSM
 
 

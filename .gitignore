@@ -6,4 +6,7 @@ docs/build
 .idea/
 *.gguf
 .venv
+build/
 benchmarks/results
+target/
+*.so

@@ -3,9 +3,9 @@ requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "outlines"
+name = "outlines_core"
 authors= [{name = "Outlines Developers"}]
-description = "Probabilistic Generative Model Programming"
+description = "Structured Text Generation in Rust"
 requires-python = ">=3.8"
 license = {text = "Apache-2.0"}
 keywords=[
@@ -25,9 +25,6 @@ classifiers = [
 ]
 dependencies = [
    "interegular",
-   "jinja2",
-   "lark",
-   "nest_asyncio",
    "numpy<2.0.0",
    "cloudpickle",
    "diskcache",
@@ -35,12 +32,9 @@ dependencies = [
    "numba",
    "referencing",
    "jsonschema",
-   "requests",
    "tqdm",
    "datasets",
    "typing_extensions",
-   "pycountry",
-   "pyairports",
 ]
 dynamic = ["version"]
 
@@ -55,36 +49,30 @@ test = [
     "diff-cover",
     "accelerate",
     "beartype<0.16.0",
-    "responses",
     "huggingface_hub",
     "torch",
     "transformers",
     "pillow",
 ]
-serve = [
-    "vllm>=0.3.0",
-    "uvicorn",
-    "fastapi",
-    "pydantic>=2.0",
-]
 
 [project.urls]
-homepage = "https://github.com/outlines-dev/outlines"
-documentation = "https://outlines-dev.github.io/outlines/"
-repository = "https://github.com/outlines-dev/outlines"
+homepage = "https://github.com/outlines-dev/outlines-core"
+documentation = "https://outlines-dev.github.io/outlines-core/"
+repository = "https://github.com/outlines-dev/outlines-core/"
 
 [project.readme]
 file="README.md"
 content-type = "text/markdown"
 
 [tool.setuptools]
-packages = ["outlines"]
+packages = ["outlines_core"]
+package-dir = {"" = "src"}
 
 [tool.setuptools.package-data]
 "outlines" = ["py.typed"]
 
 [tool.setuptools_scm]
-write_to = "outlines/_version.py"
+write_to = "src/outlines_core/_version.py"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -104,10 +92,7 @@ enable_incomplete_feature = ["Unpack"]
 
 [[tool.mypy.overrides]]
 module = [
-    "exllamav2.*",
-    "jinja2",
     "jsonschema.*",
-    "nest_asyncio",
     "numpy.*",
     "cloudpickle.*",
     "diskcache.*",
@@ -117,20 +102,15 @@ module = [
     "torch.*",
     "transformers.*",
     "huggingface_hub",
-    "lark.*",
     "interegular.*",
     "datasets.*",
     "numba.*",
-    "requests.*",
-    "responses.*",
-    "uvicorn.*",
-    "fastapi.*",
 ]
 ignore_missing_imports = true
 
 [tool.coverage.run]
 omit = [
-    "outlines/_version.py",
+    "outlines_core/_version.py",
     "tests/*",
 ]
 branch = true

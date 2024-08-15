@@ -1,10 +1,10 @@
 import warnings
 from typing import TYPE_CHECKING, Iterable, NewType, Optional
 
-from outlines.fsm.guide import RegexGuide, StopAtEOSGuide
+from outlines_core.fsm.guide import RegexGuide, StopAtEOSGuide
 
 if TYPE_CHECKING:
-    from outlines.models.tokenizer import Tokenizer
+    from outlines_core.models.tokenizer import Tokenizer
 
 FSMState = NewType("FSMState", int)
 

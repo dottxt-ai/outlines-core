@@ -1,6 +1,6 @@
 import pytest
 
-from outlines.fsm.fsm import RegexFSM, StopAtEosFSM
+from outlines_core.fsm.fsm import RegexFSM, StopAtEosFSM
 
 
 def assert_expected_tensor_ids(tensor, ids):

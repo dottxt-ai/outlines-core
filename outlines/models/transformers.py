@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING, Iterator, List, Optional, Tuple, Union
 
 from datasets.fingerprint import Hasher
 
-from outlines.generate.api import GenerationParameters, SamplingParameters
 from outlines.models.tokenizer import Tokenizer
 
 if TYPE_CHECKING:
@@ -17,6 +16,26 @@ __all__ = ["transformers"]
 
 
 KVCacheType = Tuple[Tuple["torch.DoubleTensor", "torch.DoubleTensor"], ...]
+
+
+@dataclasses.dataclass(frozen=True)
+class GenerationParameters:
+    """Generation parameters used in Outlines' public API."""
+
+    max_tokens: Optional[int]
+    stop_at: Optional[Union[str, List[str]]]
+    seed: Optional[int]
+
+
+@dataclasses.dataclass(frozen=True)
+class SamplingParameters:
+    """Sampling parameters available in Outlines."""
+
+    sampler: str
+    num_samples: int = 1
+    top_p: Optional[float] = None
+    top_k: Optional[int] = None
+    temperature: Optional[float] = None
 
 
 def get_llama_tokenizer_types():

@@ -10,8 +10,6 @@ if TYPE_CHECKING:
     import torch
     from transformers import PreTrainedModel, PreTrainedTokenizer
 
-    from outlines.processors import OutlinesLogitsProcessor
-
 __all__ = ["transformers"]
 
 
@@ -217,7 +215,7 @@ class Transformers:
         self,
         prompts: Union[str, List[str]],
         generation_parameters: GenerationParameters,
-        logits_processor: Optional["OutlinesLogitsProcessor"],
+        logits_processor,
         sampling_parameters: SamplingParameters,
     ) -> Union[str, List[str], List[List[str]]]:
         """Generate text using `transformers`.
@@ -275,7 +273,7 @@ class Transformers:
         self,
         prompts: Union[str, List[str]],
         generation_parameters: GenerationParameters,
-        logits_processor: Optional["OutlinesLogitsProcessor"],
+        logits_processor,
         sampling_parameters: SamplingParameters,
     ) -> Iterator[Union[str, List[str]]]:
         """
@@ -319,7 +317,7 @@ class Transformers:
         self,
         prompts: Union[str, List[str]],
         generation_parameters: GenerationParameters,
-        logits_processor: Optional["OutlinesLogitsProcessor"],
+        logits_processor,
         sampling_parameters: SamplingParameters,
     ) -> dict:
         """

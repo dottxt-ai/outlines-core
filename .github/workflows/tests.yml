@@ -35,7 +35,7 @@ jobs:
         pip install .[test]
     - name: Run tests
       run: |
-        pytest --cov=outlines_core
+        pytest --cov=src/outlines_core
     - name: Upload coverage data
       uses: actions/upload-artifact@v3
       with:

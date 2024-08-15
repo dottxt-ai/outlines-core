@@ -6,7 +6,7 @@ from outlines.generate.api import (
     SequenceGeneratorAdapter,
     VisionSequenceGeneratorAdapter,
 )
-from outlines.models import ExLlamaV2Model, OpenAI, TransformersVision
+from outlines.models import ExLlamaV2Model, TransformersVision
 from outlines.samplers import Sampler, multinomial
 
 
@@ -46,14 +46,3 @@ def text_exllamav2(model, sampler: Sampler = multinomial()) -> SequenceGenerator
 @text.register(TransformersVision)
 def text_vision(model, sampler: Sampler = multinomial()):
     return VisionSequenceGeneratorAdapter(model, None, sampler)
-
-
-@text.register(OpenAI)
-def text_openai(model: OpenAI, sampler: Sampler = multinomial()) -> OpenAI:
-    if not isinstance(sampler, multinomial):
-        raise NotImplementedError(
-            r"The OpenAI API does not support any other sampling algorithm "
-            + "than the multinomial sampler."
-        )
-
-    return model

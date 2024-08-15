@@ -6,7 +6,7 @@ from outlines.generate.api import (
     SequenceGeneratorAdapter,
     VisionSequenceGeneratorAdapter,
 )
-from outlines.models import ExLlamaV2Model, OpenAI, TransformersVision
+from outlines.models import ExLlamaV2Model, TransformersVision
 from outlines.samplers import Sampler, multinomial
 
 
@@ -61,15 +61,3 @@ def regex_exllamav2(
     generator = SequenceGenerator(fsm, model, sampler, device)
 
     return generator
-
-
-@regex.register(OpenAI)
-def regex_openai(
-    model: OpenAI,
-    regex_str: str,
-    sampler: Sampler = multinomial(),
-):
-    raise NotImplementedError(
-        "Cannot use regex-structured generation with an OpenAI model"
-        + "due to the limitations of the OpenAI API."
-    )

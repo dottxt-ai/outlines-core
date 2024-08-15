@@ -1,4 +1,3 @@
-from outlines_core.caching import cache_disabled
 from outlines_core.fsm.guide import RegexGuide
 
 from .common import ensure_numba_compiled, setup_tokenizer
@@ -24,7 +23,6 @@ class RegexGuideBenchmark:
         ensure_numba_compiled(self.tokenizer)
         self.pattern = regex_samples[pattern_name]
 
-    @cache_disabled()
     def time_regex_to_guide(self, pattern_name):
         RegexGuide(self.pattern, self.tokenizer)
 
@@ -37,6 +35,5 @@ class MemoryRegexGuideBenchmark:
         ensure_numba_compiled(self.tokenizer)
         self.pattern = regex_samples[pattern_name]
 
-    @cache_disabled()
     def peakmem_regex_to_guide(self, pattern_name):
         RegexGuide(self.pattern, self.tokenizer)

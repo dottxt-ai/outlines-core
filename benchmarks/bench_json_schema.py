@@ -1,4 +1,3 @@
-from outlines_core.caching import cache_disabled
 from outlines_core.fsm.guide import RegexGuide
 from outlines_core.fsm.json_schema import build_regex_from_schema
 
@@ -71,11 +70,9 @@ class JsonSchemaBenchmark:
         self.schema = schemas[schema_name]
         ensure_numba_compiled(self.tokenizer)
 
-    @cache_disabled()
     def time_json_schema_to_regex(self, schema_name):
         build_regex_from_schema(self.schema)
 
-    @cache_disabled()
     def time_json_schema_to_fsm(self, schema_name):
         regex = build_regex_from_schema(self.schema)
         RegexGuide(regex, self.tokenizer)

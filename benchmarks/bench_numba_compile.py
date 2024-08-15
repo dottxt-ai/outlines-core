@@ -3,7 +3,6 @@ import importlib
 import interegular
 import numba
 
-from outlines_core.caching import cache_disabled
 from outlines_core.fsm import regex
 
 from .common import setup_tokenizer
@@ -29,6 +28,5 @@ class NumbaCompileBenchmark:
     def teardown(self):
         numba.njit = self.original_njit
 
-    @cache_disabled()
     def time_compile_numba(self):
         self.regex.create_fsm_index_tokenizer(self.regex_pattern, self.tokenizer)

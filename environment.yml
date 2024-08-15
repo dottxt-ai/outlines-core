@@ -3,7 +3,7 @@
 #   $ conda env create -f environment.yml  # `mamba` works too for this command
 #   $ conda activate outlines-dev
 #
-name: outlines-dev
+name: outlines-core-dev
 channels:
   - conda-forge
   - huggingface
@@ -12,7 +12,6 @@ dependencies:
   - jinja2
   - numpy
   - pydantic
-  - scipy
   - pytest
   - pre-commit
   - referencing

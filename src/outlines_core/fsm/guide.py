@@ -14,15 +14,15 @@ from typing import (
 import interegular
 import torch
 
-from outlines.caching import cache
-from outlines.fsm.regex import (
+from outlines_core.caching import cache
+from outlines_core.fsm.regex import (
     create_fsm_index_tokenizer,
     make_byte_level_fsm,
     make_deterministic_fsm,
 )
 
 if TYPE_CHECKING:
-    from outlines.models.tokenizer import Tokenizer
+    from outlines_core.models.tokenizer import Tokenizer
 
 
 @dataclass(frozen=True)

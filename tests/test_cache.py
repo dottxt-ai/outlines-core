@@ -32,20 +32,20 @@ def test_cache(refresh_environment):
     """Initialize a temporary cache and delete it after the test has run."""
     with tempfile.TemporaryDirectory() as tempdir:
         os.environ["OUTLINES_CACHE_DIR"] = tempdir
-        import outlines
+        import outlines_core
 
-        memory = outlines.get_cache()
+        memory = outlines_core.get_cache()
         assert memory.directory == tempdir
 
-        yield outlines.caching.cache()
+        yield outlines_core.caching.cache()
 
         memory.clear()
 
 
 def test_get_cache(test_cache):
-    import outlines
+    import outlines_core
 
-    memory = outlines.get_cache()
+    memory = outlines_core.get_cache()
     assert isinstance(memory, diskcache.Cache)
 
     # If the cache is enabled then the size
@@ -70,9 +70,9 @@ def test_get_cache(test_cache):
 
 def test_disable_cache(test_cache):
     """Make sure that we can disable the cache."""
-    import outlines
+    import outlines_core
 
-    outlines.disable_cache()
+    outlines_core.disable_cache()
 
     # If the cache is disabled then the size
     # of `store` should increase every time
@@ -92,7 +92,7 @@ def test_disable_cache(test_cache):
 
 def test_clear_cache(test_cache):
     """Make sure that we can clear the cache."""
-    import outlines
+    import outlines_core
 
     store = list()
 
@@ -110,7 +110,7 @@ def test_clear_cache(test_cache):
 
     # The size of `store` should increase if we call `f`
     # after clearing the cache.
-    outlines.clear_cache()
+    outlines_core.clear_cache()
     f(1)
     assert len(store) == store_size + 1
 
@@ -118,14 +118,14 @@ def test_clear_cache(test_cache):
 def test_version_upgrade_cache_invalidate(test_cache, mocker):
     """Ensure we can change the signature of a cached function if we upgrade the version"""
 
-    import outlines.caching
+    import outlines_core.caching
 
     def simulate_restart_outlines():
         # clearing in-memory lru_cache which returns the diskcache in
         # order to simulate a reload, we're not clearing the diskcache itself
-        outlines.caching.get_cache.cache_clear()
+        outlines_core.caching.get_cache.cache_clear()
 
-    mocker.patch("outlines._version.__version__", new="0.0.0")
+    mocker.patch("outlines_core._version.__version__", new="0.0.0")
     simulate_restart_outlines()
 
     # initialize cache with signature of Tuple-of-3
@@ -148,7 +148,7 @@ def test_version_upgrade_cache_invalidate(test_cache, mocker):
         a, b = foo()
 
     # "restart" outlines WITH version upgrade
-    mocker.patch("outlines._version.__version__", new="0.0.1")
+    mocker.patch("outlines_core._version.__version__", new="0.0.1")
     simulate_restart_outlines()
 
     # change signature to Tuple-of-2
@@ -163,7 +163,7 @@ def test_version_upgrade_cache_invalidate(test_cache, mocker):
 def test_cache_disabled_decorator(test_cache):
     """Ensure cache can be disabled in a local scope"""
 
-    from outlines.caching import cache_disabled
+    from outlines_core.caching import cache_disabled
 
     mock = unittest.mock.MagicMock()
 

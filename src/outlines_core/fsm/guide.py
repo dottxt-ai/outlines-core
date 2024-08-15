@@ -15,7 +15,6 @@ from typing import (
 import interegular
 import torch
 
-from outlines_core.caching import cache
 from outlines_core.fsm.regex import (
     create_fsm_index_tokenizer,
     make_byte_level_fsm,
@@ -118,7 +117,6 @@ class StopAtEOSGuide(Guide):
         return self
 
 
-@cache()
 def create_states_mapping(
     regex_string: str,
     tokenizer: "Tokenizer",

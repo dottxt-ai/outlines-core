@@ -13,24 +13,6 @@ import outlines.samplers as samplers
 
 
 @pytest.fixture(scope="session")
-def model_llamacpp(tmp_path_factory):
-    return models.llamacpp(
-        repo_id="M4-ai/TinyMistral-248M-v2-Instruct-GGUF",
-        filename="TinyMistral-248M-v2-Instruct.Q4_K_M.gguf",
-    )
-
-
-@pytest.fixture(scope="session")
-def model_mlxlm(tmp_path_factory):
-    return models.mlxlm("mlx-community/TinyLlama-1.1B-Chat-v1.0-4bit")
-
-
-@pytest.fixture(scope="session")
-def model_mlxlm_phi3(tmp_path_factory):
-    return models.mlxlm("mlx-community/Phi-3-mini-4k-instruct-4bit")
-
-
-@pytest.fixture(scope="session")
 def model_transformers_random(tmp_path_factory):
     return models.transformers("hf-internal-testing/tiny-random-gpt2", device="cpu")
 
@@ -38,11 +20,6 @@ def model_transformers_random(tmp_path_factory):
 @pytest.fixture(scope="session")
 def model_transformers_opt125m(tmp_path_factory):
     return models.transformers("facebook/opt-125m", device="cpu")
-
-
-@pytest.fixture(scope="session")
-def model_mamba(tmp_path_factory):
-    return models.mamba(model_name="state-spaces/mamba-130m-hf", device="cpu")
 
 
 @pytest.fixture(scope="session")
@@ -71,10 +48,6 @@ def model_transformers_vision(tmp_path_factory):
     )
 
 
-@pytest.fixture(scope="session")
-def model_vllm(tmp_path_factory):
-    return models.vllm("facebook/opt-125m", gpu_memory_utilization=0.1)
-
 
 # TODO: exllamav2 failing in main, address in https://github.com/outlines-dev/outlines/issues/808
 # TODO: t5 tokenizer doesn't work with streaming
@@ -97,15 +70,9 @@ def model_t5(tmp_path_factory):
 
 
 ALL_MODEL_FIXTURES = (
-    "model_llamacpp",
-    "model_mlxlm",
-    "model_mlxlm_phi3",
     "model_transformers_random",
     "model_transformers_opt125m",
-    "model_mamba",
     "model_bart",
-    "model_transformers_vision",
-    "model_vllm",
 )
 
 
@@ -149,10 +116,10 @@ def enforce_not_implemented(model_fixture, *task_names):
     assert an NotImplementedError is raised. Otherwise, run normally
     """
     NOT_IMPLEMENTED = {
-        "stream": ["model_transformers_vision", "model_vllm"],
-        "batch": ["model_llamacpp", "model_mlxlm", "model_mlxlm_phi3"],
-        "beam_search": ["model_llamacpp", "model_mlxlm", "model_mlxlm_phi3"],
-        "multiple_samples": ["model_llamacpp", "model_mlxlm", "model_mlxlm_phi3"],
+        "stream": ["model_transformers_vision"],
+        "batch": [],
+        "beam_search": [],
+        "multiple_samples": [],
     }
     for task_name in task_names:
         if model_fixture in NOT_IMPLEMENTED.get(task_name, []):

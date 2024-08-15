@@ -6,7 +6,6 @@ from outlines.generate.api import (
     SequenceGeneratorAdapter,
     VisionSequenceGeneratorAdapter,
 )
-from outlines.models import ExLlamaV2Model, TransformersVision
 from outlines.samplers import Sampler, multinomial
 
 
@@ -35,29 +34,3 @@ def regex(model, regex_str: str, sampler: Sampler = multinomial()):
 
     logits_processor = RegexLogitsProcessor(regex_str, tokenizer=model.tokenizer)
     return SequenceGeneratorAdapter(model, logits_processor, sampler)
-
-
-@regex.register(TransformersVision)
-def regex_vision(
-    model,
-    regex_str: str,
-    sampler: Sampler = multinomial(),
-):
-    from outlines.processors import RegexLogitsProcessor
-
-    logits_processor = RegexLogitsProcessor(regex_str, tokenizer=model.tokenizer)
-    return VisionSequenceGeneratorAdapter(model, logits_processor, sampler)
-
-
-@regex.register(ExLlamaV2Model)
-def regex_exllamav2(
-    model,
-    regex_str: str,
-    sampler: Sampler = multinomial(),
-) -> SequenceGenerator:
-    fsm = RegexGuide(regex_str, model.tokenizer)
-
-    device = model.device
-    generator = SequenceGenerator(fsm, model, sampler, device)
-
-    return generator

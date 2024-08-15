@@ -2,7 +2,7 @@ import datetime
 
 import pytest
 
-from outlines.fsm.types import (
+from outlines_core.fsm.types import (
     BOOLEAN,
     DATE,
     DATETIME,

@@ -6,7 +6,7 @@ import interegular
 import pytest
 from pydantic import BaseModel, Field, constr
 
-from outlines.fsm.json_schema import (
+from outlines_core.fsm.json_schema import (
     BOOLEAN,
     DATE,
     DATE_TIME,

@@ -1,17 +1,17 @@
 {
     "version": 1,
-    "project": "Outlines",
-    "project_url": "https://dottxt-ai.github.io/outlines/",
+    "project": "outlines-core",
+    "project_url": "https://dottxt-ai.github.io/outlines-core/",
     "repo": "..",
     "branches": [
-	"HEAD"
+	      "HEAD",
     ],
     "build_command": [
         "python -mpip install .[test]",
         "PIP_NO_BUILD_ISOLATION=false python -mpip wheel --no-deps --no-index -w {build_cache_dir} {build_dir}",
     ],
     "environment_type": "virtualenv",
-    "show_commit_url": "https://github.com/dottxt-ai/outlines/commit/",
+    "show_commit_url": "https://github.com/dottxt-ai/outlines-core/commit/",
     "benchmark_dir": ".",
     "env_dir": "env",
     "results_dir": "results",

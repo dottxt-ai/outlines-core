@@ -19,7 +19,7 @@ jobs:
       run: ./.github/scripts/build_sdist_and_wheel.sh
     - name: Check that the package version matches the Release name
       run: |
-        grep -Rq "^Version: ${GITHUB_REF:10}$" outlines.egg-info/PKG-INFO
+        grep -Rq "^Version: ${GITHUB_REF:10}$" outlines_core.egg-info/PKG-INFO
     - name: Publish to PyPi
       uses: pypa/gh-action-pypi-publish@v1.4.2
       with:

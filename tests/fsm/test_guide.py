@@ -1,6 +1,6 @@
 import pytest
 
-from outlines.fsm.guide import Generate, RegexGuide, StopAtEOSGuide, Write
+from outlines_core.fsm.guide import Generate, RegexGuide, StopAtEOSGuide, Write
 
 
 def assert_expected_tensor_ids(tensor, ids):

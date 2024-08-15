@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from transformers import AutoTokenizer
 
-from outlines.fsm.regex import (
+from outlines_core.fsm.regex import (
     _walk_fsm,
     create_fsm_index_end_to_end,
     create_fsm_index_tokenizer,
@@ -18,7 +18,7 @@ from outlines.fsm.regex import (
     reduced_vocabulary,
     walk_fsm,
 )
-from outlines.models.transformers import TransformerTokenizer
+from outlines_core.models.transformers import TransformerTokenizer
 
 
 def identity(s):
@@ -536,7 +536,7 @@ def test_json_index_performance():
     from line_profiler import LineProfiler  # type: ignore [import]
     from pydantic import BaseModel, constr
 
-    import outlines
+    import outlines_core
 
     class Weapon(str, Enum):
         sword = "sword"
@@ -560,16 +560,16 @@ def test_json_index_performance():
         # TODO: Add support for conint
         strength: int  # conint(int, ge=0, le=100)
 
-    model = outlines.models.transformers("gpt2", device="cuda")
+    model = outlines_core.models.transformers("gpt2", device="cuda")
     json_schema = json.dumps(Character.model_json_schema())
 
     def build_regex():
-        regex_str = outlines.index.json_schema.build_regex_from_object(json_schema)
-        outlines.generate.regex(model, regex_str)
+        regex_str = outlines_core.index.json_schema.build_regex_from_object(json_schema)
+        outlines_core.generate.regex(model, regex_str)
 
     profiler = LineProfiler(create_fsm_index_end_to_end)
     profiler.add_function(create_fsm_index_tokenizer)
-    profiler.add_function(outlines.index.index.RegexFSM.__init__)
+    profiler.add_function(outlines_core.index.index.RegexFSM.__init__)
 
     profiler.runctx(
         "build_regex()",

@@ -1,6 +1,6 @@
-from outlines.caching import cache_disabled
-from outlines.fsm.guide import RegexGuide
-from outlines.fsm.json_schema import build_regex_from_schema
+from outlines_core.caching import cache_disabled
+from outlines_core.fsm.guide import RegexGuide
+from outlines_core.fsm.json_schema import build_regex_from_schema
 
 from .common import ensure_numba_compiled, setup_tokenizer  # noqa: E402
 

@@ -9,14 +9,14 @@ python -m build
 mkdir -p test-sdist
 cd test-sdist
 python -m venv venv-sdist
-venv-sdist/bin/python -m pip install ../dist/outlines-*.tar.gz
-venv-sdist/bin/python -c "import outlines"
+venv-sdist/bin/python -m pip install ../dist/outlines_core-*.tar.gz
+venv-sdist/bin/python -c "import outlines_core"
 cd ..
 
 # Check wheel install and imports
 mkdir -p test-wheel
 cd test-wheel
 python -m venv venv-wheel
-venv-wheel/bin/python -m pip install ../dist/outlines-*.whl
-venv-wheel/bin/python -c "import outlines"
+venv-wheel/bin/python -m pip install ../dist/outlines_core-*.whl
+venv-wheel/bin/python -c "import outlines_core"
 cd ..

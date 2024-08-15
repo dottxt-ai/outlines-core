@@ -3,8 +3,8 @@ import importlib
 import interegular
 import numba
 
-from outlines.caching import cache_disabled
-from outlines.fsm import regex
+from outlines_core.caching import cache_disabled
+from outlines_core.fsm import regex
 
 from .common import setup_tokenizer
 

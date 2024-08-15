@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Iterator, List, Optional, Tuple, Union
 
 from datasets.fingerprint import Hasher
 
-from outlines.models.tokenizer import Tokenizer
+from outlines_core.models.tokenizer import Tokenizer
 
 if TYPE_CHECKING:
     import torch

@@ -29,7 +29,7 @@ from numba.typed.typedobjectutils import _nonoptional
 from tqdm import tqdm
 
 if TYPE_CHECKING:
-    from outlines.models.tokenizer import Tokenizer
+    from outlines_core.models.tokenizer import Tokenizer
 
 
 class BetterAlphabet(Alphabet):

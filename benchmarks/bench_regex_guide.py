@@ -1,5 +1,5 @@
-from outlines.caching import cache_disabled
-from outlines.fsm.guide import RegexGuide
+from outlines_core.caching import cache_disabled
+from outlines_core.fsm.guide import RegexGuide
 
 from .common import ensure_numba_compiled, setup_tokenizer
 

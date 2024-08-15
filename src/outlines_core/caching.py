@@ -48,10 +48,12 @@ def get_cache():
     environment variable.
 
     """
-    from outlines._version import __version__ as outlines_version  # type: ignore
+    from outlines_core._version import (
+        __version__ as outlines_core_version,  # type: ignore
+    )
 
     home_dir = os.path.expanduser("~")
-    cache_dir = os.environ.get("OUTLINES_CACHE_DIR", f"{home_dir}/.cache/outlines")
+    cache_dir = os.environ.get("OUTLINES_CACHE_DIR", f"{home_dir}/.cache/outlines-core")
     memory = Cache(
         cache_dir,
         eviction_policy="none",
@@ -60,9 +62,9 @@ def get_cache():
     )
 
     # ensure if version upgrade occurs, old cache is pruned
-    if outlines_version != memory.get("__version__"):
+    if outlines_core_version != memory.get("__version__"):
         memory.clear()
-    memory["__version__"] = outlines_version
+    memory["__version__"] = outlines_core_version
 
     return memory
 

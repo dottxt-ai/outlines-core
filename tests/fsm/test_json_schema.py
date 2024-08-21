@@ -2,7 +2,6 @@ import json
 import re
 from typing import List, Literal, Union
 
-import interegular
 import pytest
 from outlines_core.fsm.json_schema import (
     BOOLEAN,
@@ -21,6 +20,8 @@ from outlines_core.fsm.json_schema import (
     to_regex,
 )
 from pydantic import BaseModel, Field, constr
+
+import interegular
 
 
 def test_function_basic():

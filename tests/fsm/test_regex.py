@@ -1,4 +1,3 @@
-import interegular
 import numpy as np
 import pytest
 from outlines_core.fsm.regex import (
@@ -15,6 +14,8 @@ from outlines_core.fsm.regex import (
 )
 from outlines_core.models.transformers import TransformerTokenizer
 from transformers import AutoTokenizer
+
+import interegular
 
 
 def identity(s):

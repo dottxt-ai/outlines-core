@@ -11,6 +11,7 @@ rust_extensions = [
         "outlines_core.fsm.outlines_core_rs",
         f"{CURRENT_DIR}/Cargo.toml",
         binding=Binding.PyO3,
+        features=["python-bindings"],
         rustc_flags=["--crate-type=cdylib"],
     ),
 ]

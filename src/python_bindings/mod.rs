@@ -2,6 +2,7 @@ use crate::regex::get_token_transition_keys_internal;
 use crate::regex::get_vocabulary_transition_keys_internal;
 use crate::regex::state_scan_tokens_internal;
 use crate::regex::walk_fsm_internal;
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
 use pyo3::wrap_pyfunction;
@@ -158,7 +159,7 @@ pub fn create_fsm_index_end_to_end<'py>(
                 new_dict.set_item(token_id, end_state).unwrap();
                 states_to_token_subsets
                     .set_item(start_state, new_dict)
-                    .unwrap();
+                    .map_err(|e| PyValueError::new_err(format!("Failed to set item: {}", e)))?;
             }
 
             if !seen.contains(&end_state) {

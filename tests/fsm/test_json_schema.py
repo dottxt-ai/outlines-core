@@ -4,7 +4,7 @@ from typing import List, Literal, Union
 
 import interegular
 import pytest
-from outlines_core.fsm.json_schema import (  # to_regex,
+from outlines_core.fsm.json_schema import (
     BOOLEAN,
     DATE,
     DATE_TIME,
@@ -18,6 +18,7 @@ from outlines_core.fsm.json_schema import (  # to_regex,
     WHITESPACE,
     build_regex_from_schema,
     get_schema_from_signature,
+    to_regex,
 )
 from pydantic import BaseModel, Field, constr
 
@@ -56,56 +57,56 @@ def test_from_pydantic():
     assert isinstance(schedule, str)
 
 
-# @pytest.mark.parametrize(
-#     "pattern,does_match",
-#     [
-#         ({"integer": "0"}, True),
-#         ({"integer": "1"}, True),
-#         ({"integer": "-1"}, True),
-#         ({"integer": "01"}, False),
-#         ({"integer": "1.3"}, False),
-#         ({"integer": "t"}, False),
-#     ],
-# )
-# def test_match_integer(pattern, does_match):
-#     step = {"title": "Foo", "type": "integer"}
-#     regex = to_regex(None, step)
-#     assert regex == INTEGER
+@pytest.mark.parametrize(
+    "pattern,does_match",
+    [
+        ({"integer": "0"}, True),
+        ({"integer": "1"}, True),
+        ({"integer": "-1"}, True),
+        ({"integer": "01"}, False),
+        ({"integer": "1.3"}, False),
+        ({"integer": "t"}, False),
+    ],
+)
+def test_match_integer(pattern, does_match):
+    step = {"title": "Foo", "type": "integer"}
+    regex = to_regex(step)
+    assert regex == INTEGER
 
-#     value = pattern["integer"]
-#     match = re.fullmatch(regex, value)
-#     if does_match:
-#         assert match[0] == value
-#         assert match.span() == (0, len(value))
-#     else:
-#         assert match is None
+    value = pattern["integer"]
+    match = re.fullmatch(regex, value)
+    if does_match:
+        assert match[0] == value
+        assert match.span() == (0, len(value))
+    else:
+        assert match is None
 
 
-# @pytest.mark.parametrize(
-#     "pattern,does_match",
-#     [
-#         ({"number": "1"}, True),
-#         ({"number": "0"}, True),
-#         ({"number": "01"}, False),
-#         ({"number": ".3"}, False),
-#         ({"number": "1.3"}, True),
-#         ({"number": "-1.3"}, True),
-#         ({"number": "1.3e9"}, False),
-#         ({"number": "1.3e+9"}, True),
-#     ],
-# )
-# def test_match_number(pattern, does_match):
-#     step = {"title": "Foo", "type": "number"}
-#     regex = to_regex(None, step)
-#     assert regex == NUMBER
+@pytest.mark.parametrize(
+    "pattern,does_match",
+    [
+        ({"number": "1"}, True),
+        ({"number": "0"}, True),
+        ({"number": "01"}, False),
+        ({"number": ".3"}, False),
+        ({"number": "1.3"}, True),
+        ({"number": "-1.3"}, True),
+        ({"number": "1.3e9"}, False),
+        ({"number": "1.3e+9"}, True),
+    ],
+)
+def test_match_number(pattern, does_match):
+    step = {"title": "Foo", "type": "number"}
+    regex = to_regex(step)
+    assert regex == NUMBER
 
-#     value = pattern["number"]
-#     match = re.fullmatch(regex, value)
-#     if does_match:
-#         assert match[0] == value
-#         assert match.span() == (0, len(value))
-#     else:
-#         assert match is None
+    value = pattern["number"]
+    match = re.fullmatch(regex, value)
+    if does_match:
+        assert match[0] == value
+        assert match.span() == (0, len(value))
+    else:
+        assert match is None
 
 
 @pytest.mark.parametrize(

@@ -1,5 +1,4 @@
 use anyhow::{anyhow, Result};
-use jsonschema::JSONSchema;
 use regex::escape;
 use serde_json::json;
 use serde_json::Value;
@@ -87,9 +86,7 @@ enum SchemaKeyword {
 
 pub fn build_regex_from_schema(json: &str, whitespace_pattern: Option<&str>) -> Result<String> {
     let json_value: Value = serde_json::from_str(json)?;
-    let _compiled_schema = JSONSchema::compile(&json_value)
-        .map_err(|e| anyhow!("Failed to compile JSON schema: {}", e))?;
-
+    // TODO maybe compile the schema here for early validation?
     to_regex(&json_value, whitespace_pattern, &json_value)
 }
 

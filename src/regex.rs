@@ -1,3 +1,8 @@
+use regex_automata::{
+    dfa::{dense::DFA, Automaton},
+    util::primitives::StateID,
+    Anchored,
+};
 use std::collections::{HashMap, HashSet};
 
 #[allow(dead_code)]
@@ -144,4 +149,59 @@ pub fn get_vocabulary_transition_keys_internal(
     }
 
     vocab_transition_keys
+}
+
+#[allow(dead_code)]
+pub fn build_regex_index(
+    regex: &str,
+    vocabulary: Vec<(String, Vec<u32>)>,
+) -> (DFA<Vec<u32>>, HashMap<StateID, HashMap<u32, StateID>>) {
+    let dfa = DFA::new(regex).expect("Reason");
+    let dfa_initial = dfa
+        .universal_start_state(Anchored::Yes)
+        .expect("No start state found.");
+
+    let mut states_to_token_subsets: HashMap<StateID, HashMap<u32, StateID>> = HashMap::new();
+    let mut seen: HashSet<StateID> = HashSet::new();
+    let mut next_states: HashSet<StateID> = HashSet::from_iter(vec![dfa_initial]);
+
+    while let Some(start_state) = next_states.iter().cloned().next() {
+        next_states.remove(&start_state);
+
+        for (vocab_item, token_ids) in vocabulary.iter() {
+            let mut end_state = start_state;
+            let mut next_state;
+
+            for &trans_key in vocab_item.clone().into_bytes().iter() {
+                next_state = dfa.next_state(start_state, trans_key);
+                if dfa.is_match_state(dfa.next_eoi_state(next_state)) {
+                    end_state = next_state;
+                }
+            }
+            // TODO: Handle all continue cases underlined in _walk_fsm
+
+            // TODO: Confirm this: dfa.next_state() seems to always exists
+            // since there's no `alphabet_anything_value` in `regex_automata`
+            // and all values are treated as valid alphabets with respective
+            // mapping.
+            if !dfa.is_match_state(dfa.next_eoi_state(end_state)) {
+                continue;
+            }
+
+            for &token_id in token_ids {
+                let inner_map = states_to_token_subsets
+                    .entry(start_state)
+                    .or_insert(HashMap::new());
+                inner_map.insert(token_id, end_state);
+
+                if !seen.contains(&end_state) {
+                    next_states.insert(end_state);
+                }
+            }
+        }
+
+        seen.insert(start_state);
+    }
+
+    (dfa, states_to_token_subsets)
 }

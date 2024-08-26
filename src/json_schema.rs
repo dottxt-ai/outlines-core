@@ -529,14 +529,14 @@ pub fn handle_number_type(obj: &serde_json::Map<String, Value>) -> Result<String
         let fraction_quantifier = match (min_digits_fraction, max_digits_fraction) {
             (Some(min), Some(max)) => format!("{{{},{}}}", min, max),
             (Some(min), None) => format!("{{{},}}", min),
-            (None, Some(max)) => format!("{{0,{}}}", max),
+            (None, Some(max)) => format!("{{,{}}}", max),
             (None, None) => "+".to_string(),
         };
 
         let exponent_quantifier = match (min_digits_exponent, max_digits_exponent) {
             (Some(min), Some(max)) => format!("{{{},{}}}", min, max),
             (Some(min), None) => format!("{{{},}}", min),
-            (None, Some(max)) => format!("{{0,{}}}", max),
+            (None, Some(max)) => format!("{{,{}}}", max),
             (None, None) => "+".to_string(),
         };
 
@@ -560,7 +560,7 @@ pub fn handle_integer_type(obj: &serde_json::Map<String, Value>) -> Result<Strin
         let quantifier = match (min_digits, max_digits) {
             (Some(min), Some(max)) => format!("{{{},{}}}", min, max),
             (Some(min), None) => format!("{{{},}}", min),
-            (None, Some(max)) => format!("{{0,{}}}", max),
+            (None, Some(max)) => format!("{{,{}}}", max),
             (None, None) => "*".to_string(),
         };
 
@@ -651,7 +651,7 @@ pub fn handle_array_type(
     .unwrap_or_else(|| String::from(""));
 
     if num_repeats.is_empty() {
-        return Ok(format!(r"\[{0}{0}\]", whitespace_pattern));
+        return Ok(format!(r"\[{0}\]", whitespace_pattern));
     }
 
     let allow_empty = if obj.get("minItems").and_then(Value::as_u64).unwrap_or(0) == 0 {

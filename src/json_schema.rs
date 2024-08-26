@@ -584,7 +584,6 @@ pub fn handle_object_type(
         return Ok(format!(r"\{{{}}}", whitespace_pattern));
     }
 
-    let num_repeats = num_repeats.unwrap();
     let allow_empty = if min_properties.unwrap_or(0) == 0 {
         "?"
     } else {
@@ -629,13 +628,14 @@ pub fn handle_object_type(
     let key_value_successor_pattern =
         format!("{whitespace_pattern},{whitespace_pattern}{key_value_pattern}");
     let multiple_key_value_pattern = format!(
-        "({key_value_pattern}({key_value_successor_pattern}){{{num_repeats}}}){allow_empty}"
+        "({key_value_pattern}({key_value_successor_pattern}){{0,}}){allow_empty}"
     );
-
+ 
     let res = format!(
-        r"\{{{}{}{}}}",
+        r"\{{{}{}{}\}}",
         whitespace_pattern, multiple_key_value_pattern, whitespace_pattern
     );
+
     Ok(res)
 }
 

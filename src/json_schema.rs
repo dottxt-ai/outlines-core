@@ -370,15 +370,26 @@ fn handle_ref(
         .as_str()
         .ok_or_else(|| anyhow!("'$ref' must be a string"))?;
 
-    // TODO Only handle local references for now, maybe add support for remote references later
-    if !ref_path.starts_with("#/") {
-        return Err(anyhow!("Only local references are supported"));
+    let parts: Vec<&str> = ref_path.split('#').collect();
+
+    match parts.as_slice() {
+        [fragment] | ["", fragment] => {
+            let path_parts: Vec<&str> = fragment.split('/').filter(|&s| !s.is_empty()).collect();
+            let referenced_schema = resolve_local_ref(full_schema, &path_parts)?;
+            to_regex(referenced_schema, Some(whitespace_pattern), full_schema)
+        },
+        [base, fragment] => {
+            if let Some(id) = full_schema["$id"].as_str() {
+                if *base == id || base.is_empty() {
+                    let path_parts: Vec<&str> = fragment.split('/').filter(|&s| !s.is_empty()).collect();
+                    let referenced_schema = resolve_local_ref(full_schema, &path_parts)?;
+                    return to_regex(referenced_schema, Some(whitespace_pattern), full_schema);
+                }
+            }
+            Err(anyhow!("External references are not supported: {}", ref_path))
+        },
+        _ => Err(anyhow!("Invalid reference format: {}", ref_path)),
     }
-
-    let path_parts: Vec<&str> = ref_path[2..].split('/').collect();
-    let referenced_schema = resolve_local_ref(full_schema, &path_parts)?;
-
-    to_regex(referenced_schema, Some(whitespace_pattern), full_schema)
 }
 
 fn resolve_local_ref<'a>(schema: &'a Value, path_parts: &[&str]) -> Result<&'a Value> {
@@ -627,10 +638,9 @@ pub fn handle_object_type(
     );
     let key_value_successor_pattern =
         format!("{whitespace_pattern},{whitespace_pattern}{key_value_pattern}");
-    let multiple_key_value_pattern = format!(
-        "({key_value_pattern}({key_value_successor_pattern}){{0,}}){allow_empty}"
-    );
- 
+    let multiple_key_value_pattern =
+        format!("({key_value_pattern}({key_value_successor_pattern}){{0,}}){allow_empty}");
+
     let res = format!(
         r"\{{{}{}{}\}}",
         whitespace_pattern, multiple_key_value_pattern, whitespace_pattern

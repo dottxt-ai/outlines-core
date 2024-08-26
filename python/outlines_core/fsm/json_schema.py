@@ -1,5 +1,10 @@
+import inspect
+import warnings
+from typing import Callable
 
-from .outlines_core_rs import (
+from pydantic import create_model
+
+from .outlines_core_rs import (  # noqa: F401
     BOOLEAN,
     DATE,
     DATE_TIME,
@@ -14,10 +19,6 @@ from .outlines_core_rs import (
     build_regex_from_schema,
 )
 
-import inspect
-import warnings
-from typing import Callable 
-from pydantic import create_model
 
 def get_schema_from_signature(fn: Callable) -> str:
     """Turn a function signature into a JSON schema.

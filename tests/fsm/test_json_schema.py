@@ -4,7 +4,7 @@ from typing import List, Literal, Union
 
 import interegular
 import pytest
-from outlines_core.fsm.json_schema import (
+from outlines_core.fsm.json_schema import (  # to_regex,
     BOOLEAN,
     DATE,
     DATE_TIME,
@@ -18,7 +18,6 @@ from outlines_core.fsm.json_schema import (
     WHITESPACE,
     build_regex_from_schema,
     get_schema_from_signature,
-    # to_regex,
 )
 from pydantic import BaseModel, Field, constr
 

@@ -186,10 +186,15 @@ fn handle_properties(
             );
             subregex += &to_regex(value, Some(whitespace_pattern), full_schema)?;
 
-            if i < last_required_pos {
-                subregex = format!("{}{},", subregex, whitespace_pattern);
-            } else if i > last_required_pos {
-                subregex = format!("{},{}", whitespace_pattern, subregex);
+            // TODO: double check the _ =>
+            match i {
+                i if i < last_required_pos => {
+                    subregex = format!("{}{},", subregex, whitespace_pattern)
+                }
+                i if i > last_required_pos => {
+                    subregex = format!("{},{}", whitespace_pattern, subregex)
+                }
+                _ => (),
             }
 
             regex += &if is_required[i] {
@@ -219,7 +224,7 @@ fn handle_properties(
                 pattern += &format!("({}{},)?", subregex, whitespace_pattern);
             }
             pattern += &property_subregexes[i];
-            for subregex in &property_subregexes[i+1..] {
+            for subregex in &property_subregexes[i + 1..] {
                 pattern += &format!("({},{})?", whitespace_pattern, subregex);
             }
             possible_patterns.push(pattern);
@@ -374,17 +379,21 @@ fn handle_ref(
             let path_parts: Vec<&str> = fragment.split('/').filter(|&s| !s.is_empty()).collect();
             let referenced_schema = resolve_local_ref(full_schema, &path_parts)?;
             to_regex(referenced_schema, Some(whitespace_pattern), full_schema)
-        },
+        }
         [base, fragment] => {
             if let Some(id) = full_schema["$id"].as_str() {
                 if *base == id || base.is_empty() {
-                    let path_parts: Vec<&str> = fragment.split('/').filter(|&s| !s.is_empty()).collect();
+                    let path_parts: Vec<&str> =
+                        fragment.split('/').filter(|&s| !s.is_empty()).collect();
                     let referenced_schema = resolve_local_ref(full_schema, &path_parts)?;
                     return to_regex(referenced_schema, Some(whitespace_pattern), full_schema);
                 }
             }
-            Err(anyhow!("External references are not supported: {}", ref_path))
-        },
+            Err(anyhow!(
+                "External references are not supported: {}",
+                ref_path
+            ))
+        }
         _ => Err(anyhow!("Invalid reference format: {}", ref_path)),
     }
 }
@@ -600,8 +609,8 @@ pub fn handle_object_type(
 
     let additional_properties = obj.get("additionalProperties");
 
-    let value_pattern =
-        if additional_properties.is_none() || additional_properties == Some(&Value::Bool(true)) {
+    let value_pattern = match additional_properties {
+        None | Some(&Value::Bool(true)) => {
             // Handle unconstrained object case
             let mut legal_types = vec![
                 json!({"type": "string"}),
@@ -618,13 +627,9 @@ pub fn handle_object_type(
 
             let any_of = json!({"anyOf": legal_types});
             to_regex(&any_of, Some(whitespace_pattern), full_schema)
-        } else {
-            to_regex(
-                additional_properties.unwrap(),
-                Some(whitespace_pattern),
-                full_schema,
-            )
-        };
+        }
+        Some(props) => to_regex(props, Some(whitespace_pattern), full_schema),
+    };
 
     // TODO handle the unwrap
     let value_pattern = value_pattern.unwrap();

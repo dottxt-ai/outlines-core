@@ -44,4 +44,3 @@ pub fn build_regex_from_schema(json: String, whitespace_pattern: Option<&str>) -
     json_schema::build_regex_from_schema(&json, whitespace_pattern)
         .map_err(|e| PyValueError::new_err(e.to_string()))
 }
-

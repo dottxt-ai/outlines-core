@@ -1031,9 +1031,7 @@ def test_one_of_doesnt_produce_illegal_lookaround():
         pet: Union[Cat, Dog] = Field(..., discriminator="pet_type")
         n: int
 
-    json_schema = Model.model_json_schema()
-
-    json_schema = Model.model_json_schema()
+    json_schema = json.dumps(Model.model_json_schema())
     pattern = build_regex_from_schema(json_schema, whitespace_pattern=None)
 
     # check if the pattern uses lookarounds incompatible with interegular.Pattern.to_fsm()

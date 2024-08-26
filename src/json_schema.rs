@@ -203,7 +203,7 @@ fn handle_properties(
         }
     } else {
         let mut property_subregexes = Vec::new();
-        for (name, value) in properties.iter().rev() {
+        for (name, value) in properties.iter() {
             let mut subregex = format!(
                 r#"{whitespace_pattern}"{}"{}:{}"#,
                 escape(name),
@@ -222,7 +222,7 @@ fn handle_properties(
                 pattern += &format!("({}{},)?", subregex, whitespace_pattern);
             }
             pattern += &property_subregexes[i];
-            for subregex in &property_subregexes[i + 1..] {
+            for subregex in &property_subregexes[i+1..] {
                 pattern += &format!("({},{})?", whitespace_pattern, subregex);
             }
             possible_patterns.push(pattern);

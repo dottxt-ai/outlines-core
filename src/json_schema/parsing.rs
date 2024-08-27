@@ -503,13 +503,10 @@ fn parse_object_type(
             }
 
             let any_of = json!({"anyOf": legal_types});
-            to_regex(&any_of, Some(whitespace_pattern), full_schema)
+            to_regex(&any_of, Some(whitespace_pattern), full_schema)?
         }
-        Some(props) => to_regex(props, Some(whitespace_pattern), full_schema),
+        Some(props) => to_regex(props, Some(whitespace_pattern), full_schema)?,
     };
-
-    // TODO parse the unwrap
-    let value_pattern = value_pattern.unwrap();
 
     let key_value_pattern = format!(
         "{}{whitespace_pattern}:{whitespace_pattern}{value_pattern}",

@@ -2,150 +2,12 @@ use anyhow::{anyhow, Result};
 use regex::escape;
 use serde_json::json;
 use serde_json::Value;
-use std::num::NonZeroU64;
 
-// allow `\"`, `\\`, or any character which isn't a control sequence
-pub static STRING_INNER: &str = r#"([^"\\\x00-\x1F\x7F-\x9F]|\\["\\])"#;
-pub static STRING: &str = r#""([^"\\\x00-\x1F\x7F-\x9F]|\\["\\])*""#;
+use crate::json_schema::helpers;
+use crate::json_schema::to_regex;
+use crate::json_schema::types;
 
-pub static INTEGER: &str = r#"(-)?(0|[1-9][0-9]*)"#;
-pub static NUMBER: &str = r#"((-)?(0|[1-9][0-9]*))(\.[0-9]+)?([eE][+-][0-9]+)?"#;
-pub static BOOLEAN: &str = r#"(true|false)"#;
-pub static NULL: &str = r#"null"#;
-
-pub static WHITESPACE: &str = r#"[ ]?"#;
-
-#[derive(Debug, PartialEq)]
-pub enum JsonType {
-    String,
-    Integer,
-    Number,
-    Boolean,
-    Null,
-}
-
-impl JsonType {
-    pub fn to_regex(&self) -> &'static str {
-        match self {
-            JsonType::String => STRING,
-            JsonType::Integer => INTEGER,
-            JsonType::Number => NUMBER,
-            JsonType::Boolean => BOOLEAN,
-            JsonType::Null => NULL,
-        }
-    }
-}
-
-pub static DATE_TIME: &str = r#""(-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12][0-9])T(2[0-3]|[01][0-9]):([0-5][0-9]):([0-5][0-9])(\.[0-9]{3})?(Z)?""#;
-pub static DATE: &str = r#""(?:\d{4})-(?:0[1-9]|1[0-2])-(?:0[1-9]|[1-2][0-9]|3[0-1])""#;
-pub static TIME: &str = r#""(2[0-3]|[01][0-9]):([0-5][0-9]):([0-5][0-9])(\\.[0-9]+)?(Z)?""#;
-pub static UUID: &str = r#""[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}""#;
-
-#[derive(Debug, PartialEq)]
-pub enum FormatType {
-    DateTime,
-    Date,
-    Time,
-    Uuid,
-}
-
-impl FormatType {
-    pub fn to_regex(&self) -> &'static str {
-        match self {
-            FormatType::DateTime => DATE_TIME,
-            FormatType::Date => DATE,
-            FormatType::Time => TIME,
-            FormatType::Uuid => UUID,
-        }
-    }
-
-    pub fn from_str(s: &str) -> Option<FormatType> {
-        match s {
-            "date-time" => Some(FormatType::DateTime),
-            "date" => Some(FormatType::Date),
-            "time" => Some(FormatType::Time),
-            "uuid" => Some(FormatType::Uuid),
-            _ => None,
-        }
-    }
-}
-
-#[derive(Debug, Copy, Clone)]
-enum SchemaKeyword {
-    Properties,
-    AllOf,
-    AnyOf,
-    OneOf,
-    PrefixItems,
-    Enum,
-    Const,
-    Ref,
-    Type,
-    EmptyObject,
-}
-
-pub fn build_regex_from_schema(json: &str, whitespace_pattern: Option<&str>) -> Result<String> {
-    let json_value: Value = serde_json::from_str(json)?;
-    // TODO maybe compile the schema here for early validation?
-    to_regex(&json_value, whitespace_pattern, &json_value)
-}
-
-pub fn to_regex(
-    json: &Value,
-    whitespace_pattern: Option<&str>,
-    full_schema: &Value,
-) -> Result<String> {
-    let whitespace_pattern = whitespace_pattern.unwrap_or(WHITESPACE);
-
-    match json {
-        Value::Object(obj) => {
-            let keyword = if obj.is_empty() {
-                SchemaKeyword::EmptyObject
-            } else {
-                [
-                    ("properties", SchemaKeyword::Properties),
-                    ("allOf", SchemaKeyword::AllOf),
-                    ("anyOf", SchemaKeyword::AnyOf),
-                    ("oneOf", SchemaKeyword::OneOf),
-                    ("prefixItems", SchemaKeyword::PrefixItems),
-                    ("enum", SchemaKeyword::Enum),
-                    ("const", SchemaKeyword::Const),
-                    ("$ref", SchemaKeyword::Ref),
-                    ("type", SchemaKeyword::Type),
-                ]
-                .iter()
-                .find_map(|&(key, schema_keyword)| {
-                    if obj.contains_key(key) {
-                        Some(schema_keyword)
-                    } else {
-                        None
-                    }
-                })
-                .ok_or_else(|| anyhow!("Unsupported JSON Schema structure {} \nMake sure it is valid to the JSON Schema specification and check if it's supported by Outlines.\nIf it should be supported, please open an issue.", json))?
-            };
-
-            match keyword {
-                SchemaKeyword::Properties => {
-                    handle_properties(obj, whitespace_pattern, full_schema)
-                }
-                SchemaKeyword::AllOf => handle_all_of(obj, whitespace_pattern, full_schema),
-                SchemaKeyword::AnyOf => handle_any_of(obj, whitespace_pattern, full_schema),
-                SchemaKeyword::OneOf => handle_one_of(obj, whitespace_pattern, full_schema),
-                SchemaKeyword::PrefixItems => {
-                    handle_prefix_items(obj, whitespace_pattern, full_schema)
-                }
-                SchemaKeyword::Enum => handle_enum(obj, whitespace_pattern),
-                SchemaKeyword::Const => handle_const(obj, whitespace_pattern),
-                SchemaKeyword::Ref => handle_ref(obj, whitespace_pattern, full_schema),
-                SchemaKeyword::Type => handle_type(obj, whitespace_pattern, full_schema),
-                SchemaKeyword::EmptyObject => handle_empty_object(whitespace_pattern, full_schema),
-            }
-        }
-        _ => Err(anyhow!("Invalid JSON Schema: expected an object")),
-    }
-}
-
-fn handle_properties(
+pub fn parse_properties(
     obj: &serde_json::Map<String, Value>,
     whitespace_pattern: &str,
     full_schema: &Value,
@@ -238,7 +100,7 @@ fn handle_properties(
     Ok(regex)
 }
 
-fn handle_all_of(
+pub fn parse_all_of(
     obj: &serde_json::Map<String, Value>,
     whitespace_pattern: &str,
     full_schema: &Value,
@@ -259,7 +121,7 @@ fn handle_all_of(
     }
 }
 
-fn handle_any_of(
+pub fn parse_any_of(
     obj: &serde_json::Map<String, Value>,
     whitespace_pattern: &str,
     full_schema: &Value,
@@ -279,7 +141,7 @@ fn handle_any_of(
     }
 }
 
-fn handle_one_of(
+pub fn parse_one_of(
     obj: &serde_json::Map<String, Value>,
     whitespace_pattern: &str,
     full_schema: &Value,
@@ -304,7 +166,7 @@ fn handle_one_of(
     }
 }
 
-fn handle_prefix_items(
+pub fn parse_prefix_items(
     obj: &serde_json::Map<String, Value>,
     whitespace_pattern: &str,
     full_schema: &Value,
@@ -329,7 +191,10 @@ fn handle_prefix_items(
     }
 }
 
-fn handle_enum(obj: &serde_json::Map<String, Value>, _whitespace_pattern: &str) -> Result<String> {
+pub fn parse_enum(
+    obj: &serde_json::Map<String, Value>,
+    _whitespace_pattern: &str,
+) -> Result<String> {
     match obj.get("enum") {
         Some(Value::Array(enum_values)) => {
             let choices: Result<Vec<String>> = enum_values
@@ -350,7 +215,10 @@ fn handle_enum(obj: &serde_json::Map<String, Value>, _whitespace_pattern: &str) 
     }
 }
 
-fn handle_const(obj: &serde_json::Map<String, Value>, _whitespace_pattern: &str) -> Result<String> {
+pub fn parse_const(
+    obj: &serde_json::Map<String, Value>,
+    _whitespace_pattern: &str,
+) -> Result<String> {
     match obj.get("const") {
         Some(const_value) => match const_value {
             Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => {
@@ -363,7 +231,7 @@ fn handle_const(obj: &serde_json::Map<String, Value>, _whitespace_pattern: &str)
     }
 }
 
-fn handle_ref(
+pub fn parse_ref(
     obj: &serde_json::Map<String, Value>,
     whitespace_pattern: &str,
     full_schema: &Value,
@@ -408,7 +276,7 @@ fn resolve_local_ref<'a>(schema: &'a Value, path_parts: &[&str]) -> Result<&'a V
     Ok(current)
 }
 
-fn handle_type(
+pub fn parse_type(
     obj: &serde_json::Map<String, Value>,
     whitespace_pattern: &str,
     full_schema: &Value,
@@ -417,18 +285,18 @@ fn handle_type(
         .as_str()
         .ok_or_else(|| anyhow!("'type' must be a string"))?;
     match instance_type {
-        "string" => handle_string_type(obj),
-        "number" => handle_number_type(obj),
-        "integer" => handle_integer_type(obj),
-        "array" => handle_array_type(obj, whitespace_pattern, full_schema),
-        "object" => handle_object_type(obj, whitespace_pattern, full_schema),
-        "boolean" => handle_boolean_type(),
-        "null" => handle_null_type(),
+        "string" => parse_string_type(obj),
+        "number" => parse_number_type(obj),
+        "integer" => parse_integer_type(obj),
+        "array" => parse_array_type(obj, whitespace_pattern, full_schema),
+        "object" => parse_object_type(obj, whitespace_pattern, full_schema),
+        "boolean" => parse_boolean_type(),
+        "null" => parse_null_type(),
         _ => Err(anyhow!("Unsupported type: {}", instance_type)),
     }
 }
 
-pub fn handle_empty_object(whitespace_pattern: &str, full_schema: &Value) -> Result<String> {
+pub fn parse_empty_object(whitespace_pattern: &str, full_schema: &Value) -> Result<String> {
     // JSON Schema Spec: Empty object means unconstrained, any json type is legal
     let types = vec![
         json!({"type": "boolean"}),
@@ -452,17 +320,21 @@ pub fn handle_empty_object(whitespace_pattern: &str, full_schema: &Value) -> Res
     Ok(wrapped_regexes.join("|"))
 }
 
-pub fn handle_boolean_type() -> Result<String> {
-    let format_type = JsonType::Boolean;
+////////////////////////////
+/// Parsing specific types
+///////////////////////////
+
+fn parse_boolean_type() -> Result<String> {
+    let format_type = types::JsonType::Boolean;
     Ok(format_type.to_regex().to_string())
 }
 
-pub fn handle_null_type() -> Result<String> {
-    let format_type = JsonType::Null;
+fn parse_null_type() -> Result<String> {
+    let format_type = types::JsonType::Null;
     Ok(format_type.to_regex().to_string())
 }
 
-pub fn handle_string_type(obj: &serde_json::Map<String, Value>) -> Result<String> {
+fn parse_string_type(obj: &serde_json::Map<String, Value>) -> Result<String> {
     if obj.contains_key("maxLength") || obj.contains_key("minLength") {
         let max_items = obj.get("maxLength");
         let min_items = obj.get("minLength");
@@ -485,7 +357,9 @@ pub fn handle_string_type(obj: &serde_json::Map<String, Value>) -> Result<String
 
         Ok(format!(
             r#""{}{{{},{}}}""#,
-            STRING_INNER, formatted_min, formatted_max,
+            types::STRING_INNER,
+            formatted_min,
+            formatted_max,
         ))
     } else if let Some(pattern) = obj.get("pattern").and_then(Value::as_str) {
         if pattern.starts_with('^') && pattern.ends_with('$') {
@@ -494,7 +368,7 @@ pub fn handle_string_type(obj: &serde_json::Map<String, Value>) -> Result<String
             Ok(format!(r#"("{}")"#, pattern))
         }
     } else if let Some(format) = obj.get("format").and_then(Value::as_str) {
-        match FormatType::from_str(format) {
+        match types::FormatType::from_str(format) {
             Some(format_type) => Ok(format_type.to_regex().to_string()),
             None => Err(anyhow::anyhow!(
                 "Format {} is not supported by Outlines",
@@ -502,11 +376,11 @@ pub fn handle_string_type(obj: &serde_json::Map<String, Value>) -> Result<String
             )),
         }
     } else {
-        Ok(JsonType::String.to_regex().to_string())
+        Ok(types::JsonType::String.to_regex().to_string())
     }
 }
 
-pub fn handle_number_type(obj: &serde_json::Map<String, Value>) -> Result<String> {
+fn parse_number_type(obj: &serde_json::Map<String, Value>) -> Result<String> {
     let bounds = [
         "minDigitsInteger",
         "maxDigitsInteger",
@@ -519,19 +393,19 @@ pub fn handle_number_type(obj: &serde_json::Map<String, Value>) -> Result<String
     let has_bounds = bounds.iter().any(|&key| obj.contains_key(key));
 
     if has_bounds {
-        let (min_digits_integer, max_digits_integer) = validate_quantifiers(
+        let (min_digits_integer, max_digits_integer) = helpers::validate_quantifiers(
             obj.get("minDigitsInteger").and_then(Value::as_u64),
             obj.get("maxDigitsInteger").and_then(Value::as_u64),
             1,
         )?;
 
-        let (min_digits_fraction, max_digits_fraction) = validate_quantifiers(
+        let (min_digits_fraction, max_digits_fraction) = helpers::validate_quantifiers(
             obj.get("minDigitsFraction").and_then(Value::as_u64),
             obj.get("maxDigitsFraction").and_then(Value::as_u64),
             0,
         )?;
 
-        let (min_digits_exponent, max_digits_exponent) = validate_quantifiers(
+        let (min_digits_exponent, max_digits_exponent) = helpers::validate_quantifiers(
             obj.get("minDigitsExponent").and_then(Value::as_u64),
             obj.get("maxDigitsExponent").and_then(Value::as_u64),
             0,
@@ -543,6 +417,7 @@ pub fn handle_number_type(obj: &serde_json::Map<String, Value>) -> Result<String
             (None, Some(max)) => format!("{{1,{}}}", max),
             (None, None) => "*".to_string(),
         };
+
         let fraction_quantifier = match (min_digits_fraction, max_digits_fraction) {
             (Some(min), Some(max)) => format!("{{{},{}}}", min, max),
             (Some(min), None) => format!("{{{},}}", min),
@@ -562,13 +437,14 @@ pub fn handle_number_type(obj: &serde_json::Map<String, Value>) -> Result<String
             integers_quantifier, fraction_quantifier, exponent_quantifier
         ))
     } else {
-        let format_type = JsonType::Number;
+        let format_type = types::JsonType::Number;
         Ok(format_type.to_regex().to_string())
     }
 }
-pub fn handle_integer_type(obj: &serde_json::Map<String, Value>) -> Result<String> {
+
+fn parse_integer_type(obj: &serde_json::Map<String, Value>) -> Result<String> {
     if obj.contains_key("minDigits") || obj.contains_key("maxDigits") {
-        let (min_digits, max_digits) = validate_quantifiers(
+        let (min_digits, max_digits) = helpers::validate_quantifiers(
             obj.get("minDigits").and_then(Value::as_u64),
             obj.get("maxDigits").and_then(Value::as_u64),
             1,
@@ -583,11 +459,12 @@ pub fn handle_integer_type(obj: &serde_json::Map<String, Value>) -> Result<Strin
 
         Ok(format!(r"(-)?(0|[1-9][0-9]{})", quantifier))
     } else {
-        let format_type = JsonType::Integer;
+        let format_type = types::JsonType::Integer;
         Ok(format_type.to_regex().to_string())
     }
 }
-pub fn handle_object_type(
+
+fn parse_object_type(
     obj: &serde_json::Map<String, Value>,
     whitespace_pattern: &str,
     full_schema: &Value,
@@ -595,7 +472,7 @@ pub fn handle_object_type(
     let min_properties = obj.get("minProperties").and_then(|v| v.as_u64());
     let max_properties = obj.get("maxProperties").and_then(|v| v.as_u64());
 
-    let num_repeats = get_num_items_pattern(min_properties, max_properties);
+    let num_repeats = helpers::get_num_items_pattern(min_properties, max_properties);
 
     if num_repeats.is_none() {
         return Ok(format!(r"\{{{}}}", whitespace_pattern));
@@ -611,7 +488,7 @@ pub fn handle_object_type(
 
     let value_pattern = match additional_properties {
         None | Some(&Value::Bool(true)) => {
-            // Handle unconstrained object case
+            // parse unconstrained object case
             let mut legal_types = vec![
                 json!({"type": "string"}),
                 json!({"type": "number"}),
@@ -631,12 +508,12 @@ pub fn handle_object_type(
         Some(props) => to_regex(props, Some(whitespace_pattern), full_schema),
     };
 
-    // TODO handle the unwrap
+    // TODO parse the unwrap
     let value_pattern = value_pattern.unwrap();
 
     let key_value_pattern = format!(
         "{}{whitespace_pattern}:{whitespace_pattern}{value_pattern}",
-        STRING
+        types::STRING
     );
     let key_value_successor_pattern =
         format!("{whitespace_pattern},{whitespace_pattern}{key_value_pattern}");
@@ -651,12 +528,12 @@ pub fn handle_object_type(
     Ok(res)
 }
 
-pub fn handle_array_type(
+fn parse_array_type(
     obj: &serde_json::Map<String, Value>,
     whitespace_pattern: &str,
     full_schema: &Value,
 ) -> Result<String> {
-    let num_repeats = get_num_items_pattern(
+    let num_repeats = helpers::get_num_items_pattern(
         obj.get("minItems").and_then(Value::as_u64),
         obj.get("maxItems").and_then(Value::as_u64),
     )
@@ -705,45 +582,5 @@ pub fn handle_array_type(
             r"\[{0}(({1})(,{0}({1})){2}){3}{0}\]",
             whitespace_pattern, regexes_joined, num_repeats, allow_empty
         ))
-    }
-}
-
-/// HELPER FUNCTIONS
-
-fn validate_quantifiers(
-    min_bound: Option<u64>,
-    max_bound: Option<u64>,
-    start_offset: u64,
-) -> Result<(Option<NonZeroU64>, Option<NonZeroU64>)> {
-    let min_bound = min_bound.map(|n| NonZeroU64::new(n.saturating_sub(start_offset)));
-    let max_bound = max_bound.map(|n| NonZeroU64::new(n.saturating_sub(start_offset)));
-
-    if let (Some(min), Some(max)) = (min_bound, max_bound) {
-        if max < min {
-            return Err(anyhow!(
-                "max bound must be greater than or equal to min bound"
-            ));
-        }
-    }
-
-    Ok((min_bound.flatten(), max_bound.flatten()))
-}
-
-fn get_num_items_pattern(min_items: Option<u64>, max_items: Option<u64>) -> Option<String> {
-    let min_items = min_items.unwrap_or(0);
-
-    match max_items {
-        None => Some(format!("{{{},}}", min_items.saturating_sub(1))),
-        Some(max_items) => {
-            if max_items < 1 {
-                None
-            } else {
-                Some(format!(
-                    "{{{},{}}}",
-                    min_items.saturating_sub(1),
-                    max_items.saturating_sub(1)
-                ))
-            }
-        }
     }
 }

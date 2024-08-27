@@ -48,7 +48,6 @@ pub fn parse_properties(
             );
             subregex += &to_regex(value, Some(whitespace_pattern), full_schema)?;
 
-            // TODO: double check the _ =>
             match i {
                 i if i < last_required_pos => {
                     subregex = format!("{}{},", subregex, whitespace_pattern)

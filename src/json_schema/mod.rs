@@ -23,7 +23,6 @@ enum SchemaKeyword {
 
 pub fn build_regex_from_schema(json: &str, whitespace_pattern: Option<&str>) -> Result<String> {
     let json_value: Value = serde_json::from_str(json)?;
-    // TODO maybe compile the schema here for early validation?
     to_regex(&json_value, whitespace_pattern, &json_value)
 }
 

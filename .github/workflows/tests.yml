@@ -35,7 +35,7 @@ jobs:
         pip install .[test]
     - name: Run tests
       run: |
-        pytest --cov=python/outlines_core
+        pytest --cov=outlines_core
       env:
         COVERAGE_FILE: .coverage.${{ steps.matrix-id.outputs.id }}
     - name: Upload coverage data

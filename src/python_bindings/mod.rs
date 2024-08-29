@@ -138,7 +138,6 @@ pub fn get_vocabulary_transition_keys_py(
     ))
 }
 
-#[allow(clippy::too_many_arguments)]
 #[pyfunction(name = "create_fsm_index_end_to_end")]
 #[pyo3(text_signature = "(fsm_info, vocabulary, frozen_tokens)")]
 pub fn create_fsm_index_end_to_end_py<'py>(

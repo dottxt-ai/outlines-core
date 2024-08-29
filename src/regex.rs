@@ -1,6 +1,5 @@
 use std::collections::{HashMap, HashSet};
 
-#[allow(dead_code)]
 pub fn walk_fsm(
     fsm_transitions: &HashMap<(u32, u32), u32>,
     _fsm_initial: u32,
@@ -38,7 +37,6 @@ pub fn walk_fsm(
     accepted_states
 }
 
-#[allow(dead_code)]
 pub fn state_scan_tokens(
     fsm_transitions: &HashMap<(u32, u32), u32>,
     fsm_initial: u32,
@@ -75,7 +73,6 @@ pub fn state_scan_tokens(
     res
 }
 
-#[allow(dead_code)]
 pub fn get_token_transition_keys(
     alphabet_symbol_mapping: &HashMap<String, u32>,
     alphabet_anything_value: u32,
@@ -109,7 +106,6 @@ pub fn get_token_transition_keys(
     token_transition_keys
 }
 
-#[allow(dead_code)]
 pub fn get_vocabulary_transition_keys(
     alphabet_symbol_mapping: &HashMap<String, u32>,
     alphabet_anything_value: u32,

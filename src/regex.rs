@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 #[allow(dead_code)]
-pub fn walk_fsm_internal(
+pub fn walk_fsm(
     fsm_transitions: &HashMap<(u32, u32), u32>,
     _fsm_initial: u32,
     fsm_finals: &HashSet<u32>,
@@ -39,7 +39,7 @@ pub fn walk_fsm_internal(
 }
 
 #[allow(dead_code)]
-pub fn state_scan_tokens_internal(
+pub fn state_scan_tokens(
     fsm_transitions: &HashMap<(u32, u32), u32>,
     fsm_initial: u32,
     fsm_finals: &HashSet<u32>,
@@ -54,7 +54,7 @@ pub fn state_scan_tokens_internal(
     {
         let token_ids: Vec<u32> = vocab_item.1.clone();
 
-        let state_seq = walk_fsm_internal(
+        let state_seq = walk_fsm(
             fsm_transitions,
             fsm_initial,
             fsm_finals,
@@ -76,7 +76,7 @@ pub fn state_scan_tokens_internal(
 }
 
 #[allow(dead_code)]
-pub fn get_token_transition_keys_internal(
+pub fn get_token_transition_keys(
     alphabet_symbol_mapping: &HashMap<String, u32>,
     alphabet_anything_value: u32,
     token_str: &str,
@@ -110,7 +110,7 @@ pub fn get_token_transition_keys_internal(
 }
 
 #[allow(dead_code)]
-pub fn get_vocabulary_transition_keys_internal(
+pub fn get_vocabulary_transition_keys(
     alphabet_symbol_mapping: &HashMap<String, u32>,
     alphabet_anything_value: u32,
     vocabulary: &[(String, Vec<u32>)],
@@ -133,7 +133,7 @@ pub fn get_vocabulary_transition_keys_internal(
                     .unwrap_or(&alphabet_anything_value),
             )
         } else {
-            token_transition_keys = get_token_transition_keys_internal(
+            token_transition_keys = get_token_transition_keys(
                 alphabet_symbol_mapping,
                 alphabet_anything_value,
                 &token_str,

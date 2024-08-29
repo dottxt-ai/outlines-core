@@ -25,12 +25,15 @@ repos:
   hooks:
     - id: black
 - repo: https://github.com/pre-commit/mirrors-mypy
-  rev: v1.2.0
+  rev: v1.7.0
   hooks:
     - id: mypy
-      args: [--allow-redefinition]
-      exclude: ^examples/
-      additional_dependencies: [types-tqdm, types-Pillow]
+      exclude: |
+          (?x)^(
+              ^examples/|
+              ^tests/|
+              ^benchmarks/
+          )$
 - repo: local
   hooks:
     - id: cargo-fmt

@@ -87,8 +87,7 @@ addopts = [
 ]
 
 [tool.mypy]
-exclude=["examples"]
-enable_incomplete_feature = ["Unpack"]
+exclude=["examples", "tests", "benchmarks"]
 
 [[tool.mypy.overrides]]
 module = [

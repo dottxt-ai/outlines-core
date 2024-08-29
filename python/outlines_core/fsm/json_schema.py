@@ -44,6 +44,6 @@ def get_schema_from_signature(fn: Callable) -> str:
             f"The function name could not be determined. Using default name 'Arguments' instead. For debugging, here is exact error:\n{e}",
             category=UserWarning,
         )
-    model = create_model(fn_name, **arguments)
+    model = create_model(fn_name, **arguments)  # type: ignore
 
     return model.model_json_schema()

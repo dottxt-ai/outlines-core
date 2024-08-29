@@ -8,7 +8,11 @@ name = "outlines_core_rs"
 crate-type = ["cdylib"]
 
 [dependencies]
+anyhow = "1.0.86"
 pyo3 = { version = "0.22.0", features = ["extension-module"] }
+regex = "1.10.6"
+serde-pyobject = "0.4.0"
+serde_json = { version ="1.0.125", features = ["preserve_order"] }
 
 [profile.release]
 opt-level = 3

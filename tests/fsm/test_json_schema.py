@@ -70,7 +70,7 @@ def test_from_pydantic():
 )
 def test_match_integer(pattern, does_match):
     step = {"title": "Foo", "type": "integer"}
-    regex = to_regex(None, step)
+    regex = to_regex(step)
     assert regex == INTEGER
 
     value = pattern["integer"]
@@ -97,7 +97,7 @@ def test_match_integer(pattern, does_match):
 )
 def test_match_number(pattern, does_match):
     step = {"title": "Foo", "type": "number"}
-    regex = to_regex(None, step)
+    regex = to_regex(step)
     assert regex == NUMBER
 
     value = pattern["number"]
@@ -1031,9 +1031,7 @@ def test_one_of_doesnt_produce_illegal_lookaround():
         pet: Union[Cat, Dog] = Field(..., discriminator="pet_type")
         n: int
 
-    json_schema = Model.schema_json()
-
-    json_schema = Model.schema_json()
+    json_schema = json.dumps(Model.model_json_schema())
     pattern = build_regex_from_schema(json_schema, whitespace_pattern=None)
 
     # check if the pattern uses lookarounds incompatible with interegular.Pattern.to_fsm()

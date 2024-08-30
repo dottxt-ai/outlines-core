@@ -2,6 +2,9 @@
 name = "outlines-core-rs"
 version = "0.1.0"
 edition = "2021"
+description = "Structured Generation"
+license-file = "LICENSE"
+repository = "https://github.com/outlines-dev/outlines-core"
 
 [lib]
 name = "outlines_core_rs"

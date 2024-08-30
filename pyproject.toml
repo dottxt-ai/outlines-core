@@ -68,7 +68,7 @@ packages = ["outlines_core"]
 package-dir = {"" = "python"}
 
 [tool.setuptools.package-data]
-"outlines" = ["py.typed"]
+"outlines_core" = ["py.typed", "**/*.pyi"]
 
 [tool.setuptools_scm]
 write_to = "python/outlines_core/_version.py"
@@ -105,8 +105,6 @@ module = [
     "datasets.*",
     "setuptools.*",
     "setuptools_rust.*",
-    # TODO: Add type info for the Rust extension
-    "outlines_core.fsm.outlines_core_rs.*",
 ]
 ignore_missing_imports = true
 

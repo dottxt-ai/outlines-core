@@ -13,6 +13,7 @@ pub struct NoMatch {
 }
 
 impl NoMatch {
+    #[must_use]
     pub fn new(data: &str, index: usize, expected: Vec<String>) -> Self {
         NoMatch {
             data: data.to_string(),
@@ -54,6 +55,7 @@ pub struct SimpleParser<T> {
 }
 
 impl<T> SimpleParser<T> {
+    #[must_use]
     pub fn new(data: &str) -> Self {
         SimpleParser {
             data: data.to_string(),
@@ -139,7 +141,7 @@ impl<T> SimpleParser<T> {
             self.expected
                 .entry(self.index)
                 .or_default()
-                .push(format!("<Any {}>", length));
+                .push(format!("<Any {length}>"));
             Err(NoMatch::new(
                 &self.data,
                 self.index,
@@ -158,7 +160,7 @@ impl<T> SimpleParser<T> {
                 self.expected
                     .entry(self.index)
                     .or_default()
-                    .push(format!("<Any {} except {:?}>", length, strings));
+                    .push(format!("<Any {length} except {strings:?}>"));
                 Err(NoMatch::new(
                     &self.data,
                     self.index,
@@ -169,7 +171,7 @@ impl<T> SimpleParser<T> {
             self.expected
                 .entry(self.index)
                 .or_default()
-                .push(format!("<Any {} except {:?}>", length, strings));
+                .push(format!("<Any {length} except {strings:?}>"));
             Err(NoMatch::new(
                 &self.data,
                 self.index,
@@ -329,7 +331,7 @@ mod tests {
             6,
             vec!["a".to_string(), "b".to_string()],
         );
-        let display = format!("{}", no_match);
+        let display = format!("{no_match}");
         assert!(display.contains("index 6"));
         assert!(display.contains("Got \"world\""));
         assert!(display.contains("expected any of [\"a\", \"b\"]"));

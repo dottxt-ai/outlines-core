@@ -1,12 +1,8 @@
-#![allow(dead_code, unused_imports, unused_variables)]
-
 use core::panic;
-use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::iter::from_fn;
-use std::result;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Copy)]
 pub enum TransitionKey {
@@ -64,6 +60,7 @@ impl<T: SymbolTrait> Alphabet<T> {
         self.symbol_mapping.contains_key(item)
     }
 
+    #[must_use]
     pub fn from_groups(groups: &[HashSet<T>]) -> Self {
         let mut symbol_mapping = HashMap::new();
         for (i, group) in groups.iter().enumerate() {
@@ -112,7 +109,7 @@ impl<T: SymbolTrait> Alphabet<T> {
         let mut new_to_old_mappings: Vec<HashMap<TransitionKey, TransitionKey>> =
             (0..alphabets.len()).map(|_| HashMap::new()).collect();
 
-        for (keys, new_key) in keys_to_key.iter() {
+        for (keys, new_key) in &keys_to_key {
             for (i, &old_key) in keys.iter().enumerate() {
                 new_to_old_mappings[i].insert(TransitionKey::Symbol(*new_key), old_key);
             }
@@ -131,6 +128,7 @@ pub struct Fsm<T: SymbolTrait> {
     pub map: HashMap<TransitionKey, HashMap<TransitionKey, TransitionKey>>,
 }
 impl<T: SymbolTrait> Fsm<T> {
+    #[must_use]
     pub fn new(
         alphabet: Alphabet<T>,
         states: HashSet<TransitionKey>,
@@ -150,7 +148,7 @@ impl<T: SymbolTrait> Fsm<T> {
 
     pub fn accepts(&self, input: &[T]) -> bool {
         let mut state = self.initial;
-        for (counter, symbol) in input.iter().enumerate() {
+        for symbol in input.iter() {
             let transition = self.alphabet.get(symbol);
             let allowed_transition_map = self.map.get(&state);
             match allowed_transition_map {
@@ -170,6 +168,7 @@ impl<T: SymbolTrait> Fsm<T> {
         self.finals.contains(&state)
     }
 
+    #[must_use]
     pub fn reduce(&self) -> Self {
         self.reversed().reversed()
     }
@@ -207,6 +206,7 @@ impl<T: SymbolTrait> Fsm<T> {
         crawl(&self.alphabet, initial, final_fn, follow)
     }
 
+    #[must_use]
     pub fn is_live(&self, state: TransitionKey) -> bool {
         let mut seen = HashSet::new();
         let mut reachable = vec![state];
@@ -230,6 +230,7 @@ impl<T: SymbolTrait> Fsm<T> {
         false
     }
 
+    #[must_use]
     pub fn is_empty(&self) -> bool {
         !self.is_live(self.initial)
     }
@@ -239,7 +240,7 @@ impl<T: SymbolTrait> Fsm<T> {
             .states
             .iter()
             .filter(|&&s| self.is_live(s))
-            .cloned()
+            .copied()
             .collect();
         let mut strings = VecDeque::new();
         let mut result = Vec::new();
@@ -272,26 +273,31 @@ impl<T: SymbolTrait> Fsm<T> {
         })
     }
 
+    #[must_use]
     pub fn union(fsms: &[Self]) -> Self {
         Self::parallel(fsms, |accepts| accepts.iter().any(|&x| x))
     }
 
+    #[must_use]
     pub fn intersection(fsms: &[Self]) -> Self {
         Self::parallel(fsms, |accepts| accepts.iter().all(|&x| x))
     }
 
+    #[must_use]
     pub fn symmetric_difference(fsms: &[Self]) -> Self {
         Self::parallel(fsms, |accepts| {
             accepts.iter().filter(|&&x| x).count() % 2 == 1
         })
     }
 
+    #[must_use]
     pub fn difference(fsms: &[Self]) -> Self {
         Self::parallel(fsms, |accepts| {
             accepts[0] && !accepts[1..].iter().any(|&x| x)
         })
     }
 
+    #[must_use]
     pub fn concatenate(fsms: &[Self]) -> Self {
         let alphabets_from_fsms: Vec<Alphabet<T>> =
             fsms.iter().map(|f| f.alphabet.clone()).collect();
@@ -345,7 +351,7 @@ impl<T: SymbolTrait> Fsm<T> {
 
                 if fsm.map.contains_key(&substate) {
                     let a = new_to_old[_i].clone();
-                    let b = a[transition];
+                    let _b = a[transition];
                     if fsm.map.contains_key(&substate) {
                         // fsm.map[substate][new_to_old[i][new_transition]]
                         let _i: usize = i.into();
@@ -366,6 +372,7 @@ impl<T: SymbolTrait> Fsm<T> {
         crawl(&alphabet, initial, final_fn, follow)
     }
 
+    #[must_use]
     pub fn star(&self) -> Self {
         let initial = HashSet::from([self.initial]);
 
@@ -402,6 +409,7 @@ impl<T: SymbolTrait> Fsm<T> {
         result
     }
 
+    #[must_use]
     pub fn times(&self, multiplier: usize) -> Self {
         // metastate is a set of iterations+states
         let initial = HashSet::from([(self.initial, 0)]);
@@ -437,6 +445,7 @@ impl<T: SymbolTrait> Fsm<T> {
         crawl(&self.alphabet, initial, final_fn, follow)
     }
 
+    #[must_use]
     pub fn everythingbut(&self) -> Self {
         let initial = HashSet::from([(self.initial, 0)]);
 
@@ -459,7 +468,7 @@ impl<T: SymbolTrait> Fsm<T> {
         };
 
         let final_fn = |state: &HashSet<(TransitionKey, usize)>| {
-            !state.iter().any(|&(substate, iteration)| {
+            !state.iter().any(|&(substate, _iteration)| {
                 substate == self.initial && self.finals.contains(&substate)
             })
         };
@@ -526,6 +535,7 @@ impl<T: SymbolTrait> Fsm<T> {
     }
 }
 
+#[must_use]
 pub fn null<T: SymbolTrait>(alphabet: &Alphabet<T>) -> Fsm<T> {
     Fsm::new(
         alphabet.clone(),
@@ -543,6 +553,7 @@ pub fn null<T: SymbolTrait>(alphabet: &Alphabet<T>) -> Fsm<T> {
     )
 }
 
+#[must_use]
 pub fn epsilon<T: SymbolTrait>(alphabet: &Alphabet<T>) -> Fsm<T> {
     Fsm::new(
         alphabet.clone(),
@@ -579,12 +590,11 @@ where
         for transition in alphabet.by_transition.keys() {
             match follow(&state, transition) {
                 Some(next) => {
-                    let j = match states.iter().position(|s| s == &next) {
-                        Some(index) => index,
-                        None => {
-                            states.push_back(next.clone());
-                            states.len() - 1
-                        }
+                    let j = if let Some(index) = states.iter().position(|s| s == &next) {
+                        index
+                    } else {
+                        states.push_back(next.clone());
+                        states.len() - 1
                     };
                     map.get_mut(&TransitionKey::Symbol(i))
                         .unwrap()
@@ -620,15 +630,15 @@ mod tests {
 
         let mut map = HashMap::new();
         // only 'a' transition from initial state
-        map.insert(0.into(), [(0.into(), 1.into())].iter().cloned().collect());
+        map.insert(0.into(), [(0.into(), 1.into())].iter().copied().collect());
         // only 'b' transitions from accepting state
-        map.insert(1.into(), [(1.into(), 1.into())].iter().cloned().collect());
+        map.insert(1.into(), [(1.into(), 1.into())].iter().copied().collect());
 
         Fsm::new(
             alphabet,
-            [0.into(), 1.into()].iter().cloned().collect(),
+            [0.into(), 1.into()].iter().copied().collect(),
             0.into(),
-            [1.into()].iter().cloned().collect(),
+            [1.into()].iter().copied().collect(),
             map,
         )
     }
@@ -652,7 +662,7 @@ mod tests {
 
         let empty_fsm = Fsm::new(
             fsm.alphabet.clone(),
-            [0.into()].iter().cloned().collect(),
+            [0.into()].iter().copied().collect(),
             0.into(),
             HashSet::new(),
             HashMap::new(),
@@ -702,10 +712,10 @@ mod tests {
 
         let fsm1 = Fsm::new(
             alphabet.clone(),
-            [0.into(), 1.into()].iter().cloned().collect(),
+            [0.into(), 1.into()].iter().copied().collect(),
             0.into(),
-            [1.into()].iter().cloned().collect(),
-            [(0.into(), [(0.into(), 1.into())].iter().cloned().collect())]
+            [1.into()].iter().copied().collect(),
+            [(0.into(), [(0.into(), 1.into())].iter().copied().collect())]
                 .iter()
                 .cloned()
                 .collect(),
@@ -713,10 +723,10 @@ mod tests {
 
         let fsm2 = Fsm::new(
             alphabet.clone(),
-            [0.into(), 1.into()].iter().cloned().collect(),
+            [0.into(), 1.into()].iter().copied().collect(),
             0.into(),
-            [1.into()].iter().cloned().collect(),
-            [(0.into(), [(1.into(), 1.into())].iter().cloned().collect())]
+            [1.into()].iter().copied().collect(),
+            [(0.into(), [(1.into(), 1.into())].iter().copied().collect())]
                 .iter()
                 .cloned()
                 .collect(),
@@ -734,10 +744,10 @@ mod tests {
     fn test_intersection() {
         let fsm1 = Fsm::new(
             create_simple_fsm().alphabet.clone(),
-            [0.into(), 1.into()].iter().cloned().collect(),
+            [0.into(), 1.into()].iter().copied().collect(),
             0.into(),
-            [1.into()].iter().cloned().collect(),
-            [(0.into(), [(0.into(), 1.into())].iter().cloned().collect())]
+            [1.into()].iter().copied().collect(),
+            [(0.into(), [(0.into(), 1.into())].iter().copied().collect())]
                 .iter()
                 .cloned()
                 .collect(),
@@ -745,10 +755,10 @@ mod tests {
 
         let fsm2 = Fsm::new(
             create_simple_fsm().alphabet.clone(),
-            [0.into(), 1.into()].iter().cloned().collect(),
+            [0.into(), 1.into()].iter().copied().collect(),
             0.into(),
-            [1.into()].iter().cloned().collect(),
-            [(0.into(), [(1.into(), 1.into())].iter().cloned().collect())]
+            [1.into()].iter().copied().collect(),
+            [(0.into(), [(1.into(), 1.into())].iter().copied().collect())]
                 .iter()
                 .cloned()
                 .collect(),
@@ -766,10 +776,10 @@ mod tests {
     fn test_concatenate() {
         let fsm1 = Fsm::new(
             create_simple_fsm().alphabet.clone(),
-            [0.into(), 1.into()].iter().cloned().collect(),
+            [0.into(), 1.into()].iter().copied().collect(),
             0.into(),
-            [1.into()].iter().cloned().collect(),
-            [(0.into(), [(0.into(), 1.into())].iter().cloned().collect())]
+            [1.into()].iter().copied().collect(),
+            [(0.into(), [(0.into(), 1.into())].iter().copied().collect())]
                 .iter()
                 .cloned()
                 .collect(),
@@ -777,10 +787,10 @@ mod tests {
 
         let fsm2 = Fsm::new(
             create_simple_fsm().alphabet.clone(),
-            [0.into(), 1.into()].iter().cloned().collect(),
+            [0.into(), 1.into()].iter().copied().collect(),
             0.into(),
-            [1.into()].iter().cloned().collect(),
-            [(0.into(), [(1.into(), 1.into())].iter().cloned().collect())]
+            [1.into()].iter().copied().collect(),
+            [(0.into(), [(1.into(), 1.into())].iter().copied().collect())]
                 .iter()
                 .cloned()
                 .collect(),
@@ -798,10 +808,10 @@ mod tests {
     fn test_star() {
         let fsm = Fsm::new(
             create_simple_fsm().alphabet.clone(),
-            [0.into(), 1.into()].iter().cloned().collect(),
+            [0.into(), 1.into()].iter().copied().collect(),
             0.into(),
-            [1.into()].iter().cloned().collect(),
-            [(0.into(), [(0.into(), 1.into())].iter().cloned().collect())]
+            [1.into()].iter().copied().collect(),
+            [(0.into(), [(0.into(), 1.into())].iter().copied().collect())]
                 .iter()
                 .cloned()
                 .collect(),
@@ -825,12 +835,12 @@ mod tests {
 
         let fsm = Fsm::new(
             alphabet,
-            [0.into(), 1.into()].iter().cloned().collect(),
+            [0.into(), 1.into()].iter().copied().collect(),
             0.into(),
-            [1.into()].iter().cloned().collect(),
+            [1.into()].iter().copied().collect(),
             [
-                (0.into(), [(0.into(), 1.into())].iter().cloned().collect()),
-                (1.into(), [].iter().cloned().collect()),
+                (0.into(), [(0.into(), 1.into())].iter().copied().collect()),
+                (1.into(), [].iter().copied().collect()),
             ]
             .iter()
             .cloned()

@@ -1,6 +1,6 @@
+pub mod interegular;
 pub mod json_schema;
 pub mod regex;
-pub mod interegular;
 
 #[cfg(feature = "python-bindings")]
 mod python_bindings;

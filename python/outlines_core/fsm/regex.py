@@ -29,6 +29,7 @@ from .outlines_core_rs import (  # noqa: F401
     create_fsm_index_end_to_end,
     get_token_transition_keys,
     get_vocabulary_transition_keys,
+    parse_pattern,
     state_scan_tokens,
 )
 

@@ -2,13 +2,11 @@
 
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::ops::{BitAnd, BitAndAssign, BitOrAssign, Not};
-use std::process::exit;
 use std::rc::Rc;
 use std::vec;
 
 use crate::interegular::fsm::SymbolTrait;
-use crate::interegular::fsm::{Alphabet, Fsm, TransitionKey};
+use crate::interegular::fsm::{Alphabet, Fsm};
 
 const SPECIAL_CHARS_INNER: [&str; 2] = ["\\", "]"];
 const SPECIAL_CHARS_STANDARD: [&str; 11] = ["+", "?", "*", ".", "$", "^", "\\", "(", ")", "[", "|"];
@@ -77,9 +75,9 @@ fn _combine_char_groups(groups: &[RegexElement], negate: bool) -> RegexElement {
         match group {
             RegexElement::CharGroup { chars, inverted } => {
                 if *inverted {
-                    neg.extend(chars.iter().cloned());
+                    neg.extend(chars.iter().copied());
                 } else {
-                    pos.extend(chars.iter().cloned());
+                    pos.extend(chars.iter().copied());
                 }
             }
             _ => panic!("Invalid group type"),
@@ -88,18 +86,19 @@ fn _combine_char_groups(groups: &[RegexElement], negate: bool) -> RegexElement {
 
     if !neg.is_empty() {
         RegexElement::CharGroup {
-            chars: neg.difference(&pos).cloned().collect(),
+            chars: neg.difference(&pos).copied().collect(),
             inverted: !negate,
         }
     } else {
         RegexElement::CharGroup {
-            chars: pos.difference(&neg).cloned().collect(),
+            chars: pos.difference(&neg).copied().collect(),
             inverted: negate,
         }
     }
 }
 
 impl RegexElement {
+    #[must_use]
     pub fn repeat(self, min: usize, max: Option<usize>) -> Self {
         RegexElement::Repeated {
             element: Box::new(self),
@@ -108,14 +107,17 @@ impl RegexElement {
         }
     }
 
+    #[must_use]
     pub fn capture(self) -> Self {
         RegexElement::Capture(Box::new(self))
     }
 
+    #[must_use]
     pub fn group(self) -> Self {
         RegexElement::Group(Box::new(self))
     }
 
+    #[must_use]
     pub fn with_flags(self, added: Vec<Flag>, removed: Vec<Flag>) -> Self {
         RegexElement::Flag {
             element: Box::new(self),
@@ -126,6 +128,7 @@ impl RegexElement {
 }
 
 impl RegexElement {
+    #[must_use]
     pub fn to_fsm(
         &self,
         alphabet: Option<Alphabet<char>>,
@@ -138,9 +141,10 @@ impl RegexElement {
                     .unwrap_or_else(|| self.get_alphabet(&flags.clone().unwrap_or_default()));
                 let prefix_postfix = prefix_postfix.unwrap_or_else(|| self.get_prefix_postfix());
 
-                if prefix_postfix != (0, Some(0)) {
-                    panic!("Cannot have prefix/postfix on CharGroup-level");
-                }
+                assert!(
+                    prefix_postfix == (0, Some(0)),
+                    "Cannot have prefix/postfix on CharGroup-level"
+                );
 
                 let case_insensitive = flags
                     .clone()
@@ -149,8 +153,8 @@ impl RegexElement {
 
                 let mapping = HashMap::<_, HashMap<_, _>>::new();
 
-                let states = (0..=1).map(|i| i.into()).collect();
-                let finals = (1..=1).map(|i| i.into()).collect();
+                let states = (0..=1).map(std::convert::Into::into).collect();
+                let finals = (1..=1).map(std::convert::Into::into).collect();
 
                 Fsm::new(
                     alphabet,
@@ -165,6 +169,7 @@ impl RegexElement {
         }
     }
 
+    #[must_use]
     pub fn get_alphabet<T: SymbolTrait>(&self, flags: &HashSet<Flag>) -> Alphabet<T> {
         match self {
             RegexElement::CharGroup { chars, .. } => {
@@ -185,6 +190,7 @@ impl RegexElement {
         }
     }
 
+    #[must_use]
     pub fn get_prefix_postfix(&self) -> (usize, Option<usize>) {
         match self {
             RegexElement::CharGroup { .. } => (0, Some(0)),
@@ -232,6 +238,7 @@ impl RegexElement {
         }
     }
 
+    #[must_use]
     pub fn get_lengths(&self) -> (usize, Option<usize>) {
         match self {
             RegexElement::CharGroup { .. } => (1, Some(1)),
@@ -274,10 +281,12 @@ impl RegexElement {
         }
     }
 
+    #[must_use]
     pub fn simplify(&self) -> Rc<RegexElement> {
         Rc::new(self.clone())
     }
 
+    #[must_use]
     pub fn to_concrete(&self) -> RegexElement {
         self.clone()
     }
@@ -290,6 +299,7 @@ pub struct ParsePattern<'a> {
 }
 
 impl<'a> ParsePattern<'a> {
+    #[must_use]
     pub fn new(data: &'a str) -> Self {
         ParsePattern {
             parser: crate::interegular::simple_parser::SimpleParser::new(data),
@@ -426,7 +436,7 @@ impl<'a> ParsePattern<'a> {
             let removed_flags = if self.parser.static_b("-") {
                 self.parser.multiple("aiLmsux", 1, None)?
             } else {
-                "".to_string()
+                String::new()
             };
 
             // TODO: missing cases
@@ -556,9 +566,7 @@ impl<'a> ParsePattern<'a> {
                 _ => panic!("Invalid group type"),
             };
 
-            if low > high {
-                panic!("Invalid Character-range");
-            }
+            assert!(low <= high, "Invalid Character-range");
 
             let chars = (low..=high).collect();
             return Ok(RegexElement::CharGroup {
@@ -594,7 +602,7 @@ impl<'a> ParsePattern<'a> {
             let n = self
                 .parser
                 .multiple("01234567", 3, Some(3))
-                .unwrap_or("".to_string());
+                .unwrap_or_default();
             if !n.is_empty() {
                 let c = char::from_u32(u32::from_str_radix(&n, 8).unwrap()).unwrap();
                 Ok(RegexElement::CharGroup {
@@ -605,7 +613,7 @@ impl<'a> ParsePattern<'a> {
                 let n = self
                     .parser
                     .multiple("0123456789", 1, Some(2))
-                    .unwrap_or("".to_string());
+                    .unwrap_or_default();
                 if !n.is_empty() {
                     unimplemented!("Group references are not implemented")
                 } else {
@@ -637,7 +645,7 @@ impl<'a> ParsePattern<'a> {
             let n = self
                 .parser
                 .multiple("01234567", 1, Some(3))
-                .unwrap_or("".to_string());
+                .unwrap_or_default();
             if !n.is_empty() {
                 let c = char::from_u32(u32::from_str_radix(&n, 8).unwrap()).unwrap();
                 Ok(RegexElement::CharGroup {

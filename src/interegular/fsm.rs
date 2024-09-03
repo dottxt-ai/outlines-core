@@ -1,3 +1,5 @@
+#![allow(dead_code, unused_imports, unused_variables)]
+
 use core::panic;
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet, VecDeque};

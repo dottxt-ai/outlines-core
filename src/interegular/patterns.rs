@@ -6,6 +6,7 @@ use std::rc::Rc;
 use std::vec;
 
 use crate::interegular::fsm::SymbolTrait;
+use crate::interegular::fsm::TransitionKey;
 use crate::interegular::fsm::{Alphabet, Fsm};
 
 const SPECIAL_CHARS_INNER: [&str; 2] = ["\\", "]"];
@@ -136,6 +137,34 @@ impl RegexElement {
         flags: Option<HashSet<Flag>>,
     ) -> Fsm<char> {
         match self {
+            RegexElement::Literal(c) => {
+                let alphabet = alphabet
+                    .unwrap_or_else(|| self.get_alphabet(&flags.clone().unwrap_or_default()));
+                let prefix_postfix = prefix_postfix.unwrap_or_else(|| self.get_prefix_postfix());
+
+                let case_insensitive = flags
+                    .clone()
+                    .as_ref()
+                    .map_or(false, |f| f.contains(&Flag::CaseInsensitive));
+
+                let mut mapping = HashMap::<_, HashMap<_, _>>::new();
+                let symbol = alphabet.get(c);
+
+                let mut m = std::collections::HashMap::new();
+                m.insert(symbol, TransitionKey::Symbol(1_usize));
+                mapping.insert(TransitionKey::Symbol(0_usize), m);
+
+                let states = (0..=1).map(std::convert::Into::into).collect();
+                let finals = (1..=1).map(std::convert::Into::into).collect();
+
+                Fsm::new(
+                    alphabet,
+                    states, // {0, 1}
+                    0.into(),
+                    finals, // {1}
+                    mapping,
+                )
+            }
             RegexElement::CharGroup { chars, inverted } => {
                 let alphabet = alphabet
                     .unwrap_or_else(|| self.get_alphabet(&flags.clone().unwrap_or_default()));
@@ -151,7 +180,41 @@ impl RegexElement {
                     .as_ref()
                     .map_or(false, |f| f.contains(&Flag::CaseInsensitive));
 
-                let mapping = HashMap::<_, HashMap<_, _>>::new();
+                let mut mapping = HashMap::<_, HashMap<_, _>>::new();
+
+                if *inverted {
+                    let chars = chars.clone();
+                    let alphabet = alphabet.clone();
+                    let alphabet_set = alphabet
+                        .clone()
+                        .by_transition
+                        .keys()
+                        .copied()
+                        .collect::<HashSet<_>>();
+
+                    let char_as_usize = chars
+                        .iter()
+                        .map(|c| TransitionKey::Symbol(*c as usize))
+                        .collect();
+                    let diff = alphabet_set
+                        .difference(&char_as_usize)
+                        .copied()
+                        .collect::<Vec<_>>();
+
+                    let mut m = std::collections::HashMap::new();
+                    for symbol in diff {
+                        m.insert(symbol, TransitionKey::Symbol(1_usize));
+                    }
+                    mapping.insert(TransitionKey::Symbol(0_usize), m);
+                } else {
+                    let chars = chars.clone();
+                    for symbol in chars {
+                        let mut m = std::collections::HashMap::new();
+                        let symbol_value = alphabet.get(&symbol);
+                        m.insert(symbol_value, TransitionKey::Symbol(1_usize));
+                        mapping.insert(TransitionKey::Symbol(0_usize), m);
+                    }
+                }
 
                 let states = (0..=1).map(std::convert::Into::into).collect();
                 let finals = (1..=1).map(std::convert::Into::into).collect();
@@ -164,7 +227,62 @@ impl RegexElement {
                     mapping,
                 )
             }
-            // Implement other variants as needed
+            RegexElement::Repeated { element, min, max } => {
+                let unit = element.to_fsm(alphabet.clone(), None, flags.clone());
+                let alphabet = alphabet
+                    .unwrap_or_else(|| self.get_alphabet(&flags.clone().unwrap_or_default()));
+                let mandatory = std::iter::repeat(unit.clone()).take(*min).fold(
+                    Fsm::new(
+                        // TODO: fix if alphabet is None
+                        alphabet.clone(),
+                        HashSet::new(),
+                        0.into(),
+                        HashSet::new(),
+                        std::collections::HashMap::new(),
+                    ),
+                    |acc, f| Fsm::concatenate(&[acc, f]),
+                );
+
+                let optional = if max.is_none() {
+                    unit.star()
+                } else {
+                    let mut optional = unit.clone();
+                    optional.finals.insert(optional.initial);
+                    optional = std::iter::repeat(optional.clone())
+                        .take(max.unwrap() - min)
+                        .fold(
+                            Fsm::new(
+                                alphabet.clone(),
+                                HashSet::new(),
+                                0.into(),
+                                HashSet::new(),
+                                std::collections::HashMap::new(),
+                            ),
+                            |acc, f| Fsm::concatenate(&[acc, f]),
+                        );
+
+                    optional
+                };
+
+                Fsm::concatenate(&[mandatory, optional])
+            }
+            RegexElement::Concatenation(parts) => {
+                let mut current = vec![];
+                for part in parts {
+                    current.push(part.to_fsm(alphabet.clone(), None, flags.clone()));
+                }
+
+                Fsm::concatenate(&current)
+            }
+            RegexElement::Alternation(options) => {
+                let mut current = vec![];
+                for option in options {
+                    current.push(option.to_fsm(alphabet.clone(), None, flags.clone()));
+                }
+
+                Fsm::union(&current)
+            }
+            // throw on non implemented variants
             _ => unimplemented!("FSM conversion not implemented for this variant"),
         }
     }
@@ -186,6 +304,25 @@ impl RegexElement {
                 Alphabet::from_groups(&[relevant, HashSet::from(['\0'.into()])])
             }
             RegexElement::Literal(c) => Alphabet::from_groups(&[HashSet::from([(*c).into()])]),
+            RegexElement::Repeated { element, .. } => element.get_alphabet(flags),
+            RegexElement::Alternation(options) => {
+                let mut alphabet = Alphabet::empty();
+                for option in options {
+                    let alphabets = vec![alphabet, option.get_alphabet(flags)];
+                    let (res, new_to_old) = Alphabet::union(alphabets.as_slice());
+                    alphabet = res;
+                }
+                alphabet
+            }
+            RegexElement::Concatenation(parts) => {
+                let mut alphabet = Alphabet::empty();
+                for part in parts {
+                    let alphabets = vec![alphabet, part.get_alphabet(flags)];
+                    let (res, new_to_old) = Alphabet::union(alphabets.as_slice());
+                    alphabet = res;
+                }
+                alphabet
+            }
             _ => unimplemented!("Alphabet not implemented for this variant"),
         }
     }
@@ -685,7 +822,7 @@ mod tests {
 
     #[test]
     fn test_parse_pattern_simple() {
-        let pattern = "a";
+        let pattern: &str = "a";
         let result = parse_pattern(pattern);
         assert_eq!(
             result,
@@ -959,5 +1096,30 @@ mod tests {
         let pattern = ")(";
         let result = parse_pattern(pattern);
         assert!(result.is_err());
+    }
+    #[test]
+    fn test_parse_pattern_simple_to_fsm() {
+        let pattern: &str = "a";
+        let result = parse_pattern(pattern).unwrap();
+        let result = result.to_fsm(None, None, None);
+
+        let expected = Fsm {
+            alphabet: Alphabet {
+                symbol_mapping: HashMap::from([('a', TransitionKey::Symbol(0))]),
+                by_transition: HashMap::from([(TransitionKey::Symbol(0), vec!['a'])]),
+            },
+            states: HashSet::from([TransitionKey::Symbol(0), TransitionKey::Symbol(1)]),
+            initial: TransitionKey::Symbol(0),
+            finals: HashSet::from([TransitionKey::Symbol(1)]),
+            map: HashMap::from([
+                (
+                    TransitionKey::Symbol(0),
+                    HashMap::from([(TransitionKey::Symbol(0), TransitionKey::Symbol(1))]),
+                ),
+                (TransitionKey::Symbol(1), HashMap::new()),
+            ]),
+        };
+
+        assert_eq!(result, expected);
     }
 }

@@ -1,3 +1,4 @@
+use crate::interegular::fsm::Fsm;
 use crate::interegular::patterns::parse_pattern;
 use crate::interegular::patterns::RegexElement;
 use crate::json_schema;
@@ -456,6 +457,50 @@ pub fn parse_pattern_internal(py: Python, pattern: &str) -> PyResult<PyObject> {
     }
 }
 
+#[pyclass]
+pub struct InteregularFSMInfo {
+    #[pyo3(get)]
+    initial: u32,
+    #[pyo3(get)]
+    finals: HashSet<u32>,
+    #[pyo3(get)]
+    states: HashSet<u32>,
+    #[pyo3(get)]
+    map: HashMap<u32, HashMap<u32, u32>>,
+}
+
+#[pyfunction(name = "parse_pattern_to_fsm")]
+#[pyo3(text_signature = "(pattern: &str)")]
+pub fn parse_pattern_to_fsm_internal(py: Python, pattern: &str) -> PyResult<InteregularFSMInfo> {
+    let regex_element =
+        parse_pattern(pattern).map_err(|_| PyValueError::new_err("Invalid pattern"))?;
+
+    let alphabet = None;
+    let prefix_postfix = None;
+    let flags = None;
+
+    let fsm_info = regex_element.to_fsm(alphabet, prefix_postfix, flags);
+    let map: HashMap<u32, HashMap<u32, u32>> = fsm_info
+        .map
+        .iter()
+        .map(|(key, map)| {
+            let u32_key = u32::from(*key);
+            let map_as_u32s = map
+                .iter()
+                .map(|(key, value)| (u32::from(*key), u32::from(*value)))
+                .collect();
+            (u32_key, map_as_u32s)
+        })
+        .collect();
+
+    Ok(InteregularFSMInfo {
+        initial: fsm_info.initial.into(),
+        finals: fsm_info.finals.iter().map(|f| (*f).into()).collect(),
+        states: fsm_info.states.iter().map(|s| (*s).into()).collect(),
+        map,
+    })
+}
+
 #[pymodule]
 fn outlines_core_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(walk_fsm_py, m)?)?;
@@ -473,6 +518,9 @@ fn outlines_core_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyGroup>()?;
     m.add_class::<PyAnchor>()?;
     m.add_class::<PyFlag>()?;
+
+    m.add_function(wrap_pyfunction!(parse_pattern_to_fsm_internal, m)?)?;
+    m.add_class::<InteregularFSMInfo>()?;
 
     m.add_class::<FSMInfo>()?;
 

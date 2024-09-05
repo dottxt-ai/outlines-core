@@ -25,10 +25,19 @@ impl From<TransitionKey> for usize {
     }
 }
 
+impl From<TransitionKey> for u32 {
+    fn from(c: TransitionKey) -> Self {
+        match c {
+            TransitionKey::Symbol(i) => i as u32,
+            _ => panic!("Cannot convert `anything else` to u32"),
+        }
+    }
+}
+
 pub trait SymbolTrait: Eq + Hash + Clone + Debug + From<char> {}
 impl<T: Eq + Hash + Clone + Debug + From<char>> SymbolTrait for T {}
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Alphabet<T: SymbolTrait> {
     pub symbol_mapping: HashMap<T, TransitionKey>,
     pub by_transition: HashMap<TransitionKey, Vec<T>>,
@@ -46,6 +55,14 @@ impl<T: SymbolTrait> Alphabet<T> {
         Alphabet {
             symbol_mapping,
             by_transition,
+        }
+    }
+
+    #[must_use]
+    pub fn empty() -> Self {
+        Alphabet {
+            symbol_mapping: HashMap::new(),
+            by_transition: HashMap::new(),
         }
     }
 
@@ -119,9 +136,9 @@ impl<T: SymbolTrait> Alphabet<T> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Fsm<T: SymbolTrait> {
-    alphabet: Alphabet<T>,
+    pub alphabet: Alphabet<T>,
     pub states: HashSet<TransitionKey>,
     pub initial: TransitionKey,
     pub finals: HashSet<TransitionKey>,

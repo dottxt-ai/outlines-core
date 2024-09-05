@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 class FSMInfo:
     initial: int
@@ -52,6 +52,7 @@ def create_fsm_index_end_to_end(
     vocabulary: List[Tuple[str, List[int]]],
     frozen_tokens: frozenset[str],
 ) -> Dict[int, Dict[int, int]]: ...
+def parse_pattern(pattern: str) -> Any: ...
 
 BOOLEAN: str
 DATE: str

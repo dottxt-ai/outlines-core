@@ -109,17 +109,25 @@ jobs:
         run: ./.github/scripts/build_sdist_and_wheel.sh
 
   cargo-test:
-      name: Run Cargo tests
-      runs-on: ubuntu-latest
-      steps:
-      - uses: actions/checkout@v3
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          override: true
-      - name: Run cargo test
-        run: cargo test
+    name: Run Cargo tests
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+    - name: Cache Cargo dependencies
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+    - name: Run cargo test
+      run: cargo test
 
   cargo-audit:
     name: Run Cargo audit
@@ -131,6 +139,14 @@ jobs:
       with:
         toolchain: stable
         override: true
+    - name: Cache Cargo dependencies
+      uses: actions/cache@v2
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
     - name: Install cargo-audit
       run: cargo install cargo-audit
     - name: Run cargo audit

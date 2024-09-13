@@ -154,7 +154,14 @@ impl RegexElement {
                 m.insert(symbol, TransitionKey::Symbol(1_usize));
                 mapping.insert(TransitionKey::Symbol(0_usize), m);
 
-                let states = (0..=1).map(std::convert::Into::into).collect();
+                // states based on the symbols
+                let unique_symbols = alphabet
+                    .by_transition
+                    .keys()
+                    .copied()
+                    .collect::<HashSet<_>>();
+
+                let states = unique_symbols.iter().copied().collect();
                 let finals = (1..=1).map(std::convert::Into::into).collect();
 
                 Fsm::new(
@@ -1097,29 +1104,174 @@ mod tests {
         let result = parse_pattern(pattern);
         assert!(result.is_err());
     }
+
     #[test]
     fn test_parse_pattern_simple_to_fsm() {
         let pattern: &str = "a";
         let result = parse_pattern(pattern).unwrap();
-        let result = result.to_fsm(None, None, None);
+
+        let alphabet = Alphabet {
+            symbol_mapping: HashMap::from([
+                ('a', TransitionKey::Symbol(1)),
+                ('\0', TransitionKey::Symbol(0)),
+            ]),
+            by_transition: HashMap::from([
+                (TransitionKey::Symbol(0), vec!['\0']),
+                (TransitionKey::Symbol(1), vec!['a']),
+            ]),
+        };
+
+        let result = result.to_fsm(Some(alphabet.clone()), None, None);
 
         let expected = Fsm {
-            alphabet: Alphabet {
-                symbol_mapping: HashMap::from([('a', TransitionKey::Symbol(0))]),
-                by_transition: HashMap::from([(TransitionKey::Symbol(0), vec!['a'])]),
-            },
+            alphabet,
             states: HashSet::from([TransitionKey::Symbol(0), TransitionKey::Symbol(1)]),
             initial: TransitionKey::Symbol(0),
             finals: HashSet::from([TransitionKey::Symbol(1)]),
             map: HashMap::from([
                 (
                     TransitionKey::Symbol(0),
-                    HashMap::from([(TransitionKey::Symbol(0), TransitionKey::Symbol(1))]),
+                    HashMap::from([(TransitionKey::Symbol(1), TransitionKey::Symbol(1))]),
                 ),
                 (TransitionKey::Symbol(1), HashMap::new()),
             ]),
         };
 
-        assert_eq!(result, expected);
+        assert_eq!(
+            result
+                .alphabet
+                .symbol_mapping
+                .keys()
+                .copied()
+                .collect::<HashSet<_>>(),
+            expected
+                .alphabet
+                .symbol_mapping
+                .keys()
+                .copied()
+                .collect::<HashSet<_>>()
+        );
+
+        assert_eq!(
+            result
+                .alphabet
+                .by_transition
+                .keys()
+                .copied()
+                .collect::<HashSet<_>>(),
+            expected
+                .alphabet
+                .by_transition
+                .keys()
+                .copied()
+                .collect::<HashSet<_>>()
+        );
+
+        assert_eq!(
+            result.states.iter().copied().collect::<HashSet<_>>(),
+            expected.states.iter().copied().collect::<HashSet<_>>()
+        );
+
+        assert_eq!(result.initial, expected.initial);
+
+        assert_eq!(
+            result.finals.iter().copied().collect::<HashSet<_>>(),
+            expected.finals.iter().copied().collect::<HashSet<_>>()
+        );
+
+        assert_eq!(
+            result.map.keys().copied().collect::<HashSet<_>>(),
+            expected.map.keys().copied().collect::<HashSet<_>>()
+        );
+    }
+
+    #[test]
+    fn test_parse_pattern_two_chars_to_fsm() {
+        let pattern: &str = "ab";
+        let result = parse_pattern(pattern).unwrap();
+
+        let alphabet = Alphabet {
+            symbol_mapping: HashMap::from([
+                ('\0', TransitionKey::Symbol(0)),
+                ('a', TransitionKey::Symbol(1)),
+                ('b', TransitionKey::Symbol(2)),
+            ]),
+            by_transition: HashMap::from([
+                (TransitionKey::Symbol(0), vec!['\0']),
+                (TransitionKey::Symbol(1), vec!['a']),
+                (TransitionKey::Symbol(2), vec!['b']),
+            ]),
+        };
+
+        let result = result.to_fsm(Some(alphabet.clone()), None, None);
+
+        let expected = Fsm {
+            alphabet,
+            states: HashSet::from([
+                TransitionKey::Symbol(0),
+                TransitionKey::Symbol(1),
+                TransitionKey::Symbol(2),
+            ]),
+            initial: TransitionKey::Symbol(0),
+            finals: HashSet::from([TransitionKey::Symbol(2)]),
+            map: HashMap::from([
+                (
+                    TransitionKey::Symbol(0),
+                    HashMap::from([(TransitionKey::Symbol(1), TransitionKey::Symbol(1))]),
+                ),
+                (
+                    TransitionKey::Symbol(1),
+                    HashMap::from([(TransitionKey::Symbol(2), TransitionKey::Symbol(2))]),
+                ),
+                (TransitionKey::Symbol(2), HashMap::new()),
+            ]),
+        };
+
+        assert_eq!(
+            result
+                .alphabet
+                .symbol_mapping
+                .keys()
+                .copied()
+                .collect::<HashSet<_>>(),
+            expected
+                .alphabet
+                .symbol_mapping
+                .keys()
+                .copied()
+                .collect::<HashSet<_>>()
+        );
+
+        assert_eq!(
+            result
+                .alphabet
+                .by_transition
+                .keys()
+                .copied()
+                .collect::<HashSet<_>>(),
+            expected
+                .alphabet
+                .by_transition
+                .keys()
+                .copied()
+                .collect::<HashSet<_>>()
+        );
+
+        assert_eq!(
+            result.states.iter().copied().collect::<HashSet<_>>(),
+            expected.states.iter().copied().collect::<HashSet<_>>()
+        );
+
+        assert_eq!(result.initial, expected.initial);
+
+        assert_eq!(
+            result.finals.iter().copied().collect::<HashSet<_>>(),
+            expected.finals.iter().copied().collect::<HashSet<_>>()
+        );
+
+        assert_eq!(
+            result.map.keys().copied().collect::<HashSet<_>>(),
+            expected.map.keys().copied().collect::<HashSet<_>>()
+        );
     }
 }

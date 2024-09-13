@@ -469,17 +469,40 @@ pub struct InteregularFSMInfo {
     map: HashMap<u32, HashMap<u32, u32>>,
 }
 
+use crate::interegular::fsm::Alphabet;
+use crate::interegular::fsm::TransitionKey;
+use crate::interegular::patterns::Flag;
+
 #[pyfunction(name = "parse_pattern_to_fsm")]
 #[pyo3(text_signature = "(pattern: &str)")]
 pub fn parse_pattern_to_fsm_internal(py: Python, pattern: &str) -> PyResult<InteregularFSMInfo> {
     let regex_element =
         parse_pattern(pattern).map_err(|_| PyValueError::new_err("Invalid pattern"))?;
 
-    let alphabet = None;
     let prefix_postfix = None;
     let flags = None;
 
-    let fsm_info = regex_element.to_fsm(alphabet, prefix_postfix, flags);
+    let default_alphabet = Alphabet::<char>::default();
+    let empty_flags: HashSet<Flag> = HashSet::new();
+    let patterns_alphabet: Alphabet<char> = regex_element.get_alphabet(&empty_flags);
+
+    // TODO: this is a hack to build a alphabet with the same symbols as the patterns
+    // and ensure that \0 is the anything symbol at 0. However, this is not a good solution
+    // and should be handled by an improved alphabet implementation
+    let mut my_new_symbol_mapping = HashMap::new();
+    my_new_symbol_mapping.insert('\0', TransitionKey::Symbol(0)); // add \0 as the anything symbol at 0
+
+    let mut counter = 1;
+    for (symbol, transition_key) in patterns_alphabet.symbol_mapping.iter() {
+        let transition_key_inc_by_one = TransitionKey::Symbol(counter);
+        my_new_symbol_mapping.insert(symbol.clone(), transition_key_inc_by_one);
+        counter += 1;
+    }
+    let alphabet = Alphabet::new(my_new_symbol_mapping);
+
+    let fsm_info = regex_element.to_fsm(Some(alphabet), prefix_postfix, flags);
+
+    // convert into u32 for python
     let map: HashMap<u32, HashMap<u32, u32>> = fsm_info
         .map
         .iter()

@@ -23,13 +23,14 @@ from interegular.fsm import (
     anything_else,
 )
 
-from .outlines_core_rs import (  # noqa: F401
+from .outlines_core_rs import (  # noqa: F401; TODO: likely temporary; just to ensure that the fsm creation works
     FSMInfo,
     _walk_fsm,
     create_fsm_index_end_to_end,
     get_token_transition_keys,
     get_vocabulary_transition_keys,
     parse_pattern,
+    parse_pattern_to_fsm,
     state_scan_tokens,
 )
 

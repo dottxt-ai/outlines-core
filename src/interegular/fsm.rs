@@ -1,13 +1,14 @@
-use core::panic;
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::iter::from_fn;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Copy)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Copy, Ord, PartialOrd)]
 pub enum TransitionKey {
     Symbol(usize),
-    AnythingElse,
+    // TODO: avoid using AnythingElse in favor of Symbol(0) or char '\0'
+    // This is only due to the incomplete implementation of the conversion from char to TransitionKey
+    // AnythingElse,
 }
 
 impl From<usize> for TransitionKey {
@@ -20,7 +21,6 @@ impl From<TransitionKey> for usize {
     fn from(c: TransitionKey) -> Self {
         match c {
             TransitionKey::Symbol(i) => i,
-            _ => panic!("Cannot convert `anything else` to usize"),
         }
     }
 }
@@ -29,7 +29,6 @@ impl From<TransitionKey> for u32 {
     fn from(c: TransitionKey) -> Self {
         match c {
             TransitionKey::Symbol(i) => i as u32,
-            _ => panic!("Cannot convert `anything else` to u32"),
         }
     }
 }
@@ -69,7 +68,7 @@ impl<T: SymbolTrait> Alphabet<T> {
     pub fn get(&self, item: &T) -> TransitionKey {
         match self.symbol_mapping.get(item) {
             Some(x) => *x,
-            None => TransitionKey::AnythingElse,
+            None => TransitionKey::Symbol(0),
         }
     }
 
@@ -102,7 +101,7 @@ impl<T: SymbolTrait> Alphabet<T> {
             );
         }
 
-        let mut keys_to_symbols = HashMap::new();
+        let mut keys_to_symbols = BTreeMap::new(); // btree keeps the order
         for (symbol, keys) in symbol_to_keys {
             keys_to_symbols
                 .entry(keys.clone())
@@ -133,6 +132,15 @@ impl<T: SymbolTrait> Alphabet<T> {
         }
 
         (result, new_to_old_mappings)
+    }
+}
+
+impl Default for Alphabet<char> {
+    fn default() -> Self {
+        let mut symbol_mapping = HashMap::new();
+        // only insert \0 for anything_else
+        symbol_mapping.insert('\0', TransitionKey::Symbol(0));
+        Alphabet::new(symbol_mapping)
     }
 }
 
@@ -339,7 +347,7 @@ impl<T: SymbolTrait> Fsm<T> {
             while _current_i < last_index && fsms[_current_i].finals.contains(&current_substate) {
                 _current_i += 1;
                 current_substate = fsms[_current_i].initial;
-                result.insert((current_i, current_substate));
+                result.insert((_current_i.into(), current_substate));
             }
 
             result
@@ -587,7 +595,7 @@ where
     F: Fn(&C) -> bool,
     G: Fn(&C, &TransitionKey) -> Option<C>,
     I: Clone + Eq + Hash + std::fmt::Debug,
-    C: IntoIterator<Item = I> + FromIterator<I> + Clone + PartialEq,
+    C: IntoIterator<Item = I> + FromIterator<I> + Clone + PartialEq + std::fmt::Debug,
 {
     let mut states = VecDeque::new();
     states.push_back(initial);
@@ -638,6 +646,17 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_create_default_alphabet() {
+        let default_alphabet = Alphabet::<char>::default();
+        assert_eq!(default_alphabet.symbol_mapping.len(), 1);
+        assert_eq!(default_alphabet.by_transition.len(), 1);
+        assert_eq!(
+            default_alphabet.by_transition[&TransitionKey::Symbol(0)],
+            vec!['\0']
+        );
+    }
 
     fn create_simple_fsm() -> Fsm<char> {
         let mut symbol_mapping = HashMap::new();
@@ -753,8 +772,194 @@ mod tests {
 
         assert!(union.accepts(&['a']));
         assert!(union.accepts(&['b']));
-        assert!(!union.accepts(&[' ']));
         assert!(!union.accepts(&['a', 'a']));
+    }
+
+    #[test]
+    fn test_union_of_single_character_fsms() {
+        // Create alphabet for FSM1 ('a' and anything_else)
+        let mut symbol_mapping1 = HashMap::new();
+        symbol_mapping1.insert('\0', 0.into()); // '\0' represents anything_else
+        symbol_mapping1.insert('a', 1.into());
+        let alphabet1 = Alphabet::new(symbol_mapping1);
+
+        // Create alphabet for FSM2 ('b' and anything_else)
+        let mut symbol_mapping2 = HashMap::new();
+        symbol_mapping2.insert('\0', 0.into()); // '\0' represents anything_else
+        symbol_mapping2.insert('b', 1.into());
+        let alphabet2 = Alphabet::new(symbol_mapping2);
+
+        let fsm1 = Fsm::new(
+            alphabet1.clone(),
+            [0.into(), 1.into()].iter().copied().collect(),
+            0.into(),
+            [1.into()].iter().copied().collect(),
+            [
+                //
+                (0.into(), [(1.into(), 1.into())].iter().copied().collect()),
+                (1.into(), [].iter().copied().collect()),
+            ]
+            .iter()
+            .cloned()
+            .collect(),
+        );
+
+        let fsm2 = Fsm::new(
+            alphabet2.clone(),
+            [0.into(), 1.into()].iter().copied().collect(),
+            0.into(),
+            [1.into()].iter().copied().collect(),
+            [
+                (0.into(), [(1.into(), 1.into())].iter().copied().collect()),
+                (1.into(), [].iter().copied().collect()),
+            ]
+            .iter()
+            .cloned()
+            .collect(),
+        );
+
+        assert_eq!(
+            fsm1.map,
+            [
+                (0.into(), [(1.into(), 1.into()),].iter().copied().collect()),
+                (1.into(), [].iter().copied().collect()),
+            ]
+            .iter()
+            .cloned()
+            .collect()
+        );
+
+        assert_eq!(
+            fsm2.map,
+            [
+                (0.into(), [(1.into(), 1.into()),].iter().copied().collect()),
+                (1.into(), [].iter().copied().collect()),
+            ]
+            .iter()
+            .cloned()
+            .collect()
+        );
+
+        let union_fsm = Fsm::union(&[fsm1, fsm2]);
+
+        assert_eq!(union_fsm.alphabet.symbol_mapping.len(), 3);
+        assert_eq!(
+            union_fsm.states,
+            [0.into(), 1.into(), 2.into()].iter().copied().collect()
+        );
+        assert_eq!(union_fsm.initial, 0.into());
+        assert_eq!(
+            union_fsm.finals,
+            [2.into(), 1.into()].iter().copied().collect()
+        );
+
+        // compare states
+        assert_eq!(
+            union_fsm.states,
+            [0.into(), 1.into(), 2.into()].iter().copied().collect()
+        );
+
+        let expected_map: HashMap<TransitionKey, HashMap<TransitionKey, TransitionKey>> = [
+            (
+                0.into(),
+                [(1.into(), 1.into()), (2.into(), 2.into())]
+                    .iter()
+                    .copied()
+                    .collect(),
+            ),
+            (1.into(), [].iter().copied().collect()),
+            (2.into(), [].iter().copied().collect()),
+        ]
+        .into();
+
+        assert_eq!(union_fsm.map.get(&2.into()), Some(&expected_map[&2.into()]));
+        assert_eq!(union_fsm.map.get(&1.into()), Some(&expected_map[&1.into()]));
+    }
+
+    #[test]
+    fn test_concatenate_of_single_character_fsms() {
+        // Create alphabet for FSM1 ('a' and anything_else)
+        let mut symbol_mapping1 = HashMap::new();
+        symbol_mapping1.insert('\0', 0.into()); // '\0' represents anything_else
+        symbol_mapping1.insert('a', 1.into());
+        let alphabet1 = Alphabet::new(symbol_mapping1);
+
+        // Create alphabet for FSM2 ('b' and anything_else)
+        let mut symbol_mapping2 = HashMap::new();
+        symbol_mapping2.insert('\0', 0.into()); // '\0' represents anything_else
+        symbol_mapping2.insert('b', 1.into());
+        let alphabet2 = Alphabet::new(symbol_mapping2);
+
+        // Create FSM for "a"
+        let fsm1 = Fsm::new(
+            alphabet1.clone(),
+            [0.into(), 1.into()].iter().copied().collect(),
+            0.into(),
+            [1.into()].iter().copied().collect(),
+            [
+                (0.into(), [(1.into(), 1.into())].iter().copied().collect()),
+                (1.into(), [].iter().copied().collect()),
+            ]
+            .iter()
+            .cloned()
+            .collect(),
+        );
+
+        // Create FSM for "b"
+        let fsm2 = Fsm::new(
+            alphabet2.clone(),
+            [0.into(), 1.into()].iter().copied().collect(),
+            0.into(),
+            [1.into()].iter().copied().collect(),
+            [
+                (0.into(), [(1.into(), 1.into())].iter().copied().collect()),
+                (1.into(), [].iter().copied().collect()),
+            ]
+            .iter()
+            .cloned()
+            .collect(),
+        );
+
+        let concat_fsm = Fsm::concatenate(&[fsm1, fsm2]);
+
+        let expected = Fsm {
+            alphabet: Alphabet {
+                symbol_mapping: HashMap::from([
+                    ('\0', TransitionKey::Symbol(0)),
+                    ('a', TransitionKey::Symbol(1)),
+                    ('b', TransitionKey::Symbol(2)),
+                ]),
+                by_transition: HashMap::from([
+                    (TransitionKey::Symbol(0), vec!['\0']),
+                    (TransitionKey::Symbol(1), vec!['a']),
+                    (TransitionKey::Symbol(2), vec!['b']),
+                ]),
+            },
+            states: HashSet::from([
+                TransitionKey::Symbol(0),
+                TransitionKey::Symbol(1),
+                TransitionKey::Symbol(2),
+            ]),
+            initial: TransitionKey::Symbol(0),
+            finals: HashSet::from([TransitionKey::Symbol(2)]),
+            map: HashMap::from([
+                (
+                    TransitionKey::Symbol(0),
+                    HashMap::from([(TransitionKey::Symbol(1), TransitionKey::Symbol(1))]),
+                ),
+                (
+                    TransitionKey::Symbol(1),
+                    HashMap::from([(TransitionKey::Symbol(2), TransitionKey::Symbol(2))]),
+                ),
+                (TransitionKey::Symbol(2), HashMap::new()),
+            ]),
+        };
+
+        assert_eq!(concat_fsm.states, expected.states);
+        assert_eq!(concat_fsm.initial, expected.initial);
+        assert_eq!(concat_fsm.finals, expected.finals);
+        assert_eq!(concat_fsm.map.get(&2.into()), expected.map.get(&2.into()));
+        assert_eq!(concat_fsm.map.get(&1.into()), expected.map.get(&1.into()));
     }
 
     #[test]

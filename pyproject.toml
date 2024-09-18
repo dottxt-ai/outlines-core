@@ -52,6 +52,7 @@ test = [
     "torch",
     "transformers",
     "pillow",
+    "asv",
 ]
 
 [project.urls]

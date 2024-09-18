@@ -10,3 +10,4 @@ build/
 benchmarks/results
 target/
 *.so
+Cargo.lock

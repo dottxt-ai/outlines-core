@@ -3,6 +3,7 @@ use crate::regex::get_token_transition_keys;
 use crate::regex::get_vocabulary_transition_keys;
 use crate::regex::state_scan_tokens;
 use crate::regex::walk_fsm;
+use crate::*;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
@@ -13,26 +14,26 @@ use std::collections::{HashMap, HashSet};
 #[pyclass]
 pub struct FSMInfo {
     #[pyo3(get)]
-    initial: u32,
+    initial: State,
     #[pyo3(get)]
-    finals: HashSet<u32>,
+    finals: HashSet<State>,
     #[pyo3(get)]
-    transitions: HashMap<(u32, u32), u32>,
+    transitions: HashMap<(State, TransitionKey), State>,
     #[pyo3(get)]
-    alphabet_anything_value: u32,
+    alphabet_anything_value: TransitionKey,
     #[pyo3(get)]
-    alphabet_symbol_mapping: HashMap<String, u32>,
+    alphabet_symbol_mapping: HashMap<String, TransitionKey>,
 }
 
 #[pymethods]
 impl FSMInfo {
     #[new]
     fn new(
-        initial: u32,
-        finals: HashSet<u32>,
-        transitions: HashMap<(u32, u32), u32>,
-        alphabet_anything_value: u32,
-        alphabet_symbol_mapping: HashMap<String, u32>,
+        initial: State,
+        finals: HashSet<State>,
+        transitions: HashMap<(State, TransitionKey), State>,
+        alphabet_anything_value: TransitionKey,
+        alphabet_symbol_mapping: HashMap<String, TransitionKey>,
     ) -> Self {
         Self {
             initial,
@@ -67,13 +68,13 @@ pub fn to_regex_py(json: Bound<PyDict>, whitespace_pattern: Option<&str>) -> PyR
     text_signature = "(fsm_transitions, fsm_initial, fsm_finals, token_transition_keys, start_state, full_match)"
 )]
 pub fn walk_fsm_py(
-    fsm_transitions: HashMap<(u32, u32), u32>,
-    fsm_initial: u32,
-    fsm_finals: HashSet<u32>,
-    token_transition_keys: Vec<u32>,
-    start_state: u32,
+    fsm_transitions: HashMap<(State, TransitionKey), State>,
+    fsm_initial: State,
+    fsm_finals: HashSet<State>,
+    token_transition_keys: Vec<TransitionKey>,
+    start_state: State,
     full_match: bool,
-) -> PyResult<Vec<u32>> {
+) -> PyResult<Vec<State>> {
     Ok(walk_fsm(
         &fsm_transitions,
         fsm_initial,
@@ -89,13 +90,13 @@ pub fn walk_fsm_py(
     text_signature = "(fsm_transitions, fsm_initial, fsm_finals, vocabulary, vocabulary_transition_keys, start_state)"
 )]
 pub fn state_scan_tokens_py(
-    fsm_transitions: HashMap<(u32, u32), u32>,
-    fsm_initial: u32,
-    fsm_finals: HashSet<u32>,
-    vocabulary: Vec<(String, Vec<u32>)>,
-    vocabulary_transition_keys: Vec<Vec<u32>>,
-    start_state: u32,
-) -> PyResult<HashSet<(u32, u32)>> {
+    fsm_transitions: HashMap<(State, TransitionKey), State>,
+    fsm_initial: State,
+    fsm_finals: HashSet<State>,
+    vocabulary: Vec<(String, Vec<TokenId>)>,
+    vocabulary_transition_keys: Vec<Vec<TransitionKey>>,
+    start_state: State,
+) -> PyResult<HashSet<(TokenId, State)>> {
     Ok(state_scan_tokens(
         &fsm_transitions,
         fsm_initial,
@@ -109,10 +110,10 @@ pub fn state_scan_tokens_py(
 #[pyfunction(name = "get_token_transition_keys")]
 #[pyo3(text_signature = "(alphabet_symbol_mapping, alphabet_anything_value, token_str)")]
 pub fn get_token_transition_keys_py(
-    alphabet_symbol_mapping: HashMap<String, u32>,
-    alphabet_anything_value: u32,
+    alphabet_symbol_mapping: HashMap<String, TransitionKey>,
+    alphabet_anything_value: TransitionKey,
     token_str: String,
-) -> PyResult<Vec<u32>> {
+) -> PyResult<Vec<TransitionKey>> {
     Ok(get_token_transition_keys(
         &alphabet_symbol_mapping,
         alphabet_anything_value,
@@ -125,11 +126,11 @@ pub fn get_token_transition_keys_py(
     text_signature = "(alphabet_symbol_mapping, alphabet_anything_value, vocabulary, frozen_tokens)"
 )]
 pub fn get_vocabulary_transition_keys_py(
-    alphabet_symbol_mapping: HashMap<String, u32>,
-    alphabet_anything_value: u32,
-    vocabulary: Vec<(String, Vec<u32>)>,
+    alphabet_symbol_mapping: HashMap<String, TransitionKey>,
+    alphabet_anything_value: TransitionKey,
+    vocabulary: Vec<(String, Vec<TokenId>)>,
     frozen_tokens: HashSet<String>,
-) -> PyResult<Vec<Vec<u32>>> {
+) -> PyResult<Vec<Vec<TransitionKey>>> {
     Ok(get_vocabulary_transition_keys(
         &alphabet_symbol_mapping,
         alphabet_anything_value,
@@ -143,12 +144,12 @@ pub fn get_vocabulary_transition_keys_py(
 pub fn create_fsm_index_end_to_end_py<'py>(
     py: Python<'py>,
     fsm_info: &FSMInfo,
-    vocabulary: Vec<(String, Vec<u32>)>,
+    vocabulary: Vec<(String, Vec<TokenId>)>,
     frozen_tokens: HashSet<String>,
 ) -> PyResult<Bound<'py, PyDict>> {
     let states_to_token_subsets = PyDict::new_bound(py);
-    let mut seen: HashSet<u32> = HashSet::new();
-    let mut next_states: HashSet<u32> = HashSet::from_iter(vec![fsm_info.initial]);
+    let mut seen: HashSet<State> = HashSet::new();
+    let mut next_states: HashSet<State> = HashSet::from_iter(vec![fsm_info.initial]);
 
     let vocabulary_transition_keys = get_vocabulary_transition_keys(
         &fsm_info.alphabet_symbol_mapping,

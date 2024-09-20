@@ -1,13 +1,14 @@
+use crate::*;
 use std::collections::{HashMap, HashSet};
 
 pub fn walk_fsm(
-    fsm_transitions: &HashMap<(u32, u32), u32>,
-    _fsm_initial: u32,
-    fsm_finals: &HashSet<u32>,
-    token_transition_keys: &[u32],
-    start_state: u32,
+    fsm_transitions: &HashMap<(State, TransitionKey), State>,
+    _fsm_initial: State,
+    fsm_finals: &HashSet<State>,
+    token_transition_keys: &[TransitionKey],
+    start_state: State,
     full_match: bool,
-) -> Vec<u32> {
+) -> Vec<State> {
     let mut state = start_state;
     let mut accepted_states = Vec::new();
     let mut last_final_idx = 0;
@@ -38,19 +39,19 @@ pub fn walk_fsm(
 }
 
 pub fn state_scan_tokens(
-    fsm_transitions: &HashMap<(u32, u32), u32>,
-    fsm_initial: u32,
-    fsm_finals: &HashSet<u32>,
-    vocabulary: &[(String, Vec<u32>)],
-    vocabulary_transition_keys: &[Vec<u32>],
-    start_state: u32,
-) -> HashSet<(u32, u32)> {
+    fsm_transitions: &HashMap<(State, TransitionKey), State>,
+    fsm_initial: State,
+    fsm_finals: &HashSet<State>,
+    vocabulary: &[(String, Vec<TokenId>)],
+    vocabulary_transition_keys: &[Vec<TransitionKey>],
+    start_state: State,
+) -> HashSet<(TokenId, State)> {
     let mut res = HashSet::new();
 
     for (vocab_item, token_transition_keys) in
         vocabulary.iter().zip(vocabulary_transition_keys.iter())
     {
-        let token_ids: Vec<u32> = vocab_item.1.clone();
+        let token_ids: Vec<TokenId> = vocab_item.1.clone();
 
         let state_seq = walk_fsm(
             fsm_transitions,
@@ -74,10 +75,10 @@ pub fn state_scan_tokens(
 }
 
 pub fn get_token_transition_keys(
-    alphabet_symbol_mapping: &HashMap<String, u32>,
-    alphabet_anything_value: u32,
+    alphabet_symbol_mapping: &HashMap<String, TransitionKey>,
+    alphabet_anything_value: TransitionKey,
     token_str: &str,
-) -> Vec<u32> {
+) -> Vec<TransitionKey> {
     let mut token_transition_keys = Vec::new();
     let mut i = 0;
     let chars: Vec<char> = token_str.chars().collect();
@@ -107,12 +108,12 @@ pub fn get_token_transition_keys(
 }
 
 pub fn get_vocabulary_transition_keys(
-    alphabet_symbol_mapping: &HashMap<String, u32>,
-    alphabet_anything_value: u32,
-    vocabulary: &[(String, Vec<u32>)],
+    alphabet_symbol_mapping: &HashMap<String, TransitionKey>,
+    alphabet_anything_value: TransitionKey,
+    vocabulary: &[(String, Vec<TokenId>)],
     frozen_tokens: &HashSet<String>,
-) -> Vec<Vec<u32>> {
-    let mut vocab_transition_keys: Vec<Vec<u32>> = Vec::new();
+) -> Vec<Vec<TransitionKey>> {
+    let mut vocab_transition_keys: Vec<Vec<TransitionKey>> = Vec::new();
 
     for item in vocabulary.iter() {
         let token_str = item.0.clone();

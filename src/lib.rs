@@ -5,5 +5,4 @@ pub mod regex;
 mod python_bindings;
 
 mod primitives;
-
-pub use crate::primitives::{State, TokenId, TransitionKey};
+pub use primitives::{State, TokenId, TransitionKey};

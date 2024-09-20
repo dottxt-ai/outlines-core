@@ -5,4 +5,9 @@ pub mod regex;
 mod python_bindings;
 
 mod primitives;
-pub use primitives::{State, TokenId, TransitionKey};
+pub use primitives::{State, Token, TokenId, TransitionKey};
+
+mod vocabulary;
+pub use vocabulary::Vocabulary;
+
+pub(crate) use {std::collections::HashMap, std::ops::Deref};

@@ -97,6 +97,7 @@ pub fn state_scan_tokens_py(
     vocabulary_transition_keys: Vec<Vec<TransitionKey>>,
     start_state: State,
 ) -> PyResult<HashSet<(TokenId, State)>> {
+    let vocabulary = Vocabulary::from_iter(vocabulary);
     Ok(state_scan_tokens(
         &fsm_transitions,
         fsm_initial,
@@ -131,6 +132,7 @@ pub fn get_vocabulary_transition_keys_py(
     vocabulary: Vec<(String, Vec<TokenId>)>,
     frozen_tokens: HashSet<String>,
 ) -> PyResult<Vec<Vec<TransitionKey>>> {
+    let vocabulary = Vocabulary::from_iter(vocabulary);
     Ok(get_vocabulary_transition_keys(
         &alphabet_symbol_mapping,
         alphabet_anything_value,
@@ -147,6 +149,8 @@ pub fn create_fsm_index_end_to_end_py<'py>(
     vocabulary: Vec<(String, Vec<TokenId>)>,
     frozen_tokens: HashSet<String>,
 ) -> PyResult<Bound<'py, PyDict>> {
+    let vocabulary = Vocabulary::from_iter(vocabulary);
+
     let states_to_token_subsets = PyDict::new_bound(py);
     let mut seen: HashSet<State> = HashSet::new();
     let mut next_states: HashSet<State> = HashSet::from_iter(vec![fsm_info.initial]);

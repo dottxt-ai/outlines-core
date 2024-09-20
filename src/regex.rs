@@ -42,7 +42,7 @@ pub fn state_scan_tokens(
     fsm_transitions: &HashMap<(State, TransitionKey), State>,
     fsm_initial: State,
     fsm_finals: &HashSet<State>,
-    vocabulary: &[(String, Vec<TokenId>)],
+    vocabulary: &Vocabulary,
     vocabulary_transition_keys: &[Vec<TransitionKey>],
     start_state: State,
 ) -> HashSet<(TokenId, State)> {
@@ -110,7 +110,7 @@ pub fn get_token_transition_keys(
 pub fn get_vocabulary_transition_keys(
     alphabet_symbol_mapping: &HashMap<String, TransitionKey>,
     alphabet_anything_value: TransitionKey,
-    vocabulary: &[(String, Vec<TokenId>)],
+    vocabulary: &Vocabulary,
     frozen_tokens: &HashSet<String>,
 ) -> Vec<Vec<TransitionKey>> {
     let mut vocab_transition_keys: Vec<Vec<TransitionKey>> = Vec::new();

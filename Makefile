@@ -14,11 +14,25 @@ venv:
 
 # Setup the active virtual environment for development.
 setup:
+	cargo install --force cargo-watch
+	cargo install --force cargo-run-script
 	pip install -e .[test]
 
 # Build the latest changes in the rust bindings and install it to the active environment.
 install:
 	pip install -e .
+
+# Build the latest changes in the rust bindings in release mode and install it to the active environment.
+install-release:
+	pip install .
+
+# Watches changes in the rust bindings and updates the python extension in place.
+watch-extension:
+	cargo watch -x 'run-script build-python-extension' -w src -w Cargo.toml
+
+# Watches changes in the rust bindings in release mode and updates the python extension in place.
+watch-extension-release:
+	cargo watch -x 'run-script build-python-extension-release' -w src -w Cargo.toml
 
 # Run pre-commit checks.
 pcc:

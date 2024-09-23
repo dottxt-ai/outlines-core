@@ -14,6 +14,7 @@ venv:
 
 # Setup the active virtual environment for development.
 setup:
+	pre-commit install
 	cargo install --force cargo-watch
 	cargo install --force cargo-run-script
 	pip install -e .[test]

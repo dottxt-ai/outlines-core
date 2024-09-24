@@ -94,7 +94,7 @@ pub fn state_scan_tokens_py(
     fsm_initial: State,
     fsm_finals: HashSet<State>,
     vocabulary: Vec<(String, Vec<TokenId>)>,
-    vocabulary_transition_keys: Vec<Vec<TransitionKey>>,
+    vocabulary_transition_keys: HashMap<String, Vec<TransitionKey>>,
     start_state: State,
 ) -> PyResult<HashSet<(TokenId, State)>> {
     let vocabulary = Vocabulary::from_iter(vocabulary);
@@ -131,7 +131,7 @@ pub fn get_vocabulary_transition_keys_py(
     alphabet_anything_value: TransitionKey,
     vocabulary: Vec<(String, Vec<TokenId>)>,
     frozen_tokens: HashSet<String>,
-) -> PyResult<Vec<Vec<TransitionKey>>> {
+) -> PyResult<HashMap<String, Vec<TransitionKey>>> {
     let vocabulary = Vocabulary::from_iter(vocabulary);
     Ok(get_vocabulary_transition_keys(
         &alphabet_symbol_mapping,

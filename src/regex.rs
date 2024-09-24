@@ -43,16 +43,13 @@ pub fn state_scan_tokens(
     fsm_initial: State,
     fsm_finals: &HashSet<State>,
     vocabulary: &Vocabulary,
-    vocabulary_transition_keys: &[Vec<TransitionKey>],
+    vocabulary_transition_keys: &HashMap<Token, Vec<TransitionKey>>,
     start_state: State,
 ) -> HashSet<(TokenId, State)> {
     let mut res = HashSet::new();
 
-    for (vocab_item, token_transition_keys) in
-        vocabulary.iter().zip(vocabulary_transition_keys.iter())
-    {
-        let token_ids: Vec<TokenId> = vocab_item.1.clone();
-
+    for (token, token_ids) in vocabulary.iter() {
+        let token_transition_keys = &vocabulary_transition_keys[token];
         let state_seq = walk_fsm(
             fsm_transitions,
             fsm_initial,
@@ -66,7 +63,7 @@ pub fn state_scan_tokens(
             continue;
         }
 
-        for &token_id in &token_ids {
+        for &token_id in token_ids {
             res.insert((token_id, *state_seq.last().unwrap()));
         }
     }
@@ -112,8 +109,8 @@ pub fn get_vocabulary_transition_keys(
     alphabet_anything_value: TransitionKey,
     vocabulary: &Vocabulary,
     frozen_tokens: &HashSet<String>,
-) -> Vec<Vec<TransitionKey>> {
-    let mut vocab_transition_keys: Vec<Vec<TransitionKey>> = Vec::new();
+) -> HashMap<Token, Vec<TransitionKey>> {
+    let mut vocab_transition_keys = HashMap::new();
 
     for item in vocabulary.iter() {
         let token_str = item.0.clone();
@@ -137,7 +134,7 @@ pub fn get_vocabulary_transition_keys(
             );
         }
 
-        vocab_transition_keys.push(token_transition_keys);
+        vocab_transition_keys.insert(token_str, token_transition_keys);
     }
 
     vocab_transition_keys

@@ -434,17 +434,13 @@ def test_token_trans_keys_identical():
     interegular_fsm = regex_pattern.to_fsm().reduce()
     regex_fsm, _ = make_deterministic_fsm(interegular_fsm)
     vocabulary, _ = reduced_vocabulary(tokenizer)
-    token_trans_keys = get_vocabulary_transition_keys(
+    token_str_to_tranition_keys = get_vocabulary_transition_keys(
         regex_fsm.fsm_info.alphabet_symbol_mapping,
         regex_fsm.fsm_info.alphabet_anything_value,
         list(vocabulary.items()),
         frozenset(),
     )
 
-    token_str_to_tranition_keys = {
-        token_str: trans_key_seq
-        for (token_str, _), trans_key_seq in zip(vocabulary.items(), token_trans_keys)
-    }
     # `a` and `b` both are workable, but `z` has distinct transition rules
     assert interegular_fsm.accepts("zaz")
     assert interegular_fsm.accepts("zbz")
@@ -470,22 +466,17 @@ def test_token_trans_keys_walk_fsm():
     interegular_fsm = regex_pattern.to_fsm().reduce()
     regex_fsm, _ = make_deterministic_fsm(interegular_fsm)
     vocabulary, _ = reduced_vocabulary(tokenizer)
-    token_trans_keys = get_vocabulary_transition_keys(
+    token_str_to_tranition_keys = get_vocabulary_transition_keys(
         regex_fsm.fsm_info.alphabet_symbol_mapping,
         regex_fsm.fsm_info.alphabet_anything_value,
         list(vocabulary.items()),
         frozenset(),
     )
 
-    token_str_trans_key_seq = {
-        token_str: trans_key_seq
-        for (token_str, _), trans_key_seq in zip(vocabulary.items(), token_trans_keys)
-    }
-
     # verify initial state valid only for "ab" and "ac" using transition key seq
     token_acceptance = {"ab": True, "ac": True, "az": False}
     for token, should_accept in token_acceptance.items():
-        token_trans_key_seq = token_str_trans_key_seq[token]
+        token_trans_key_seq = token_str_to_tranition_keys[token]
         state_seq = _walk_fsm(
             regex_fsm.fsm_info.transitions,
             regex_fsm.fsm_info.initial,

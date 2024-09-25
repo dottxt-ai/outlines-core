@@ -26,8 +26,7 @@ impl Vocabulary {
 impl Vocabulary {
     /// Inserts a token to the vocabulary with the specified identifier.
     pub fn insert(mut self, token: impl Into<Token>, id: TokenId) -> Vocabulary {
-        let token = token.into();
-        self.0.entry(token).or_default().push(id);
+        self.insert_in_place(token, id);
         self
     }
 
@@ -36,11 +35,27 @@ impl Vocabulary {
         mut self,
         tokens_and_ids: impl IntoIterator<Item = (T, I)>,
     ) -> Vocabulary {
+        self.extend_in_place(tokens_and_ids);
+        self
+    }
+}
+
+impl Vocabulary {
+    /// Inserts a token to the vocabulary with the specified identifier, in place.
+    pub fn insert_in_place(&mut self, token: impl Into<Token>, id: TokenId) {
+        let token = token.into();
+        self.0.entry(token).or_default().push(id);
+    }
+
+    /// Extends the vocabulary with tokens and their identifiers, in place.
+    pub fn extend_in_place<T: Into<Token>, I: IntoIterator<Item = TokenId>>(
+        &mut self,
+        tokens_and_ids: impl IntoIterator<Item = (T, I)>,
+    ) {
         for (token, ids) in tokens_and_ids.into_iter() {
             let token = token.into();
             self.0.entry(token).or_default().extend(ids);
         }
-        self
     }
 }
 

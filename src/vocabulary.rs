@@ -38,9 +38,7 @@ impl Vocabulary {
     ) -> Vocabulary {
         for (token, ids) in tokens_and_ids.into_iter() {
             let token = token.into();
-            for id in ids {
-                self = self.insert(token.clone(), id);
-            }
+            self.0.entry(token).or_default().extend(ids);
         }
         self
     }

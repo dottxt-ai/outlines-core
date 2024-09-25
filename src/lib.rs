@@ -10,4 +10,8 @@ pub use primitives::{State, Token, TokenId, TransitionKey};
 mod vocabulary;
 pub use vocabulary::Vocabulary;
 
-pub(crate) use {std::collections::HashMap, std::ops::Deref};
+pub(crate) use std::{
+    collections::HashMap,
+    fmt::{self, Display},
+    ops::Deref,
+};

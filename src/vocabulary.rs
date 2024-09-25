@@ -52,6 +52,19 @@ impl Deref for Vocabulary {
     }
 }
 
+impl Display for Vocabulary {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for (index, (token, token_ids)) in self.iter().enumerate() {
+            if index != (self.len() - 1) {
+                writeln!(f, "{:?} -> {:?}", token, token_ids)?;
+            } else {
+                write!(f, "{:?} -> {:?}", token, token_ids)?;
+            }
+        }
+        Ok(())
+    }
+}
+
 impl<T, I> FromIterator<(T, I)> for Vocabulary
 where
     T: Into<Token>,

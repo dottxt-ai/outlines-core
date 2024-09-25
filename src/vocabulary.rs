@@ -8,10 +8,10 @@ use crate::*;
 /// # use outlines_core::*;
 /// #
 /// let vocabulary = Vocabulary::new()
-///     .insert(0, "blah")
-///     .insert(1, "1a")
-///     .insert(2, "2")
-///     .insert(3, "0");
+///     .insert("blah", 0)
+///     .insert("1a", 1)
+///     .insert("2", 2)
+///     .insert("0", 3);
 /// ```
 #[derive(Clone, Debug, Default)]
 pub struct Vocabulary(HashMap<Token, Vec<TokenId>>);
@@ -25,7 +25,7 @@ impl Vocabulary {
 
 impl Vocabulary {
     /// Inserts a token to the vocabulary with the specified identifier.
-    pub fn insert(mut self, id: TokenId, token: impl Into<Token>) -> Vocabulary {
+    pub fn insert(mut self, token: impl Into<Token>, id: TokenId) -> Vocabulary {
         let token = token.into();
         self.0.entry(token).or_default().push(id);
         self
@@ -39,7 +39,7 @@ impl Vocabulary {
         for (token, ids) in tokens_and_ids.into_iter() {
             let token = token.into();
             for id in ids {
-                self = self.insert(id, token.clone());
+                self = self.insert(token.clone(), id);
             }
         }
         self
@@ -71,10 +71,10 @@ mod tests {
     #[test]
     fn insert() {
         let vocabulary = Vocabulary::new()
-            .insert(0, "blah")
-            .insert(1, "1a")
-            .insert(2, "2")
-            .insert(3, "0");
+            .insert("blah", 0)
+            .insert("1a", 1)
+            .insert("2", 2)
+            .insert("0", 3);
 
         assert_eq!(vocabulary.len(), 4);
         assert_eq!(vocabulary["blah"], &[0]);

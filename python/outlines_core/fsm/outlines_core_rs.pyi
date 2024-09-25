@@ -64,3 +64,25 @@ STRING_INNER: str
 TIME: str
 UUID: str
 WHITESPACE: str
+
+class Vocabulary:
+    """
+    Vocabulary of an LLM.
+    """
+
+    @staticmethod
+    def from_dict(map: Dict[str, List[int]]) -> "Vocabulary":
+        """
+        Creates a vocabulary from a dictionary of tokens to token IDs.
+        """
+        ...
+    def __repr__(self) -> str:
+        """
+        Gets the debug string representation of the vocabulary.
+        """
+        ...
+    def __str__(self) -> str:
+        """
+        Gets the string representation of the vocabulary.
+        """
+        ...

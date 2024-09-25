@@ -197,6 +197,25 @@ pub fn create_fsm_index_end_to_end_py<'py>(
     Ok(states_to_token_subsets)
 }
 
+#[pyclass(name = "Vocabulary")]
+pub struct PyVocabulary(Vocabulary);
+
+#[pymethods]
+impl PyVocabulary {
+    #[staticmethod]
+    fn from_dict(map: HashMap<Token, Vec<TokenId>>) -> PyVocabulary {
+        PyVocabulary(Vocabulary::from_iter(map))
+    }
+
+    fn __repr__(&self) -> String {
+        format!("{:#?}", self.0)
+    }
+
+    fn __str__(&self) -> String {
+        format!("{}", self.0)
+    }
+}
+
 #[pymodule]
 fn outlines_core_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(walk_fsm_py, m)?)?;
@@ -221,6 +240,8 @@ fn outlines_core_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     m.add_function(wrap_pyfunction!(build_regex_from_schema_py, m)?)?;
     m.add_function(wrap_pyfunction!(to_regex_py, m)?)?;
+
+    m.add_class::<PyVocabulary>()?;
 
     Ok(())
 }

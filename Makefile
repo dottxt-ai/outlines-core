@@ -14,10 +14,10 @@ venv:
 
 # Setup the active virtual environment for development.
 setup:
+	pip install -e .[test]
 	pre-commit install
 	cargo install --force cargo-watch
 	cargo install --force cargo-run-script
-	pip install -e .[test]
 
 # Build the latest changes in the rust bindings and install it to the active environment.
 install:

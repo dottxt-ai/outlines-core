@@ -1,6 +1,6 @@
 import interegular
-import numpy as np
 import pytest
+from outlines_core.fsm.outlines_core_rs import Vocabulary
 from outlines_core.fsm.regex import (
     BetterAlphabet,
     BetterFSM,
@@ -182,7 +182,7 @@ def test_create_fsm_index_end_to_end():
     regex_pattern = interegular.parse_pattern(regex_str)
     regex_fsm, _ = make_deterministic_fsm(regex_pattern.to_fsm().reduce())
 
-    vocabulary = {
+    tokens_to_token_ids = {
         "blah": [0],
         "1a": [1],
         "2": [2],
@@ -190,15 +190,9 @@ def test_create_fsm_index_end_to_end():
         "<EOS>": [4],
     }
 
-    vocabulary_nb = []
-    for token_tuple, token_ids in vocabulary.items():
-        token = merge_symbols(token_tuple)
-        token_ids_np = np.fromiter(token_ids, dtype=np.dtype("int64"))
-        vocabulary_nb.append((token, token_ids_np))
-
     res = create_fsm_index_end_to_end(
         regex_fsm.fsm_info,
-        vocabulary_nb,
+        Vocabulary.from_dict(tokens_to_token_ids),
         frozenset(),
     )
 
@@ -212,7 +206,7 @@ def test_create_fsm_index_end_to_end_multi_byte():
     regex_fsm, _ = make_deterministic_fsm(regex_pattern.to_fsm().reduce())
     byte_fsm = make_byte_level_better_fsm(regex_fsm, keep_utf8=True)
 
-    vocabulary = {
+    tokens_to_token_ids = {
         "blah": [0],
         "😈a": [1],
         "😇": [2],
@@ -224,15 +218,9 @@ def test_create_fsm_index_end_to_end_multi_byte():
         "<EOS>": [8],
     }
 
-    vocabulary_nb = []
-    for token_tuple, token_ids in vocabulary.items():
-        token_tuple_np = merge_symbols(token_tuple)
-        token_ids_np = np.fromiter(token_ids, dtype=np.dtype("int64"))
-        vocabulary_nb.append((token_tuple_np, token_ids_np))
-
     res = create_fsm_index_end_to_end(
         byte_fsm.fsm_info,
-        vocabulary_nb,
+        Vocabulary.from_dict(tokens_to_token_ids),
         frozenset(),
     )
 
@@ -433,11 +421,11 @@ def test_token_trans_keys_identical():
     regex_pattern = interegular.parse_pattern(pattern)
     interegular_fsm = regex_pattern.to_fsm().reduce()
     regex_fsm, _ = make_deterministic_fsm(interegular_fsm)
-    vocabulary, _ = reduced_vocabulary(tokenizer)
+    tokens_to_token_ids, _ = reduced_vocabulary(tokenizer)
     token_str_to_tranition_keys = get_vocabulary_transition_keys(
         regex_fsm.fsm_info.alphabet_symbol_mapping,
         regex_fsm.fsm_info.alphabet_anything_value,
-        list(vocabulary.items()),
+        Vocabulary.from_dict(tokens_to_token_ids),
         frozenset(),
     )
 
@@ -465,11 +453,11 @@ def test_token_trans_keys_walk_fsm():
     regex_pattern = interegular.parse_pattern(pattern)
     interegular_fsm = regex_pattern.to_fsm().reduce()
     regex_fsm, _ = make_deterministic_fsm(interegular_fsm)
-    vocabulary, _ = reduced_vocabulary(tokenizer)
+    tokens_to_token_ids, _ = reduced_vocabulary(tokenizer)
     token_str_to_tranition_keys = get_vocabulary_transition_keys(
         regex_fsm.fsm_info.alphabet_symbol_mapping,
         regex_fsm.fsm_info.alphabet_anything_value,
-        list(vocabulary.items()),
+        Vocabulary.from_dict(tokens_to_token_ids),
         frozenset(),
     )
 
@@ -531,8 +519,8 @@ def test_reduced_vocabulary_with_byte_tokens():
         def convert_token_to_string(self, token):
             return b"\xef\xbf\xbd".decode()
 
-    reduced_vocab = reduced_vocabulary(MockTokenizer())
+    tokens_to_token_ids = reduced_vocabulary(MockTokenizer())
 
     # See fsm.regex.get_token_transition_keys()
     # FSM transition keys represents bytes as <null_prefix><hex_byte>
-    assert reduced_vocab[0] == {"string": [1], "\x00A1": [2]}
+    assert tokens_to_token_ids[0] == {"string": [1], "\x00A1": [2]}

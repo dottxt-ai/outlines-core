@@ -25,6 +25,7 @@ from interegular.fsm import (
 
 from .outlines_core_rs import (  # noqa: F401
     FSMInfo,
+    Vocabulary,
     _walk_fsm,
     create_fsm_index_end_to_end,
     get_token_transition_keys,
@@ -470,11 +471,11 @@ def create_fsm_index_tokenizer(
 
         `fsm` needs to be deterministically ordered so that future caching makes sense.
     """
-    vocabulary, empty_token_ids = reduced_vocabulary(tokenizer)
+    tokens_to_token_ids, empty_token_ids = reduced_vocabulary(tokenizer)
 
     states_to_token_subsets = create_fsm_index_end_to_end(
         fsm.fsm_info,
-        list(vocabulary.items()),
+        Vocabulary.from_dict(tokens_to_token_ids),
         frozenset(frozen_tokens) if frozen_tokens is not None else frozenset(),
     )
 

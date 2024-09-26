@@ -80,6 +80,12 @@ impl Display for Vocabulary {
     }
 }
 
+impl From<HashMap<Token, Vec<TokenId>>> for Vocabulary {
+    fn from(map: HashMap<Token, Vec<TokenId>>) -> Vocabulary {
+        Vocabulary(map)
+    }
+}
+
 impl<T, I> FromIterator<(T, I)> for Vocabulary
 where
     T: Into<Token>,

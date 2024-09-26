@@ -200,7 +200,7 @@ pub struct PyVocabulary(Vocabulary);
 impl PyVocabulary {
     #[staticmethod]
     fn from_dict(map: HashMap<Token, Vec<TokenId>>) -> PyVocabulary {
-        PyVocabulary(Vocabulary::from_iter(map))
+        PyVocabulary(Vocabulary::from(map))
     }
 
     fn __repr__(&self) -> String {

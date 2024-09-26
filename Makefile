@@ -44,7 +44,7 @@ test:
 	cargo test "$(TARGET)"
 
 # Run python tests.
-pytest: install
+pytest:
 	pytest -svv tests -k "$(TARGET)" \
 		--cov=outlines_core \
 		--cov-report=term-missing:skip-covered

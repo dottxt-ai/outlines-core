@@ -53,6 +53,7 @@ test = [
     "transformers",
     "pillow",
     "asv",
+    "setuptools-rust",
 ]
 
 [project.urls]

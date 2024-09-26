@@ -319,10 +319,6 @@ pub fn parse_empty_object(whitespace_pattern: &str, full_schema: &Value) -> Resu
     Ok(wrapped_regexes.join("|"))
 }
 
-////////////////////////////
-/// Parsing specific types
-///////////////////////////
-
 fn parse_boolean_type() -> Result<String> {
     let format_type = types::JsonType::Boolean;
     Ok(format_type.to_regex().to_string())

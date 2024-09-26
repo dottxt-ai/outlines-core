@@ -32,7 +32,7 @@ def state_scan_tokens(
     fsm_transitions: Dict[Tuple[int, int], int],
     fsm_initial: int,
     fsm_finals: Set[int],
-    vocabulary: List[Tuple[str, List[int]]],
+    vocabulary: Vocabulary,
     vocabulary_transition_keys: Dict[str, List[int]],
     start_state: int,
 ) -> Set[Tuple[int, int]]: ...
@@ -44,12 +44,12 @@ def get_token_transition_keys(
 def get_vocabulary_transition_keys(
     alphabet_symbol_mapping: Dict[str, int],
     alphabet_anything_value: int,
-    vocabulary: List[Tuple[str, List[int]]],
+    vocabulary: Vocabulary,
     frozen_tokens: Set[str],
 ) -> Dict[str, List[int]]: ...
 def create_fsm_index_end_to_end(
     fsm_info: FSMInfo,
-    vocabulary: List[Tuple[str, List[int]]],
+    vocabulary: Vocabulary,
     frozen_tokens: frozenset[str],
 ) -> Dict[int, Dict[int, int]]: ...
 

@@ -93,16 +93,15 @@ pub fn state_scan_tokens_py(
     fsm_transitions: HashMap<(State, TransitionKey), State>,
     fsm_initial: State,
     fsm_finals: HashSet<State>,
-    vocabulary: Vec<(String, Vec<TokenId>)>,
+    vocabulary: &PyVocabulary,
     vocabulary_transition_keys: HashMap<String, Vec<TransitionKey>>,
     start_state: State,
 ) -> PyResult<HashSet<(TokenId, State)>> {
-    let vocabulary = Vocabulary::from_iter(vocabulary);
     Ok(state_scan_tokens(
         &fsm_transitions,
         fsm_initial,
         &fsm_finals,
-        &vocabulary,
+        &vocabulary.0,
         &vocabulary_transition_keys,
         start_state,
     ))
@@ -129,14 +128,13 @@ pub fn get_token_transition_keys_py(
 pub fn get_vocabulary_transition_keys_py(
     alphabet_symbol_mapping: HashMap<String, TransitionKey>,
     alphabet_anything_value: TransitionKey,
-    vocabulary: Vec<(String, Vec<TokenId>)>,
+    vocabulary: &PyVocabulary,
     frozen_tokens: HashSet<String>,
 ) -> PyResult<HashMap<String, Vec<TransitionKey>>> {
-    let vocabulary = Vocabulary::from_iter(vocabulary);
     Ok(get_vocabulary_transition_keys(
         &alphabet_symbol_mapping,
         alphabet_anything_value,
-        &vocabulary,
+        &vocabulary.0,
         &frozen_tokens,
     ))
 }
@@ -146,11 +144,9 @@ pub fn get_vocabulary_transition_keys_py(
 pub fn create_fsm_index_end_to_end_py<'py>(
     py: Python<'py>,
     fsm_info: &FSMInfo,
-    vocabulary: Vec<(String, Vec<TokenId>)>,
+    vocabulary: &PyVocabulary,
     frozen_tokens: HashSet<String>,
 ) -> PyResult<Bound<'py, PyDict>> {
-    let vocabulary = Vocabulary::from_iter(vocabulary);
-
     let states_to_token_subsets = PyDict::new_bound(py);
     let mut seen: HashSet<State> = HashSet::new();
     let mut next_states: HashSet<State> = HashSet::from_iter(vec![fsm_info.initial]);
@@ -158,7 +154,7 @@ pub fn create_fsm_index_end_to_end_py<'py>(
     let vocabulary_transition_keys = get_vocabulary_transition_keys(
         &fsm_info.alphabet_symbol_mapping,
         fsm_info.alphabet_anything_value,
-        &vocabulary,
+        &vocabulary.0,
         &frozen_tokens,
     );
 
@@ -170,7 +166,7 @@ pub fn create_fsm_index_end_to_end_py<'py>(
             &fsm_info.transitions,
             fsm_info.initial,
             &fsm_info.finals,
-            &vocabulary,
+            &vocabulary.0,
             &vocabulary_transition_keys,
             start_state,
         );

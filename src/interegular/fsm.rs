@@ -734,9 +734,9 @@ mod tests {
         assert!(fsm.accepts(&['a', 'b', 'b']));
         assert!(fsm.accepts(&['a', 'b', 'b', 'b']));
 
-        assert!(!fsm.accepts(&['a', 'a', 'a']));
-        assert!(!fsm.accepts(&['b']));
-        assert!(!fsm.accepts(&['a', 'b', 'a', 'b', 'b']));
+        assert!(!reduced.accepts(&['a', 'a', 'a']));
+        assert!(!reduced.accepts(&['b']));
+        assert!(!reduced.accepts(&['a', 'b', 'a', 'b', 'b']));
     }
 
     #[test]

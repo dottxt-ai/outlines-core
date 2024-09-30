@@ -2,7 +2,7 @@
 TARGET ?=
 
 .ONESHELL:
-.PHONY:
+.PHONY: venv setup install install-release build-extension-debug build-extension-release watch-extension watch-extension-release pcc test test-rust test-python bench pybench doc dist clean check-clean-git
 .SILENT:
 
 # Create a fresh virtual environment with the latest pip.
@@ -27,6 +27,14 @@ install:
 install-release:
 	pip install .
 
+# Build only the Rust Python extension (in debug mode)
+build-extension-debug:
+	python setup.py build_rust --inplace --debug
+
+# Build only the Rust Python extension (in release mode)
+build-extension-release:
+	python setup.py build_rust --inplace --release
+
 # Watches changes in the rust bindings and updates the python extension in place.
 watch-extension:
 	cargo watch -x 'run-script build-python-extension' -w src -w Cargo.toml
@@ -39,12 +47,14 @@ watch-extension-release:
 pcc:
 	pre-commit run --all-files
 
+test: test-python test-rust
+
 # Run rust tests.
-test:
+test-rust:
 	cargo test "$(TARGET)"
 
 # Run python tests.
-pytest:
+test-python: build-extension-debug
 	pytest -svv tests -k "$(TARGET)" \
 		--cov=outlines_core \
 		--cov-report=term-missing:skip-covered
@@ -68,10 +78,6 @@ endif
 # Build the documentation of the rust crate and open it.
 doc:
 	cargo doc --document-private-items --open
-
-# Build the documentation of the python package and open it.
-pydoc:
-	echo "Unable to perform the action as it's not implemented yet."
 
 # Create wheels for distribution.
 dist:

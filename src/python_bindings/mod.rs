@@ -467,6 +467,10 @@ pub struct InteregularFSMInfo {
     states: HashSet<u32>,
     #[pyo3(get)]
     map: HashMap<u32, HashMap<u32, u32>>,
+    #[pyo3(get)]
+    symbol_mapping: HashMap<char, usize>,
+    #[pyo3(get)]
+    by_transition: HashMap<usize, Vec<char>>,
 }
 
 use crate::interegular::fsm::Alphabet;
@@ -475,7 +479,7 @@ use crate::interegular::patterns::Flag;
 
 #[pyfunction(name = "parse_pattern_to_fsm")]
 #[pyo3(text_signature = "(pattern: &str)")]
-pub fn parse_pattern_to_fsm_internal(py: Python, pattern: &str) -> PyResult<InteregularFSMInfo> {
+pub fn parse_pattern_to_fsm_internal(pattern: &str) -> PyResult<InteregularFSMInfo> {
     let regex_element =
         parse_pattern(pattern).map_err(|_| PyValueError::new_err("Invalid pattern"))?;
 
@@ -493,14 +497,15 @@ pub fn parse_pattern_to_fsm_internal(py: Python, pattern: &str) -> PyResult<Inte
     my_new_symbol_mapping.insert('\0', TransitionKey::Symbol(0)); // add \0 as the anything symbol at 0
 
     let mut counter = 1;
-    for (symbol, transition_key) in patterns_alphabet.symbol_mapping.iter() {
-        let transition_key_inc_by_one = TransitionKey::Symbol(counter);
-        my_new_symbol_mapping.insert(symbol.clone(), transition_key_inc_by_one);
-        counter += 1;
+    for (symbol, _) in patterns_alphabet.symbol_mapping.iter() {
+        if *symbol != '\0' {
+            my_new_symbol_mapping.insert(*symbol, TransitionKey::Symbol(counter));
+            counter += 1;
+        }
     }
-    let alphabet = Alphabet::new(my_new_symbol_mapping);
 
-    let fsm_info = regex_element.to_fsm(Some(alphabet), prefix_postfix, flags);
+    let alphabet = Alphabet::new(my_new_symbol_mapping);
+    let fsm_info = regex_element.to_fsm(Some(alphabet.clone()), prefix_postfix, flags);
 
     // convert into u32 for python
     let map: HashMap<u32, HashMap<u32, u32>> = fsm_info
@@ -516,11 +521,25 @@ pub fn parse_pattern_to_fsm_internal(py: Python, pattern: &str) -> PyResult<Inte
         })
         .collect();
 
+    let python_symbol_mapping: HashMap<char, usize> = alphabet
+        .symbol_mapping
+        .iter()
+        .map(|(k, v)| (*k, (*v).into()))
+        .collect();
+
+    let python_by_transition: HashMap<usize, Vec<char>> = alphabet
+        .by_transition
+        .iter()
+        .map(|(k, v)| (usize::from(*k), v.iter().map(|&c| c).collect()))
+        .collect();
+
     Ok(InteregularFSMInfo {
         initial: fsm_info.initial.into(),
         finals: fsm_info.finals.iter().map(|f| (*f).into()).collect(),
         states: fsm_info.states.iter().map(|s| (*s).into()).collect(),
         map,
+        symbol_mapping: python_symbol_mapping,
+        by_transition: python_by_transition,
     })
 }
 

@@ -121,40 +121,74 @@ def create_states_mapping(
     tokenizer: "Tokenizer",
     regex_parser: Callable[[str], interegular.Pattern] = interegular.parse_pattern,
     frozen_tokens: List[str] = [],
-) -> Tuple[Dict[int, Dict[int, int]], Set[int], set]:
-    """Create the variables related to the mapping between states and tokens
+) -> Tuple[Dict[int, Dict[int, int]], Set[int], Set[int]]:
+    """Create the variables related to the mapping between states and tokens from a regex string.
+
     The parameters of the function are used for caching purpose.
 
     Parameters
     ----------
-    regex_string: (`str`):
+    regex_string:
         The regular expression string to generate a states mapping for.
-    tokenizer: (`Tokenizer`):
+    tokenizer:
         The model's tokenizer.
-    regex_parser: (`Callable[[str], interegular.Pattern]`, *optional*):
+    regex_parser:
         A function that parses a regex string into an `interegular` Pattern object.
-    frozen_tokens: (`List[str]`, *optional*):
+    frozen_tokens:
         A list of tokens that should be kept as-is when expanding the token-level FSM
         into a byte-level FSM. Defaults to an empty list.
 
     Returns
     -------
-    states_to_token_maps: (`Dict[int, Dict[int, int]]`):
+    states_to_token_maps:
         A mapping from states to a mapping from token ids originating from that state
         to the next state to transition to given that token. The structure is as follows:
         (origin_state -> (token_id -> next_state))
-    empty_token_ids: (`Set[int]`):
+    empty_token_ids:
         A set of token ids that correspond to empty strings.
-    final_states: (`set`):
+    final_states:
         A set of final states in the FSM.
     """
-    regex_pattern = regex_parser(regex_string)
+    regex_fsm = regex_parser(regex_string).to_fsm()
+    return create_states_mapping_from_fsm(regex_fsm, tokenizer, frozen_tokens)
+
+
+def create_states_mapping_from_fsm(
+    fsm: interegular.fsm.FSM,
+    tokenizer: "Tokenizer",
+    frozen_tokens: List[str] = [],
+) -> Tuple[Dict[int, Dict[int, int]], Set[int], Set[int]]:
+    """Create the variables related to the mapping between states and tokens from an FSM.
+
+    The parameters of the function are used for caching purpose.
+
+    Parameters
+    ----------
+    fsm:
+        An FSM for the regular expression.
+    tokenizer:
+        The model's tokenizer.
+    frozen_tokens:
+        A list of tokens that should be kept as-is when expanding the token-level FSM
+        into a byte-level FSM. Defaults to an empty list.
+
+    Returns
+    -------
+    states_to_token_maps:
+        A mapping from states to a mapping from token ids originating from that state
+        to the next state to transition to given that token. The structure is as follows:
+        (origin_state -> (token_id -> next_state))
+    empty_token_ids:
+        A set of token ids that correspond to empty strings.
+    final_states:
+        A set of final states in the FSM.
+    """
     byte_fsm = make_byte_level_fsm(
-        regex_pattern.to_fsm().reduce(), keep_utf8=True, frozen_tokens=frozen_tokens
+        fsm.reduce(), keep_utf8=True, frozen_tokens=frozen_tokens
     )
     regex_fsm, _ = make_deterministic_fsm(byte_fsm)
     states_to_token_maps, empty_token_ids = create_fsm_index_tokenizer(
-        regex_fsm, tokenizer, frozen_tokens=frozen_tokens
+        regex_fsm, tokenizer
     )
 
     # We make sure that it is possible to generate strings in the language
@@ -175,15 +209,79 @@ class RegexGuide(Guide):
 
     initial_state = 0
 
-    def __init__(self, regex_string: str, tokenizer: "Tokenizer"):
-        (
-            self.states_to_token_maps,
-            self.empty_token_ids,
-            fsm_finals,
-        ) = create_states_mapping(regex_string, tokenizer)
-        self.eos_token_id = tokenizer.eos_token_id
+    def __init__(
+        self,
+        states_to_token_maps,
+        empty_token_ids,
+        fsm_finals,
+        eos_token_id,
+        states_to_token_mask,
+    ):
+        self.states_to_token_maps = states_to_token_maps
+        self.empty_token_ids = empty_token_ids
+        self.eos_token_id = eos_token_id
         self.final_states = fsm_finals | {-1}
-        self._cache_state_to_token_tensor()
+        self.states_to_token_mask = states_to_token_mask
+
+    @classmethod
+    def from_regex(
+        cls,
+        regex_string: str,
+        tokenizer: "Tokenizer",
+        _create_states_mapping=create_states_mapping,
+        device=None,
+        regex_parser: Callable[[str], interegular.Pattern] = interegular.parse_pattern,
+        frozen_tokens: List[str] = [],
+    ):
+        (
+            states_to_token_maps,
+            empty_token_ids,
+            fsm_finals,
+        ) = _create_states_mapping(
+            regex_string,
+            tokenizer,
+            regex_parser=regex_parser,
+            frozen_tokens=frozen_tokens,
+        )
+        states_to_token_mask = {
+            state: torch.tensor(list(next_tokens_to_end_states.keys()), device=device)
+            for state, next_tokens_to_end_states in states_to_token_maps.items()
+        }
+        return cls(
+            states_to_token_maps,
+            empty_token_ids,
+            fsm_finals,
+            tokenizer.eos_token_id,
+            states_to_token_mask,
+        )
+
+    @classmethod
+    def from_interegular_fsm(
+        cls,
+        interegular_fsm: interegular.fsm.FSM,
+        tokenizer: "Tokenizer",
+        _create_states_mapping_from_fsm=create_states_mapping_from_fsm,
+        device=None,
+        frozen_tokens: List[str] = [],
+    ):
+        (
+            states_to_token_maps,
+            empty_token_ids,
+            fsm_finals,
+        ) = _create_states_mapping_from_fsm(
+            interegular_fsm, tokenizer, frozen_tokens=frozen_tokens
+        )
+        states_to_token_mask = {
+            state: torch.tensor(list(next_tokens_to_end_states.keys()), device=device)
+            for state, next_tokens_to_end_states in states_to_token_maps.items()
+        }
+        return cls(
+            states_to_token_maps,
+            empty_token_ids,
+            fsm_finals,
+            tokenizer.eos_token_id,
+            states_to_token_mask,
+        )
 
     def get_next_instruction(self, state: int) -> Instruction:
         """Return the next instruction for guided generation.
@@ -241,55 +339,6 @@ class RegexGuide(Guide):
             next_state = -1
 
         return next_state
-
-    @classmethod
-    def from_interegular_fsm(
-        cls, interegular_fsm: interegular.fsm.FSM, tokenizer: "Tokenizer"
-    ):
-        from_interegular_instance = cls.__new__(cls)
-
-        def create_states_mapping_from_interegular_fsm(
-            fsm: interegular.fsm.FSM,
-        ) -> Tuple[dict, set]:
-            """Create the variables related to the mapping between states and tokens
-            The parameters of the function are used for caching purpose
-            """
-            byte_fsm = make_byte_level_fsm(fsm.reduce(), keep_utf8=True)
-            regex_fsm, _ = make_deterministic_fsm(byte_fsm)
-            states_to_token_maps, empty_token_ids = create_fsm_index_tokenizer(
-                regex_fsm, tokenizer
-            )
-
-            # We make sure that it is possible to generate strings in the language
-            # of the regular expression with the tokens present in the model's
-            # vocabulary.
-            if not any(
-                regex_fsm.finals.intersection(v.values())
-                for v in states_to_token_maps.values()
-            ):
-                raise ValueError(
-                    "The vocabulary does not allow us to build a sequence that matches the input regex"
-                )
-
-            return states_to_token_maps, empty_token_ids
-
-        (
-            from_interegular_instance.states_to_token_maps,
-            from_interegular_instance.empty_token_ids,
-        ) = create_states_mapping_from_interegular_fsm(interegular_fsm)
-        from_interegular_instance.eos_token_id = tokenizer.eos_token_id
-        from_interegular_instance._cache_state_to_token_tensor()
-        return from_interegular_instance
-
-    def _cache_state_to_token_tensor(self):
-        """
-        cache state -> token int tensor
-        this increases performance of mask construction substantially
-        """
-        self.states_to_token_mask = {
-            state: torch.tensor(list(next_tokens_to_end_states.keys()))
-            for state, next_tokens_to_end_states in self.states_to_token_maps.items()
-        }
 
     def is_final_state(self, state: int) -> bool:
         """Determine whether the current state of the guide is a final state."""

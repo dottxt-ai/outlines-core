@@ -1,3 +1,4 @@
+import interegular
 import pytest
 from outlines_core.fsm.guide import Generate, RegexGuide, StopAtEOSGuide, Write
 
@@ -42,10 +43,10 @@ def test_regex_vocabulary_error():
     regex_str = "[1-9]"
 
     with pytest.raises(ValueError, match="The vocabulary"):
-        RegexGuide(regex_str, MockTokenizer())
+        RegexGuide.from_regex(regex_str, MockTokenizer())
 
 
-def test_regex():
+def test_from_regex():
     class MockTokenizer:
         vocabulary = {"1": 1, "a": 2, "eos": 3}
         special_tokens = {"eos"}
@@ -56,7 +57,37 @@ def test_regex():
 
     regex_str = "[1-9]"
     tokenizer = MockTokenizer()
-    fsm = RegexGuide(regex_str, tokenizer)
+    fsm = RegexGuide.from_regex(regex_str, tokenizer)
+
+    assert fsm.states_to_token_maps == {0: {1: 1}}
+
+    instruction = fsm.get_next_instruction(0)
+    assert isinstance(instruction, Generate)
+    assert_expected_tensor_ids(instruction.tokens, [1])
+
+    assert fsm.get_next_state(state=0, token_id=1) == 1
+    assert fsm.get_next_state(state=0, token_id=tokenizer.eos_token_id) == -1
+
+    assert fsm.is_final_state(0) is False
+
+    for state in fsm.final_states:
+        assert fsm.is_final_state(state) is True
+
+
+def test_from_fsm():
+    class MockTokenizer:
+        vocabulary = {"1": 1, "a": 2, "eos": 3}
+        special_tokens = {"eos"}
+        eos_token_id = 3
+
+        def convert_token_to_string(self, token):
+            return token
+
+    regex_str = "[1-9]"
+    tokenizer = MockTokenizer()
+    fsm = RegexGuide.from_interegular_fsm(
+        interegular.parse_pattern(regex_str).to_fsm(), tokenizer
+    )
 
     assert fsm.states_to_token_maps == {0: {1: 1}}
 
@@ -97,7 +128,7 @@ def test_regex_multi_byte_llama_like():
 
     regex_str = "[😁-😎]"
     tokenizer = MockTokenizer()
-    fsm = RegexGuide(regex_str, tokenizer)
+    fsm = RegexGuide.from_regex(regex_str, tokenizer)
 
     assert fsm.states_to_token_maps == {
         0: {5: 1, 4: 2},
@@ -144,7 +175,7 @@ def test_regex_multi_byte_gpt2_like():
 
     regex_str = " [😁-😎]"
     tokenizer = MockTokenizer()
-    fsm = RegexGuide(regex_str, tokenizer)
+    fsm = RegexGuide.from_regex(regex_str, tokenizer)
 
     assert fsm.states_to_token_maps == {
         0: {5: 1, 10: 2},
@@ -179,7 +210,7 @@ def test_regex_final_state():
 
     regex_str = r"`\n(\.\n)?`\n"
     tokenizer = MockTokenizer()
-    fsm = RegexGuide(regex_str, tokenizer)
+    fsm = RegexGuide.from_regex(regex_str, tokenizer)
 
     state = fsm.get_next_state(state=4, token_id=103)
     assert state == 5

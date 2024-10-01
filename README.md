@@ -27,6 +27,11 @@ The current development branch of `outlines-core` can be installed from GitHub, 
 pip install git+https://github.com/outlines-dev/outlines-core
 ```
 
+Or install in a rust project with cargo:
+``` bash
+cargo add outlines-core
+```
+
 # How to contribute?
 
 ## Setup

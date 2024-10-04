@@ -1,6 +1,7 @@
-import interegular
 import pytest
 from outlines_core.fsm.guide import Generate, RegexGuide, StopAtEOSGuide, Write
+
+import interegular
 
 
 def assert_expected_tensor_ids(tensor, ids):

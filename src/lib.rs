@@ -1,3 +1,4 @@
+pub mod interegular;
 pub mod json_schema;
 pub mod regex;
 

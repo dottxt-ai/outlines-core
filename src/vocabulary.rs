@@ -1,11 +1,11 @@
-use crate::*;
+use crate::prelude::*;
 
 /// Vocabulary of an LLM.
 ///
 /// ## Examples
 ///
 /// ```rust
-/// # use outlines_core::*;
+/// # use outlines_core::prelude::*;
 /// #
 /// let vocabulary = Vocabulary::new()
 ///     .insert("blah", 0)
@@ -98,7 +98,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::*;
+    use crate::prelude::*;
 
     #[test]
     fn insert() {

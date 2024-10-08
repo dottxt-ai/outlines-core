@@ -1,5 +1,4 @@
-use crate::*;
-use std::collections::{HashMap, HashSet};
+use crate::prelude::*;
 
 pub fn walk_fsm(
     fsm_transitions: &HashMap<(State, TransitionKey), State>,

@@ -4,14 +4,7 @@ pub mod regex;
 #[cfg(feature = "python-bindings")]
 mod python_bindings;
 
-mod primitives;
-pub use primitives::{State, Token, TokenId, TransitionKey};
+pub mod prelude;
 
-mod vocabulary;
-pub use vocabulary::Vocabulary;
-
-pub(crate) use std::{
-    collections::HashMap,
-    fmt::{self, Display},
-    ops::Deref,
-};
+pub mod primitives;
+pub mod vocabulary;

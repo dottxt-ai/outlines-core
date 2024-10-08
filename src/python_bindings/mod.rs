@@ -1,9 +1,9 @@
 use crate::json_schema;
+use crate::prelude::*;
 use crate::regex::get_token_transition_keys;
 use crate::regex::get_vocabulary_transition_keys;
 use crate::regex::state_scan_tokens;
 use crate::regex::walk_fsm;
-use crate::*;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;

@@ -38,6 +38,9 @@ jobs:
           CIBW_ARCHS_LINUX: x86_64 i686 aarch64
           CIBW_ARCHS_WINDOWS: AMD64 x86
           CIBW_ARCHS_MACOS: x86_64 arm64
+          CIBW_BEFORE_ALL_LINUX: curl -sSf https://sh.rustup.rs | sh -s -- -y
+          CIBW_BEFORE_ALL_MACOS: curl -sSf https://sh.rustup.rs | sh -s -- -y
+          CIBW_BEFORE_ALL_WINDOWS: rustup target add i686-pc-windows-msvc
           CIBW_BEFORE_BUILD: pip install setuptools-rust
           CIBW_ENVIRONMENT: PATH="$HOME/.cargo/bin:$PATH"
           CIBW_TEST_COMMAND: python -c "import outlines_core; print(outlines_core.__version__)"

@@ -113,6 +113,7 @@ ignore_missing_imports = true
 [tool.coverage.run]
 omit = [
     "python/outlines_core/_version.py",
+    "python/outlines_core/__init__.py",
     "tests/*",
 ]
 branch = true

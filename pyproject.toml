@@ -49,6 +49,7 @@ test = [
     "huggingface_hub",
     "torch",
     "transformers",
+    "datasets",
     "pillow",
     "asv",
     "setuptools-rust",

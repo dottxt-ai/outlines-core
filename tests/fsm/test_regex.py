@@ -3,8 +3,7 @@ from typing import List, Tuple, Union
 import interegular
 import pytest
 import torch
-from transformers import AutoTokenizer, PreTrainedTokenizer
-
+from datasets.fingerprint import Hasher
 from outlines_core.fsm.outlines_core_rs import Vocabulary
 from outlines_core.fsm.regex import (
     BetterAlphabet,
@@ -18,6 +17,7 @@ from outlines_core.fsm.regex import (
     make_deterministic_fsm,
     reduced_vocabulary,
 )
+from transformers import AutoTokenizer, PreTrainedTokenizer
 
 
 def get_llama_tokenizer_types():
@@ -105,6 +105,9 @@ class TransformerTokenizer:
                 return " " + string
 
         return string
+
+    def __hash__(self):
+        return hash(Hasher.hash(self.tokenizer))
 
     def __eq__(self, other):
         if isinstance(other, type(self)):
@@ -457,58 +460,6 @@ def test_regex_index_performance():
         locals(),
     )
     profiler.dump_stats("line-profiler-create_fsm_index.pkl")
-    profiler.print_stats(output_unit=1e-3, summarize=True, stripzeros=True)
-
-
-@pytest.mark.skip(reason="Only for local profiling")
-def test_json_index_performance():
-    import json
-    from enum import Enum
-
-    from line_profiler import LineProfiler  # type: ignore [import]
-    from pydantic import BaseModel, constr
-
-    import outlines_core
-
-    class Weapon(str, Enum):
-        sword = "sword"
-        axe = "axe"
-        mace = "mace"
-        spear = "spear"
-        bow = "bow"
-        crossbow = "crossbow"
-
-    class Armor(str, Enum):
-        leather = "leather"
-        chainmail = "chainmail"
-        plate = "plate"
-
-    class Character(BaseModel):
-        name: constr(max_length=10)
-        # TODO: Add support for conint
-        age: int  # conint(int, ge=18, le=100)
-        armor: Armor
-        weapon: Weapon
-        # TODO: Add support for conint
-        strength: int  # conint(int, ge=0, le=100)
-
-    model = outlines_core.models.transformers("gpt2", device="cuda")
-    json_schema = json.dumps(Character.model_json_schema())
-
-    def build_regex():
-        regex_str = outlines_core.index.json_schema.build_regex_from_object(json_schema)
-        outlines_core.generate.regex(model, regex_str)
-
-    profiler = LineProfiler(create_fsm_index_end_to_end)
-    profiler.add_function(create_fsm_index_tokenizer)
-    profiler.add_function(outlines_core.index.index.RegexFSM.__init__)
-
-    profiler.runctx(
-        "build_regex()",
-        globals(),
-        locals(),
-    )
-    profiler.dump_stats("line-profiler-build-json-regex.pkl")
     profiler.print_stats(output_unit=1e-3, summarize=True, stripzeros=True)
 
 

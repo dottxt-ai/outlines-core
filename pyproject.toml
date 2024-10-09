@@ -25,12 +25,8 @@ classifiers = [
 ]
 dependencies = [
    "interegular",
-   "cloudpickle",
-   "diskcache",
    "pydantic>=2.0",
-   "referencing",
    "jsonschema",
-   "tqdm",
    "typing_extensions",
 ]
 dynamic = ["version"]
@@ -82,8 +78,6 @@ testpaths = ["tests"]
 filterwarnings = [
     "error",
     "ignore::pydantic.warnings.PydanticDeprecatedSince20",
-    "ignore::FutureWarning:transformers.*",
-    "ignore::FutureWarning:huggingface_hub.*",
     "ignore::UserWarning",
 ]
 addopts = [
@@ -96,16 +90,9 @@ exclude=["examples", "tests", "benchmarks"]
 [[tool.mypy.overrides]]
 module = [
     "jsonschema.*",
-    "cloudpickle.*",
-    "diskcache.*",
     "pydantic.*",
     "pytest",
-    "referencing.*",
-    "torch.*",
-    "transformers.*",
-    "huggingface_hub",
     "interegular.*",
-    "datasets.*",
     "setuptools.*",
     "setuptools_rust.*",
 ]

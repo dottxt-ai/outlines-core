@@ -9,13 +9,10 @@ channels:
   - huggingface
 dependencies:
   - python==3.10.0
-  - jinja2
   - pydantic
   - pytest
   - pre-commit
-  - referencing
   - jsonschema
-  - transformers
   - pip
   - pip:
     - -e ".[test]"

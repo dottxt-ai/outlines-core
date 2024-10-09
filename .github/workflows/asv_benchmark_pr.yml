@@ -32,7 +32,7 @@ jobs:
     steps:
 
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         fetch-depth: 0
 
@@ -44,25 +44,36 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install asv virtualenv lf-asv-formatter
+        pip install asv virtualenv
 
-    - name: Create ASV machine config file
-      run: asv machine --machine gh-runner --yes
-
-    - name: Run Benchmarks - `PR HEAD` vs `main`
+    - name: Run benchmarks
+      shell: bash -l {0}
+      env:
+        HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        TQDM_DISABLE: 1
+        OPENBLAS_NUM_THREADS: 1
+        MKL_NUM_THREADS: 1
+        OMP_NUM_THREADS: 1
+        ASV_FACTOR: 1.5
+        # Escape user controlled variables
+        BASELINE_LABEL: "${{ github.event.pull_request.base.label }}"
+        CONTENDER_LABEL: "${{ github.event.pull_request.head.label }}"
       run: |
-        # prepare main branch for comparison
-        git remote add upstream https://github.com/${{ github.repository }}.git
-        git fetch upstream main
+        set -x
 
-        # Run benchmarks, allow errors, they will be caught in the next step
-        asv continuous upstream/main HEAD \
-            --no-stats --interleave-rounds -a repeat=3 || true
+        # ID this runner
+        asv machine --yes
 
-    - name: BENCHMARK RESULTS
-      run: |
-        asv compare --factor=1.1 --no-stats --split upstream/main HEAD | tee ${{ env.BENCHMARKS_OUTPUT }}
-        if grep -q "Benchmarks that have got worse" "${{ env.BENCHMARKS_OUTPUT }}"; then
-          echo "Performance degradation detected!"
-          exit 1
+        echo "Baseline:  ${{ github.event.pull_request.base.sha }} ($BASELINE_LABEL)"
+        echo "Contender: ${GITHUB_SHA} ($CONTENDER_LABEL)"
+
+        # Run benchmarks for current commit against base
+        ASV_OPTIONS="--split --show-stderr --factor $ASV_FACTOR --no-only-changed"
+        asv continuous $ASV_OPTIONS ${{ github.event.pull_request.base.sha }} ${GITHUB_SHA} \
+            | sed "/Traceback \|failed$\|PERFORMANCE DECREASED/ s/^/::error::/" \
+            | tee benchmarks.log
+
+        # Report and export results for subsequent steps
+        if grep "Traceback \|failed\|PERFORMANCE DECREASED" benchmarks.log > /dev/null ; then
+            exit 1
         fi

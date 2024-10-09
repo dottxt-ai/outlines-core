@@ -1,7 +1,6 @@
 import re
 from functools import lru_cache
 from typing import (
-    TYPE_CHECKING,
     Dict,
     FrozenSet,
     Iterable,
@@ -32,9 +31,6 @@ from .outlines_core_rs import (  # noqa: F401
     get_vocabulary_transition_keys,
     state_scan_tokens,
 )
-
-if TYPE_CHECKING:
-    from outlines_core.models.tokenizer import Tokenizer
 
 
 class BetterAlphabet(Alphabet):
@@ -385,7 +381,7 @@ def gpt2_unicode_to_bytes():
 
 @lru_cache
 def reduced_vocabulary(
-    tokenizer: "Tokenizer",
+    tokenizer,
 ) -> Tuple[Dict[str, List[int]], Set[int]]:
     """Create a map from decoded vocabulary tokens to lists of equivalent token ids."""
     # TODO FIXME: See if we can get the underlying Rust tokenizers from HF and
@@ -440,7 +436,7 @@ def reduced_vocabulary(
 
 def create_fsm_index_tokenizer(
     fsm: BetterFSM,
-    tokenizer: "Tokenizer",
+    tokenizer,
     frozen_tokens: Optional[Iterable[str]] = None,
 ) -> Tuple[Dict[int, Dict[int, int]], Set[int]]:
     """Construct an FMS index from a tokenizer.

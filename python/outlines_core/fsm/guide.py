@@ -1,27 +1,14 @@
 from dataclasses import dataclass
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Dict,
-    List,
-    Optional,
-    Protocol,
-    Set,
-    Tuple,
-    Union,
-)
+from typing import Any, Callable, Dict, List, Optional, Protocol, Set, Tuple, Union
 
 import interegular
 import torch
+
 from outlines_core.fsm.regex import (
     create_fsm_index_tokenizer,
     make_byte_level_fsm,
     make_deterministic_fsm,
 )
-
-if TYPE_CHECKING:
-    from outlines_core.models.tokenizer import Tokenizer
 
 
 @dataclass(frozen=True)
@@ -88,7 +75,7 @@ class StopAtEOSGuide(Guide):
     start_state = 0  # TODO: remove start_state, use only initial_state
     initial_state = 0
 
-    def __init__(self, tokenizer: "Tokenizer"):
+    def __init__(self, tokenizer):
         """Initialize the generation guide.
 
         model
@@ -118,7 +105,7 @@ class StopAtEOSGuide(Guide):
 
 def create_states_mapping(
     regex_string: str,
-    tokenizer: "Tokenizer",
+    tokenizer,
     regex_parser: Callable[[str], interegular.Pattern] = interegular.parse_pattern,
     frozen_tokens: List[str] = [],
 ) -> Tuple[Dict[int, Dict[int, int]], Set[int], Set[int]]:
@@ -155,7 +142,7 @@ def create_states_mapping(
 
 def create_states_mapping_from_fsm(
     fsm: interegular.fsm.FSM,
-    tokenizer: "Tokenizer",
+    tokenizer,
     frozen_tokens: List[str] = [],
 ) -> Tuple[Dict[int, Dict[int, int]], Set[int], Set[int]]:
     """Create the variables related to the mapping between states and tokens from an FSM.
@@ -227,7 +214,7 @@ class RegexGuide(Guide):
     def from_regex(
         cls,
         regex_string: str,
-        tokenizer: "Tokenizer",
+        tokenizer,
         _create_states_mapping=create_states_mapping,
         device=None,
         regex_parser: Callable[[str], interegular.Pattern] = interegular.parse_pattern,
@@ -259,7 +246,7 @@ class RegexGuide(Guide):
     def from_interegular_fsm(
         cls,
         interegular_fsm: interegular.fsm.FSM,
-        tokenizer: "Tokenizer",
+        tokenizer,
         _create_states_mapping_from_fsm=create_states_mapping_from_fsm,
         device=None,
         frozen_tokens: List[str] = [],

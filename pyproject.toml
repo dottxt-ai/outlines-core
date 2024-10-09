@@ -31,7 +31,6 @@ dependencies = [
    "referencing",
    "jsonschema",
    "tqdm",
-   "datasets",
    "typing_extensions",
 ]
 dynamic = ["version"]

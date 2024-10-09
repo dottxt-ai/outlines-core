@@ -10,7 +10,6 @@ channels:
 dependencies:
   - python==3.10.0
   - jinja2
-  - numpy
   - pydantic
   - pytest
   - pre-commit

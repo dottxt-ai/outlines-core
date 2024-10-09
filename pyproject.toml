@@ -25,7 +25,6 @@ classifiers = [
 ]
 dependencies = [
    "interegular",
-   "numpy<2.0.0",
    "cloudpickle",
    "diskcache",
    "pydantic>=2.0",
@@ -97,7 +96,6 @@ exclude=["examples", "tests", "benchmarks"]
 [[tool.mypy.overrides]]
 module = [
     "jsonschema.*",
-    "numpy.*",
     "cloudpickle.*",
     "diskcache.*",
     "pydantic.*",

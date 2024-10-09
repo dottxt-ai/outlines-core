@@ -1,7 +1,6 @@
-from typing import Dict, Hashable, List, Protocol, Set, Tuple, Union
+from typing import Dict, Hashable, List, Protocol, Set, Tuple, TypeVar, Union
 
-import numpy as np
-from numpy.typing import NDArray
+Array = TypeVar("Array")
 
 
 class Tokenizer(Hashable, Protocol):
@@ -11,13 +10,11 @@ class Tokenizer(Hashable, Protocol):
     vocabulary: Dict[str, int]
     special_tokens: Set[str]
 
-    def encode(
-        self, prompt: Union[str, List[str]]
-    ) -> Tuple[NDArray[np.int64], NDArray[np.int64]]:
+    def encode(self, prompt: Union[str, List[str]]) -> Tuple[Array, Array]:
         """Translate the input prompts into arrays of token ids and attention mask."""
         ...
 
-    def decode(self, token_ids: NDArray[np.int64]) -> List[str]:
+    def decode(self, token_ids: Array) -> List[str]:
         """Translate an array of token ids to a string or list of strings."""
         ...
 

@@ -470,7 +470,7 @@ fn parse_object_type(
     let num_repeats = helpers::get_num_items_pattern(min_properties, max_properties);
 
     if num_repeats.is_none() {
-        return Ok(format!(r"\{{{}}}", whitespace_pattern));
+        return Ok(format!(r"\{{{}\}}", whitespace_pattern));
     }
 
     let allow_empty = if min_properties.unwrap_or(0) == 0 {

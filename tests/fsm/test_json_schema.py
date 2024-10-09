@@ -1036,3 +1036,13 @@ def test_one_of_doesnt_produce_illegal_lookaround():
 
     # check if the pattern uses lookarounds incompatible with interegular.Pattern.to_fsm()
     interegular.parse_pattern(pattern).to_fsm()
+
+
+def test_match_object():
+    test_regex = to_regex(
+        {
+            "type": "object",
+            "maxProperties": 0,
+        }
+    )
+    assert test_regex == r"\{[ ]?\}"

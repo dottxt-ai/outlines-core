@@ -1,6 +1,7 @@
 from typing import List, Tuple, Union
 
 import torch
+from datasets.fingerprint import Hasher
 from transformers import AutoTokenizer, PreTrainedTokenizer
 
 
@@ -89,6 +90,9 @@ class TransformerTokenizer:
                 return " " + string
 
         return string
+
+    def __hash__(self):
+        return hash(Hasher.hash(self.tokenizer))
 
     def __eq__(self, other):
         if isinstance(other, type(self)):

@@ -65,6 +65,9 @@ repository = "https://github.com/dottxt-ai/outlines-core"
 file="README.md"
 content-type = "text/markdown"
 
+[tool.cibuildwheel]
+skip = ["*-musllinux_i686"]
+
 [tool.setuptools]
 packages = ["outlines_core"]
 package-dir = {"" = "python"}

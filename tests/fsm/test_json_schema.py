@@ -132,7 +132,7 @@ def test_match_number(pattern, does_match):
         # String with maximum length
         (
             {"title": "Foo", "type": "string", "maxLength": 3},
-            f'"{STRING_INNER}{{,3}}"',
+            f'"{STRING_INNER}{{0,3}}"',
             [('"ab"', True), ('"a""', False), ('"abcd"', False)],
         ),
         # String with minimum length
@@ -283,7 +283,7 @@ def test_match_number(pattern, does_match):
                 },
                 "required": ["count"],
             },
-            '\\{[ ]?"count"[ ]?:[ ]?(-)?(0|[1-9][0-9]{,2})[ ]?\\}',
+            '\\{[ ]?"count"[ ]?:[ ]?(-)?(0|[1-9][0-9]{0,2})[ ]?\\}',
             [('{ "count": 100 }', True), ('{ "count": 1000 }', False)],
         ),
         # integer with minimum and maximum digits

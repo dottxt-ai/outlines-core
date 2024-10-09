@@ -348,7 +348,7 @@ fn parse_string_type(obj: &serde_json::Map<String, Value>) -> Result<String> {
             .map_or("".to_string(), |n| format!("{}", n));
         let formatted_min = min_items
             .and_then(Value::as_u64)
-            .map_or("".to_string(), |n| format!("{}", n));
+            .map_or("0".to_string(), |n| format!("{}", n));
 
         Ok(format!(
             r#""{}{{{},{}}}""#,
@@ -416,14 +416,14 @@ fn parse_number_type(obj: &serde_json::Map<String, Value>) -> Result<String> {
         let fraction_quantifier = match (min_digits_fraction, max_digits_fraction) {
             (Some(min), Some(max)) => format!("{{{},{}}}", min, max),
             (Some(min), None) => format!("{{{},}}", min),
-            (None, Some(max)) => format!("{{,{}}}", max),
+            (None, Some(max)) => format!("{{0,{}}}", max),
             (None, None) => "+".to_string(),
         };
 
         let exponent_quantifier = match (min_digits_exponent, max_digits_exponent) {
             (Some(min), Some(max)) => format!("{{{},{}}}", min, max),
             (Some(min), None) => format!("{{{},}}", min),
-            (None, Some(max)) => format!("{{,{}}}", max),
+            (None, Some(max)) => format!("{{0,{}}}", max),
             (None, None) => "+".to_string(),
         };
 
@@ -448,7 +448,7 @@ fn parse_integer_type(obj: &serde_json::Map<String, Value>) -> Result<String> {
         let quantifier = match (min_digits, max_digits) {
             (Some(min), Some(max)) => format!("{{{},{}}}", min, max),
             (Some(min), None) => format!("{{{},}}", min),
-            (None, Some(max)) => format!("{{,{}}}", max),
+            (None, Some(max)) => format!("{{0,{}}}", max),
             (None, None) => "*".to_string(),
         };
 

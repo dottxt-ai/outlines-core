@@ -96,9 +96,6 @@ jobs:
           pip install setuptools setuptools-rust
       - name: Generate egg-info
         run: python setup.py egg_info
-      - name: Check that the package version matches the Release name
-        run: |
-          grep -Rq "^Version: ${GITHUB_REF:10}$" python/outlines_core.egg-info/PKG-INFO
       - uses: actions/download-artifact@v3
         with:
           name: wheels

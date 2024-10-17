@@ -24,7 +24,7 @@ def test_generate_length():
         probs: dict[int, List[float]] = {
             1: [0.2, 0.5, 0.3],
             2: [0.3, 0.4, 0.3],
-            3: [0, 0, 0]
+            3: [0, 0, 0],
         }
         p0: List[float] = [0.2, 0.8, 0.0]
         states: List[int] = [1, 2, 3]

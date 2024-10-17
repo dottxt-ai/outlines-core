@@ -1,6 +1,7 @@
 # Not convinced by name of file
-import numpy as np
 from typing import List, Optional
+
+import numpy as np
 from outlines_core.fsm.guide import RegexGuide
 
 

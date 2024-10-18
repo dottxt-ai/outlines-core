@@ -43,6 +43,8 @@ test = [
     "beartype<0.16.0",
     "huggingface_hub",
     "torch",
+    "numpy",
+    "scipy",
     "transformers",
     "datasets",
     "pillow",

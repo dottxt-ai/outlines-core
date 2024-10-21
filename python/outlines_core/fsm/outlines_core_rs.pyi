@@ -86,3 +86,24 @@ class Vocabulary:
         Gets the string representation of the vocabulary.
         """
         ...
+
+class PyVocabIndex:
+    def get_next_instruction(self, state: int):
+        """
+        Return the next instruction for guided generation.
+        """
+        ...
+    def get_next_state(self, state: int, token_id: int):
+        """
+        Update the state of the guide.
+        """
+        ...
+    def is_final_state(self, state: int):
+        """Determine whether the current state of the guide is a final state."""
+        ...
+    def get_index_dict(self):
+        """Returns the Index as a Python Dict object."""
+        ...
+    def get_initial_state(self):
+        """Returns the ID of the initial state of the input FSM automata."""
+        ...

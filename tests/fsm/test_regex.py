@@ -372,7 +372,7 @@ def test_create_fsm_index_tokenizer(hf_tokenizer_uri, revision):
     )
 
     assert not empty_token_ids
-    assert len(states_to_token_subsets) / num_fsm_states > 0.94
+    assert len(states_to_token_subsets.get_index_dict()) / num_fsm_states > 0.94
 
 
 @pytest.mark.parametrize(

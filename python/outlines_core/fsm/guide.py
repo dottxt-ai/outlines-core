@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional, Protocol, Set, Tuple, Union
+from typing import Any, Callable, List, Optional, Protocol, Set, Tuple, Union
 
 import interegular
 import torch
@@ -8,6 +8,8 @@ from outlines_core.fsm.regex import (
     make_byte_level_fsm,
     make_deterministic_fsm,
 )
+
+from .outlines_core_rs import PyVocabIndex
 
 
 @dataclass(frozen=True)
@@ -107,7 +109,7 @@ def create_states_mapping(
     tokenizer,
     regex_parser: Callable[[str], interegular.Pattern] = interegular.parse_pattern,
     frozen_tokens: List[str] = [],
-) -> Tuple[Dict[int, Dict[int, int]], Set[int], Set[int]]:
+) -> Tuple[PyVocabIndex, Set[int], Set[int]]:
     """Create the variables related to the mapping between states and tokens from a regex string.
 
     The parameters of the function are used for caching purpose.
@@ -143,7 +145,7 @@ def create_states_mapping_from_fsm(
     fsm: interegular.fsm.FSM,
     tokenizer,
     frozen_tokens: List[str] = [],
-) -> Tuple[Dict[int, Dict[int, int]], Set[int], Set[int]]:
+) -> Tuple[PyVocabIndex, Set[int], Set[int]]:
     """Create the variables related to the mapping between states and tokens from an FSM.
 
     The parameters of the function are used for caching purpose.
@@ -177,16 +179,6 @@ def create_states_mapping_from_fsm(
         regex_fsm, tokenizer
     )
 
-    # We make sure that it is possible to generate strings in the language
-    # of the regular expression with the tokens present in the model's
-    # vocabulary.
-    if not any(
-        regex_fsm.finals.intersection(v.values()) for v in states_to_token_maps.values()
-    ):
-        raise ValueError(
-            "The vocabulary does not allow us to build a sequence that matches the input regex"
-        )
-
     return states_to_token_maps, empty_token_ids, regex_fsm.finals
 
 
@@ -196,18 +188,12 @@ class RegexGuide(Guide):
     initial_state = 0
 
     def __init__(
-        self,
-        states_to_token_maps,
-        empty_token_ids,
-        fsm_finals,
-        eos_token_id,
-        states_to_token_mask,
+        self, states_to_token_maps, empty_token_ids, eos_tensor, initial_state
     ):
         self.states_to_token_maps = states_to_token_maps
         self.empty_token_ids = empty_token_ids
-        self.eos_token_id = eos_token_id
-        self.final_states = fsm_finals | {-1}
-        self.states_to_token_mask = states_to_token_mask
+        self.eos_tensor = eos_tensor
+        self.initial_state = initial_state
 
     @classmethod
     def from_regex(
@@ -229,17 +215,9 @@ class RegexGuide(Guide):
             regex_parser=regex_parser,
             frozen_tokens=frozen_tokens,
         )
-        states_to_token_mask = {
-            state: torch.tensor(list(next_tokens_to_end_states.keys()), device=device)
-            for state, next_tokens_to_end_states in states_to_token_maps.items()
-        }
-        return cls(
-            states_to_token_maps,
-            empty_token_ids,
-            fsm_finals,
-            tokenizer.eos_token_id,
-            states_to_token_mask,
-        )
+        eos_tensor = torch.tensor([tokenizer.eos_token_id], device=device)
+        initial_state = states_to_token_maps.get_initial_state()
+        return cls(states_to_token_maps, empty_token_ids, eos_tensor, initial_state)
 
     @classmethod
     def from_interegular_fsm(
@@ -257,17 +235,9 @@ class RegexGuide(Guide):
         ) = _create_states_mapping_from_fsm(
             interegular_fsm, tokenizer, frozen_tokens=frozen_tokens
         )
-        states_to_token_mask = {
-            state: torch.tensor(list(next_tokens_to_end_states.keys()), device=device)
-            for state, next_tokens_to_end_states in states_to_token_maps.items()
-        }
-        return cls(
-            states_to_token_maps,
-            empty_token_ids,
-            fsm_finals,
-            tokenizer.eos_token_id,
-            states_to_token_mask,
-        )
+        eos_tensor = torch.tensor([tokenizer.eos_token_id], device=device)
+        initial_state = states_to_token_maps.get_initial_state()
+        return cls(states_to_token_maps, empty_token_ids, eos_tensor, initial_state)
 
     def get_next_instruction(self, state: int) -> Instruction:
         """Return the next instruction for guided generation.
@@ -292,11 +262,14 @@ class RegexGuide(Guide):
         A `Generate` instance that contains the model and the allowed token ids.
 
         """
-        next_tokens_mask = self.states_to_token_mask.get(state)
-        if next_tokens_mask is None:
-            return Write(torch.tensor([self.eos_token_id]))
+        if state == -1:
+            return Write(self.eos_tensor)
+        next_tokens_mask = self.states_to_token_maps.get_next_instruction(state)
+        # TODO: Create the Write and Generate objects within Rust instead?
+        if len(next_tokens_mask) == 0:
+            return Write(self.eos_tensor)
 
-        return Generate(next_tokens_mask)
+        return Generate(torch.tensor(next_tokens_mask))
 
     def get_next_state(self, state: int, token_id: int) -> int:
         """Update the state of the guide.
@@ -316,19 +289,17 @@ class RegexGuide(Guide):
         The new state of the guide.
 
         """
-        if token_id == self.eos_token_id or state not in self.states_to_token_maps:
+        if state == -1:
             return -1
-
-        last_token_to_end_state = self.states_to_token_maps[state]
-        next_state = last_token_to_end_state.get(token_id)
-        if next_state is None:
-            next_state = -1
-
-        return next_state
+        return self.states_to_token_maps.get_next_state(state, token_id)
 
     def is_final_state(self, state: int) -> bool:
         """Determine whether the current state of the guide is a final state."""
-        return state in self.final_states
+        return state == -1 or self.states_to_token_maps.is_final_state(state)
 
     def copy(self):
         return self
+
+    def get_index_dict(self):
+        """Returns the Index as a Python Dict object."""
+        return self.states_to_token_maps.get_index_dict()

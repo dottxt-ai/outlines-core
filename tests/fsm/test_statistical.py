@@ -118,9 +118,3 @@ def test_generate_length():
     _, p_value2 = ks_2samp(lengths2, L)
     assert p_value1 > 0.1
     assert p_value2 > 0.1
-    # assert p_value1 == approx(0.9995707880859014)
-    # assert p_value2 == approx(0.9693924821629614)
-
-
-if __name__ == "__main__":
-    test_generate_length()

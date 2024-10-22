@@ -65,7 +65,7 @@ impl PyVocabIndex {
     ) -> PyResult<Self> {
         let mut states_to_token_subsets: HashMap<u32, HashMap<u32, u32>> = HashMap::new();
         let mut seen: HashSet<State> = HashSet::new();
-        let mut next_states: HashSet<State> = HashSet::from_iter(vec![fsm_info.initial]);
+        let mut next_states: HashSet<State> = HashSet::from([fsm_info.initial]);
 
         let vocabulary_transition_keys = get_vocabulary_transition_keys(
             &fsm_info.alphabet_symbol_mapping,
@@ -99,18 +99,10 @@ impl PyVocabIndex {
             seen.insert(start_state);
         }
 
-        let mut is_valid = false;
-        for token_id_end_states in states_to_token_subsets.values() {
-            for end_state in token_id_end_states.values() {
-                if fsm_info.finals.contains(end_state) {
-                    is_valid = true;
-                    break;
-                }
-            }
-            if is_valid {
-                break;
-            }
-        }
+        let is_valid = states_to_token_subsets
+            .values()
+            .flat_map(|token_id_end_states| token_id_end_states.values())
+            .any(|end_state| fsm_info.finals.contains(end_state));
 
         if is_valid {
             Ok(Self {
@@ -126,10 +118,10 @@ impl PyVocabIndex {
         }
     }
 
-    fn get_next_instruction(&mut self, state: u32) -> Vec<u32> {
-        let default = HashMap::new();
-        let res = self.states_to_token_subsets.get(&state).unwrap_or(&default);
-        res.keys().cloned().collect()
+    fn get_allowed_tokens(&mut self, state: u32) -> Vec<u32> {
+        self.states_to_token_subsets
+            .get(&state)
+            .map_or_else(HashSet::new, |res| res.keys().cloned().collect())
     }
 
     fn get_next_state(&mut self, state: u32, token_id: u32) -> i32 {

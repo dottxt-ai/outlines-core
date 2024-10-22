@@ -88,7 +88,7 @@ class Vocabulary:
         ...
 
 class PyVocabIndex:
-    def get_next_instruction(self, state: int):
+    def get_allowed_tokens(self, state: int):
         """
         Return the next instruction for guided generation.
         """

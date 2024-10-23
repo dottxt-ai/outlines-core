@@ -46,7 +46,7 @@ impl FSMInfo {
 }
 
 #[pyclass]
-pub struct PyVocabIndex {
+pub struct Index {
     initial: u32,
     finals: HashSet<u32>,
     states_to_token_subsets: HashMap<u32, HashMap<u32, u32>>,
@@ -55,7 +55,7 @@ pub struct PyVocabIndex {
 }
 
 #[pymethods]
-impl PyVocabIndex {
+impl Index {
     #[new]
     fn new(
         fsm_info: &FSMInfo,
@@ -332,7 +332,7 @@ fn outlines_core_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(to_regex_py, m)?)?;
 
     m.add_class::<PyVocabulary>()?;
-    m.add_class::<PyVocabIndex>()?;
+    m.add_class::<Index>()?;
 
     Ok(())
 }

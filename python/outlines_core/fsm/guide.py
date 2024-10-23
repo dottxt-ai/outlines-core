@@ -9,7 +9,7 @@ from outlines_core.fsm.regex import (
     make_deterministic_fsm,
 )
 
-from .outlines_core_rs import PyVocabIndex
+from .outlines_core_rs import Index
 
 
 @dataclass(frozen=True)
@@ -109,7 +109,7 @@ def create_states_mapping(
     tokenizer,
     regex_parser: Callable[[str], interegular.Pattern] = interegular.parse_pattern,
     frozen_tokens: List[str] = [],
-) -> Tuple[PyVocabIndex, Set[int], Set[int]]:
+) -> Tuple[Index, Set[int], Set[int]]:
     """Create the variables related to the mapping between states and tokens from a regex string.
 
     The parameters of the function are used for caching purpose.
@@ -145,7 +145,7 @@ def create_states_mapping_from_fsm(
     fsm: interegular.fsm.FSM,
     tokenizer,
     frozen_tokens: List[str] = [],
-) -> Tuple[PyVocabIndex, Set[int], Set[int]]:
+) -> Tuple[Index, Set[int], Set[int]]:
     """Create the variables related to the mapping between states and tokens from an FSM.
 
     The parameters of the function are used for caching purpose.

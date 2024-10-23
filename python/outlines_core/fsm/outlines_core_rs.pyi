@@ -87,7 +87,7 @@ class Vocabulary:
         """
         ...
 
-class PyVocabIndex:
+class Index:
     def get_allowed_tokens(self, state: int):
         """
         Return the next instruction for guided generation.

@@ -264,7 +264,7 @@ class RegexGuide(Guide):
         """
         if state == -1:
             return Write(self.eos_tensor)
-        next_tokens_mask = self.states_to_token_maps.get_next_instruction(state)
+        next_tokens_mask = self.states_to_token_maps.get_allowed_tokens(state)
         # TODO: Create the Write and Generate objects within Rust instead?
         if len(next_tokens_mask) == 0:
             return Write(self.eos_tensor)
@@ -291,7 +291,11 @@ class RegexGuide(Guide):
         """
         if state == -1:
             return -1
-        return self.states_to_token_maps.get_next_state(state, token_id)
+        next_state = self.states_to_token_maps.get_next_state(state, token_id)
+        if next_state is None:
+            return -1
+        else:
+            return next_state
 
     def is_final_state(self, state: int) -> bool:
         """Determine whether the current state of the guide is a final state."""

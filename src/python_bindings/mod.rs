@@ -121,7 +121,7 @@ impl PyVocabIndex {
     fn get_allowed_tokens(&mut self, state: u32) -> Vec<u32> {
         self.states_to_token_subsets
             .get(&state)
-            .map_or_else(HashSet::new, |res| res.keys().cloned().collect())
+            .map_or_else(Vec::new, |res| res.keys().cloned().collect())
     }
 
     fn get_next_state(&self, state: u32, token_id: u32) -> Option<u32> {

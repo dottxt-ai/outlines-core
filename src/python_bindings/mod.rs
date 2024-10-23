@@ -124,17 +124,8 @@ impl PyVocabIndex {
             .map_or_else(HashSet::new, |res| res.keys().cloned().collect())
     }
 
-    fn get_next_state(&mut self, state: u32, token_id: u32) -> i32 {
-        let res = if let Some(token_id_end_states) = self.states_to_token_subsets.get(&state) {
-            if let Some(&end_state) = token_id_end_states.get(&token_id) {
-                end_state.try_into().unwrap()
-            } else {
-                -1
-            }
-        } else {
-            -1
-        };
-        res
+    fn get_next_state(&self, state: u32, token_id: u32) -> Option<u32> {
+        Some(*self.states_to_token_subsets.get(&state)?.get(&token_id)?)
     }
 
     fn is_final_state(&mut self, state: u32) -> bool {

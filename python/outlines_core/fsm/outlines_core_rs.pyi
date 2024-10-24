@@ -90,7 +90,7 @@ class Vocabulary:
 class Index:
     def get_allowed_tokens(self, state: int) -> List[int]:
         """
-        Return the next instruction for guided generation.
+        Return allowed in this state.
         """
         ...
     def get_next_state(self, state: int, token_id: int) -> Optional[int]:

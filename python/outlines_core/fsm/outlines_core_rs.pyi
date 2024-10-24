@@ -86,3 +86,24 @@ class Vocabulary:
         Gets the string representation of the vocabulary.
         """
         ...
+
+class Index:
+    def get_allowed_tokens(self, state: int) -> List[int]:
+        """
+        Return allowed in this state.
+        """
+        ...
+    def get_next_state(self, state: int, token_id: int) -> Optional[int]:
+        """
+        Update the state of the guide.
+        """
+        ...
+    def is_final_state(self, state: int) -> bool:
+        """Determine whether the current state of the guide is a final state."""
+        ...
+    def get_index_dict(self) -> Dict[int, Dict[int, int]]:
+        """Returns the Index as a Python Dict object."""
+        ...
+    def get_initial_state(self) -> int:
+        """Returns the ID of the initial state of the input FSM automata."""
+        ...

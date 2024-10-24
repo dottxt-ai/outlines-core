@@ -24,6 +24,7 @@ from interegular.fsm import (
 
 from .outlines_core_rs import (  # noqa: F401
     FSMInfo,
+    Index,
     Vocabulary,
     _walk_fsm,
     create_fsm_index_end_to_end,
@@ -438,7 +439,7 @@ def create_fsm_index_tokenizer(
     fsm: BetterFSM,
     tokenizer,
     frozen_tokens: Optional[Iterable[str]] = None,
-) -> Tuple[Dict[int, Dict[int, int]], Set[int]]:
+) -> Tuple[Index, Set[int]]:
     """Construct an FMS index from a tokenizer.
 
     This uses the end-to-end approach of `create_fsm_index_end_to_end`.
@@ -469,18 +470,11 @@ def create_fsm_index_tokenizer(
     """
     tokens_to_token_ids, empty_token_ids = reduced_vocabulary(tokenizer)
 
-    states_to_token_subsets = create_fsm_index_end_to_end(
+    states_to_token_subsets = Index(  # type: ignore
         fsm.fsm_info,
         Vocabulary.from_dict(tokens_to_token_ids),
+        tokenizer.eos_token_id,
         frozenset(frozen_tokens) if frozen_tokens is not None else frozenset(),
     )
-
-    # Allow transitions to EOS from all terminals FSM states that are
-    # reachable
-    # TODO: Do we really need this anymore?
-    for state in fsm.fsm_info.finals:
-        subset = states_to_token_subsets.get(state)
-        if subset is not None:
-            subset[tokenizer.eos_token_id] = state
 
     return states_to_token_subsets, empty_token_ids

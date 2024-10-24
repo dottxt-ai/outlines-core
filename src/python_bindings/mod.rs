@@ -45,6 +45,102 @@ impl FSMInfo {
     }
 }
 
+#[pyclass]
+pub struct Index {
+    initial: u32,
+    finals: HashSet<u32>,
+    states_to_token_subsets: HashMap<u32, HashMap<u32, u32>>,
+    #[allow(dead_code)]
+    eos_token_id: u32,
+}
+
+#[pymethods]
+impl Index {
+    #[new]
+    fn new(
+        fsm_info: &FSMInfo,
+        vocabulary: &PyVocabulary,
+        eos_token_id: u32,
+        frozen_tokens: HashSet<String>,
+    ) -> PyResult<Self> {
+        let mut states_to_token_subsets: HashMap<u32, HashMap<u32, u32>> = HashMap::new();
+        let mut seen: HashSet<State> = HashSet::new();
+        let mut next_states: HashSet<State> = HashSet::from([fsm_info.initial]);
+
+        let vocabulary_transition_keys = get_vocabulary_transition_keys(
+            &fsm_info.alphabet_symbol_mapping,
+            fsm_info.alphabet_anything_value,
+            &vocabulary.0,
+            &frozen_tokens,
+        );
+
+        while let Some(start_state) = next_states.iter().cloned().next() {
+            next_states.remove(&start_state);
+
+            // TODO: Return Pydict directly at construction
+            let token_ids_end_states = state_scan_tokens(
+                &fsm_info.transitions,
+                fsm_info.initial,
+                &fsm_info.finals,
+                &vocabulary.0,
+                &vocabulary_transition_keys,
+                start_state,
+            );
+
+            for (token_id, end_state) in token_ids_end_states {
+                let inner_map = states_to_token_subsets.entry(start_state).or_default();
+                inner_map.insert(token_id, end_state);
+
+                if !seen.contains(&end_state) {
+                    next_states.insert(end_state);
+                }
+            }
+
+            seen.insert(start_state);
+        }
+
+        let is_valid = states_to_token_subsets
+            .values()
+            .flat_map(|token_id_end_states| token_id_end_states.values())
+            .any(|end_state| fsm_info.finals.contains(end_state));
+
+        if is_valid {
+            Ok(Self {
+                initial: fsm_info.initial,
+                finals: fsm_info.finals.clone(),
+                states_to_token_subsets,
+                eos_token_id,
+            })
+        } else {
+            Err(PyErr::new::<PyValueError, _>(
+                "The vocabulary does not allow us to build a sequence that matches the input",
+            ))
+        }
+    }
+
+    fn get_allowed_tokens(&mut self, state: u32) -> Vec<u32> {
+        self.states_to_token_subsets
+            .get(&state)
+            .map_or_else(Vec::new, |res| res.keys().cloned().collect())
+    }
+
+    fn get_next_state(&self, state: u32, token_id: u32) -> Option<u32> {
+        Some(*self.states_to_token_subsets.get(&state)?.get(&token_id)?)
+    }
+
+    fn is_final_state(&mut self, state: u32) -> bool {
+        self.finals.contains(&state)
+    }
+
+    fn get_index_dict(&mut self) -> HashMap<u32, HashMap<u32, u32>> {
+        self.states_to_token_subsets.clone()
+    }
+
+    fn get_initial_state(&mut self) -> u32 {
+        self.initial
+    }
+}
+
 #[pyfunction(name = "build_regex_from_schema")]
 #[pyo3(signature = (json, whitespace_pattern=None))]
 pub fn build_regex_from_schema_py(
@@ -236,6 +332,7 @@ fn outlines_core_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(to_regex_py, m)?)?;
 
     m.add_class::<PyVocabulary>()?;
+    m.add_class::<Index>()?;
 
     Ok(())
 }

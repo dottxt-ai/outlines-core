@@ -49,7 +49,7 @@ def test_generate_length():
         fsm = RegexGuide.from_regex(regex_str, tokenizer)
         state: int = fsm.initial_state
         tokens = None
-        while state != -1:
+        while state is not None:
             allowed = fsm.get_next_instruction(state).tokens
             mask: List[int] = [1 if s in allowed else 0 for s in range(1, n_tokens + 1)]
             tokens = model(tokens, mask=mask)

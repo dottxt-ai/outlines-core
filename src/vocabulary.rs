@@ -14,7 +14,7 @@ use crate::prelude::*;
 ///     .insert("0", 3);
 /// ```
 #[derive(Clone, Debug, Default)]
-pub struct Vocabulary(HashMap<Token, Vec<TokenId>>);
+pub struct Vocabulary(pub(crate) HashMap<Token, Vec<TokenId>>);
 
 impl Vocabulary {
     /// Creates an empty vocabulary.

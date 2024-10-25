@@ -266,7 +266,7 @@ class RegexGuide(Guide):
             return Write(self.eos_tensor)
         next_tokens_mask = self.states_to_token_maps.get_allowed_tokens(state)
         # TODO: Create the Write and Generate objects within Rust instead?
-        if len(next_tokens_mask) == 0:
+        if next_tokens_mask is None:
             return Write(self.eos_tensor)
 
         return Generate(torch.tensor(next_tokens_mask))

@@ -88,18 +88,14 @@ class Vocabulary:
         ...
 
 class Index:
-    def get_allowed_tokens(self, state: int) -> List[int]:
-        """
-        Return allowed in this state.
-        """
+    def get_allowed_tokens(self, state: int) -> Optional[List[int]]:
+        """Returns allowed tokens in this state."""
         ...
     def get_next_state(self, state: int, token_id: int) -> Optional[int]:
-        """
-        Update the state of the guide.
-        """
+        """Updates the state."""
         ...
     def is_final_state(self, state: int) -> bool:
-        """Determine whether the current state of the guide is a final state."""
+        """Determines whether the current state is a final state."""
         ...
     def get_index_dict(self) -> Dict[int, Dict[int, int]]:
         """Returns the Index as a Python Dict object."""

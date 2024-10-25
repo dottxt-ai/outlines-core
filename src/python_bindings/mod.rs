@@ -1,3 +1,4 @@
+use crate::index::{FSMInfo, Index};
 use crate::json_schema;
 use crate::prelude::*;
 use crate::regex::get_token_transition_keys;
@@ -11,8 +12,8 @@ use pyo3::wrap_pyfunction;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 
-#[pyclass]
-pub struct FSMInfo {
+#[pyclass(name = "FSMInfo")]
+pub struct PyFSMInfo {
     #[pyo3(get)]
     initial: State,
     #[pyo3(get)]
@@ -25,8 +26,33 @@ pub struct FSMInfo {
     alphabet_symbol_mapping: HashMap<String, TransitionKey>,
 }
 
+impl From<FSMInfo> for PyFSMInfo {
+    fn from(fsm_info: FSMInfo) -> Self {
+        PyFSMInfo {
+            initial: fsm_info.initial,
+            finals: fsm_info.finals,
+            transitions: fsm_info.transitions,
+            alphabet_anything_value: fsm_info.alphabet_anything_value,
+            alphabet_symbol_mapping: fsm_info.alphabet_symbol_mapping,
+        }
+    }
+}
+
+// FIXME: could be costly, confirm if FSMInfo will actually be part of the interface
+impl From<&PyFSMInfo> for FSMInfo {
+    fn from(fsm_info: &PyFSMInfo) -> Self {
+        FSMInfo {
+            initial: fsm_info.initial,
+            finals: fsm_info.finals.clone(),
+            transitions: fsm_info.transitions.clone(),
+            alphabet_anything_value: fsm_info.alphabet_anything_value,
+            alphabet_symbol_mapping: fsm_info.alphabet_symbol_mapping.clone(),
+        }
+    }
+}
+
 #[pymethods]
-impl FSMInfo {
+impl PyFSMInfo {
     #[new]
     fn new(
         initial: State,
@@ -35,109 +61,52 @@ impl FSMInfo {
         alphabet_anything_value: TransitionKey,
         alphabet_symbol_mapping: HashMap<String, TransitionKey>,
     ) -> Self {
-        Self {
+        FSMInfo::new(
             initial,
             finals,
             transitions,
             alphabet_anything_value,
             alphabet_symbol_mapping,
-        }
+        )
+        .into()
     }
 }
 
-#[pyclass]
-pub struct Index {
-    initial: u32,
-    finals: HashSet<u32>,
-    states_to_token_subsets: HashMap<u32, HashMap<u32, u32>>,
-    #[allow(dead_code)]
-    eos_token_id: u32,
-}
+#[pyclass(name = "Index")]
+pub struct PyIndex(Index);
 
 #[pymethods]
-impl Index {
+impl PyIndex {
     #[new]
     fn new(
-        fsm_info: &FSMInfo,
+        fsm_info: &PyFSMInfo,
         vocabulary: &PyVocabulary,
         eos_token_id: u32,
         frozen_tokens: HashSet<String>,
     ) -> PyResult<Self> {
-        let mut states_to_token_subsets: HashMap<u32, HashMap<u32, u32>> = HashMap::new();
-        let mut seen: HashSet<State> = HashSet::new();
-        let mut next_states: HashSet<State> = HashSet::from([fsm_info.initial]);
-
-        let vocabulary_transition_keys = get_vocabulary_transition_keys(
-            &fsm_info.alphabet_symbol_mapping,
-            fsm_info.alphabet_anything_value,
-            &vocabulary.0,
-            &frozen_tokens,
-        );
-
-        while let Some(start_state) = next_states.iter().cloned().next() {
-            next_states.remove(&start_state);
-
-            // TODO: Return Pydict directly at construction
-            let token_ids_end_states = state_scan_tokens(
-                &fsm_info.transitions,
-                fsm_info.initial,
-                &fsm_info.finals,
-                &vocabulary.0,
-                &vocabulary_transition_keys,
-                start_state,
-            );
-
-            for (token_id, end_state) in token_ids_end_states {
-                let inner_map = states_to_token_subsets.entry(start_state).or_default();
-                inner_map.insert(token_id, end_state);
-
-                if !seen.contains(&end_state) {
-                    next_states.insert(end_state);
-                }
-            }
-
-            seen.insert(start_state);
-        }
-
-        let is_valid = states_to_token_subsets
-            .values()
-            .flat_map(|token_id_end_states| token_id_end_states.values())
-            .any(|end_state| fsm_info.finals.contains(end_state));
-
-        if is_valid {
-            Ok(Self {
-                initial: fsm_info.initial,
-                finals: fsm_info.finals.clone(),
-                states_to_token_subsets,
-                eos_token_id,
-            })
-        } else {
-            Err(PyErr::new::<PyValueError, _>(
-                "The vocabulary does not allow us to build a sequence that matches the input",
-            ))
-        }
+        Index::new(&fsm_info.into(), &vocabulary.0, eos_token_id, frozen_tokens)
+            .map(PyIndex)
+            .map_err(Into::into)
     }
 
-    fn get_allowed_tokens(&mut self, state: u32) -> Vec<u32> {
-        self.states_to_token_subsets
-            .get(&state)
-            .map_or_else(Vec::new, |res| res.keys().cloned().collect())
+    fn get_allowed_tokens(&self, state: u32) -> Option<Vec<u32>> {
+        self.0.allowed_tokens(state)
     }
 
     fn get_next_state(&self, state: u32, token_id: u32) -> Option<u32> {
-        Some(*self.states_to_token_subsets.get(&state)?.get(&token_id)?)
+        self.0.next_state(state, token_id)
     }
 
-    fn is_final_state(&mut self, state: u32) -> bool {
-        self.finals.contains(&state)
+    fn is_final_state(&self, state: u32) -> bool {
+        self.0.is_final(state)
     }
 
-    fn get_index_dict(&mut self) -> HashMap<u32, HashMap<u32, u32>> {
-        self.states_to_token_subsets.clone()
+    fn get_index_dict(&self) -> HashMap<u32, HashMap<u32, u32>> {
+        self.0.index().clone()
     }
 
-    fn get_initial_state(&mut self) -> u32 {
-        self.initial
+    fn get_initial_state(&self) -> u32 {
+        self.0.initial()
     }
 }
 
@@ -239,7 +208,7 @@ pub fn get_vocabulary_transition_keys_py(
 #[pyo3(text_signature = "(fsm_info, vocabulary, frozen_tokens)")]
 pub fn create_fsm_index_end_to_end_py<'py>(
     py: Python<'py>,
-    fsm_info: &FSMInfo,
+    fsm_info: &PyFSMInfo,
     vocabulary: &PyVocabulary,
     frozen_tokens: HashSet<String>,
 ) -> PyResult<Bound<'py, PyDict>> {
@@ -314,8 +283,6 @@ fn outlines_core_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(get_vocabulary_transition_keys_py, m)?)?;
     m.add_function(wrap_pyfunction!(create_fsm_index_end_to_end_py, m)?)?;
 
-    m.add_class::<FSMInfo>()?;
-
     m.add("BOOLEAN", json_schema::BOOLEAN)?;
     m.add("DATE", json_schema::DATE)?;
     m.add("DATE_TIME", json_schema::DATE_TIME)?;
@@ -331,8 +298,9 @@ fn outlines_core_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(build_regex_from_schema_py, m)?)?;
     m.add_function(wrap_pyfunction!(to_regex_py, m)?)?;
 
+    m.add_class::<PyIndex>()?;
     m.add_class::<PyVocabulary>()?;
-    m.add_class::<Index>()?;
+    m.add_class::<PyFSMInfo>()?;
 
     Ok(())
 }

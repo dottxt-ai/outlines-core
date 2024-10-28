@@ -38,7 +38,6 @@ pub struct Index {
     pub(crate) initial: u32,
     finals: HashSet<u32>,
     states_to_token_subsets: HashMap<u32, HashMap<u32, u32>>,
-    #[allow(dead_code)]
     eos_token_id: u32,
 }
 

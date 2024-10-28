@@ -113,6 +113,9 @@ impl Index {
     }
 
     pub(crate) fn next_state(&self, state: u32, token_id: u32) -> Option<u32> {
+        if token_id == self.eos_token_id {
+            return None;
+        }
         Some(*self.states_to_token_subsets.get(&state)?.get(&token_id)?)
     }
 

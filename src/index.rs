@@ -72,13 +72,18 @@ impl Index {
                 start_state,
             );
 
-            for (token_id, end_state) in token_ids_end_states {
+            for (token_id, end_state) in &token_ids_end_states {
                 let inner_map = states_to_token_subsets.entry(start_state).or_default();
-                inner_map.insert(token_id, end_state);
+                inner_map.insert(*token_id, *end_state);
 
-                if !seen.contains(&end_state) {
-                    next_states.insert(end_state);
+                if !seen.contains(end_state) {
+                    next_states.insert(*end_state);
                 }
+            }
+
+            if fsm_info.finals.contains(&start_state) && !token_ids_end_states.is_empty() {
+                let inner_map = states_to_token_subsets.entry(start_state).or_default();
+                inner_map.insert(eos_token_id, start_state);
             }
 
             seen.insert(start_state);

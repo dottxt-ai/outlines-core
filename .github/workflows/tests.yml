@@ -58,8 +58,8 @@ jobs:
         overwrite: true
 
   coverage:
-    name: Combine & check coverage.
-    needs: tests
+    name: Combine & diff check coverage.
+    needs: [tests, cargo-test]
     runs-on: ubuntu-latest
 
     steps:
@@ -76,9 +76,18 @@ jobs:
         run: |
           pip install --upgrade "coverage[toml]>=5.1" diff-cover
 
-      - uses: actions/download-artifact@v4
+      - name: Install lcov
+        run: sudo apt-get update && sudo apt-get install -yqq lcov
+
+      - name: Download python coverage data
+        uses: actions/download-artifact@v4
         with:
           name: coverage-data
+
+      - name: Download rust coverage data
+        uses: actions/download-artifact@v4
+        with:
+          name: rust-coverage-data
 
       - name: Fetch main for coverage diff
         run: |
@@ -87,9 +96,10 @@ jobs:
       - name: Combine coverage & fail if it's <100%.
         run: |
           python -m coverage combine
-          python -m coverage html --skip-covered --skip-empty
-          python -m coverage xml
-          diff-cover coverage.xml --markdown-report=coverage.md --fail-under=100 || (cat coverage.md >> $GITHUB_STEP_SUMMARY && exit 1)
+          python -m coverage lcov
+          lcov -a coverage.lcov -a lcov.info -o combined_coverage
+          genhtml combined_coverage --output-directory htmlcov
+          diff-cover combined_coverage --markdown-report=coverage.md --fail-under=100 || (cat coverage.md >> $GITHUB_STEP_SUMMARY && exit 1)
 
       - name: Upload HTML report if check failed.
         uses: actions/upload-artifact@v4
@@ -113,11 +123,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+
     - name: Install Rust
       uses: actions-rs/toolchain@v1
       with:
         toolchain: stable
         override: true
+
     - name: Cache Cargo dependencies
       uses: actions/cache@v2
       with:
@@ -126,8 +138,26 @@ jobs:
           ~/.cargo/git
           target
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
     - name: Run cargo test
       run: cargo test
+      
+    - name: Install cargo tarpaulin
+      run: cargo install cargo-tarpaulin
+      
+    - name: Generate rust code coverage
+      run: cargo tarpaulin --out=Lcov --output-dir=rust-coverage --engine=llvm --no-dead-code --workspace --verbose
+      env:
+        RUSTFLAGS: -C instrument-coverage
+
+    - name: Upload rust coverage data
+      uses: actions/upload-artifact@v4
+      with:
+        name: rust-coverage-data
+        path: rust-coverage/
+        if-no-files-found: ignore
+        include-hidden-files: true
+        overwrite: true
 
   cargo-audit:
     name: Run Cargo audit

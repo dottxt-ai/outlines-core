@@ -11,20 +11,20 @@ jobs:
     name: Check the code style
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - uses: actions/setup-python@v4
       with:
         python-version: "3.10"
     - uses: pre-commit/action@v3.0.0
 
   tests:
-    name: Run the tests
+    name: Run python tests
     runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: ["3.10"]
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v4
       with:
@@ -58,12 +58,12 @@ jobs:
         overwrite: true
 
   coverage:
-    name: Combine & diff check coverage.
+    name: Check combined coverage
     needs: [tests, cargo-test]
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -114,7 +114,7 @@ jobs:
     name: Build Wheel and Test SDist
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Build SDist and Wheel
         run: ./.github/scripts/build_sdist_and_wheel.sh
 
@@ -122,31 +122,30 @@ jobs:
     name: Run Cargo tests
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
+    # toolchain choice needs to happen before cache: rustc version used as its cache key
+    - uses: dtolnay/rust-toolchain@stable
+    - uses: Swatinem/rust-cache@v2
 
-    - name: Install Rust
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        override: true
+    - name: Install cargo tarpaulin if not cached
+      run: |
+        if ! command -v cargo-tarpaulin &> /dev/null; then
+          echo "cargo-tarpaulin is not found, installing..."
+          cargo install cargo-tarpaulin
+        else
+          echo "cargo-tarpaulin is cached"
+        fi
 
-    - name: Cache Cargo dependencies
-      uses: actions/cache@v2
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-
-    - name: Run cargo test
-      run: cargo test
-      
-    - name: Install cargo tarpaulin
-      run: cargo install cargo-tarpaulin
-      
     - name: Generate rust code coverage
-      run: cargo tarpaulin --out=Lcov --output-dir=rust-coverage --engine=llvm --no-dead-code --workspace --verbose
+      run: >
+        cargo tarpaulin
+        --out=Lcov
+        --output-dir=rust-coverage
+        --engine=llvm
+        --exclude-files=src/python_bindings/*
+        --no-dead-code
+        --workspace
+        --verbose
       env:
         RUSTFLAGS: -C instrument-coverage
 
@@ -163,21 +162,19 @@ jobs:
     name: Run Cargo audit
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - name: Install Rust
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-        override: true
-    - name: Cache Cargo dependencies
-      uses: actions/cache@v2
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-    - name: Install cargo-audit
-      run: cargo install cargo-audit
+    - uses: actions/checkout@v4
+    # toolchain choice needs to happen before cache: rustc version used as its cache key
+    - uses: dtolnay/rust-toolchain@stable
+    - uses: Swatinem/rust-cache@v2
+
+    - name: Install cargo audit if not cached
+      run: |
+        if ! command -v cargo-audit &> /dev/null; then
+          echo "cargo-audit is not found, installing..."
+          cargo install cargo-audit
+        else
+          echo "cargo-audit is cached"
+        fi
+
     - name: Run cargo audit
       run: cargo audit

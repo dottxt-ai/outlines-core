@@ -35,7 +35,7 @@ impl FSMInfo {
 
 #[derive(Debug)]
 pub struct Index {
-    pub(crate) initial: u32,
+    initial: u32,
     finals: HashSet<u32>,
     states_to_token_subsets: HashMap<u32, HashMap<u32, u32>>,
     eos_token_id: u32,
@@ -126,7 +126,7 @@ impl Index {
         self.finals.contains(&state)
     }
 
-    pub(crate) fn index(&self) -> &HashMap<u32, HashMap<u32, u32>> {
+    pub(crate) fn transitions(&self) -> &HashMap<u32, HashMap<u32, u32>> {
         &self.states_to_token_subsets
     }
 }

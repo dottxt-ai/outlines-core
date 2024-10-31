@@ -101,8 +101,8 @@ impl PyIndex {
         self.0.is_final(state)
     }
 
-    fn get_index_dict(&self) -> HashMap<u32, HashMap<u32, u32>> {
-        self.0.index().clone()
+    fn get_transitions(&self) -> HashMap<u32, HashMap<u32, u32>> {
+        self.0.transitions().clone()
     }
 
     fn get_initial_state(&self) -> u32 {

@@ -306,4 +306,4 @@ class RegexGuide(Guide):
 
     def get_index_dict(self):
         """Returns the Index as a Python Dict object."""
-        return self.states_to_token_maps.get_index_dict()
+        return self.states_to_token_maps.get_transitions()

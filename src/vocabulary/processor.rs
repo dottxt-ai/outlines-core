@@ -311,9 +311,9 @@ mod tests {
         let tokenizer = Tokenizer::from_pretrained(model, None).expect("Tokenizer failed");
 
         let result = TokenProcessor::new(&tokenizer);
-        assert!(result.is_err());
-        if let Err(e) = result {
-            assert_eq!(e, Error::UnsupportedByTokenProcessor)
+        match result {
+            Err(Error::UnsupportedByTokenProcessor) => {}
+            _ => unreachable!(),
         }
     }
 
@@ -325,9 +325,9 @@ mod tests {
 
         for token in ["𝒜𝒷𝒸𝒟𝓔", "🦄🌈🌍🔥🎉", "京东购物"] {
             let result = processor.process(token.to_string());
-            assert!(result.is_err());
-            if let Err(e) = result {
-                assert_eq!(e, Error::ByteProcessorFailed)
+            match result {
+                Err(Error::ByteProcessorFailed) => {}
+                _ => unreachable!(),
             }
         }
     }
@@ -339,9 +339,9 @@ mod tests {
         let processor = TokenProcessor::new(&tokenizer).expect("Processor failed");
 
         let result = processor.process("<0x6y>".to_string());
-        assert!(result.is_err());
-        if let Err(e) = result {
-            assert_eq!(e, Error::ByteFallbackProcessorFailed)
+        match result {
+            Err(Error::ByteFallbackProcessorFailed) => {}
+            _ => unreachable!(),
         }
     }
 
@@ -375,9 +375,9 @@ mod tests {
 
         let tokenizer = Tokenizer::new(BPE::default());
         let result = TokenProcessor::new(&tokenizer);
-        assert!(result.is_err());
-        if let Err(e) = result {
-            assert_eq!(e, Error::UnsupportedByTokenProcessor)
+        match result {
+            Err(Error::UnsupportedByTokenProcessor) => {}
+            _ => unreachable!(),
         }
     }
 
@@ -394,9 +394,9 @@ mod tests {
         tokenizer.with_decoder(Some(decoder_sequence));
 
         let result = TokenProcessor::new(&tokenizer);
-        assert!(result.is_err());
-        if let Err(e) = result {
-            assert_eq!(e, Error::UnsupportedByTokenProcessor)
+        match result {
+            Err(Error::UnsupportedByTokenProcessor) => {}
+            _ => unreachable!(),
         }
     }
 }

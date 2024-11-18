@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use tokenizers::normalizers::Sequence;
 use tokenizers::{FromPretrainedParameters, NormalizerWrapper, Tokenizer};
 
-use crate::prelude::*;
+use crate::{error, prelude::*};
 use crate::{Error, Result};
 
 use locator::{HFLocator, Locator};
@@ -55,22 +55,44 @@ impl Vocabulary {
         model: &str,
         parameters: Option<FromPretrainedParameters>,
     ) -> Result<Self> {
-        let mut tokenizer =
-            Tokenizer::from_pretrained(model, parameters.clone()).map_err(|_| {
-                Error::UnableToCreateTokenizer {
-                    model: model.to_string(),
-                }
-            })?;
+        let mut tokenizer = Tokenizer::from_pretrained(model, parameters.clone())
+            .map_err(|e| Error::TokenizersError(error::TokenizersError(e)))?;
         Self::filter_prepend_normalizers(&mut tokenizer);
 
+        // Locate eos_token_id in defined locations.
         let eos_token_id = L::locate_eos_token_id(model, &tokenizer, &parameters);
         let Some(eos_token_id) = eos_token_id else {
-            return Err(Error::UnableToLocateEosTokenId {
+            return Err(Error::UnsupportedTokenizer {
                 model: model.to_string(),
+                reason: "EOS token id".to_string(),
             });
         };
 
-        Vocabulary::try_from((tokenizer, eos_token_id))
+        // Start building the vocabulary from eos_token_id and added tokens.
+        let mut vocabulary = Vocabulary::new(Some(eos_token_id));
+        for (id, added_token) in tokenizer.get_added_tokens_decoder().iter() {
+            if !added_token.special {
+                vocabulary = vocabulary.insert(added_token.content.clone(), *id);
+            }
+        }
+
+        // Process each vocabulary token according to the tokenizer's level.
+        let Ok(processor) = TokenProcessor::new(&tokenizer) else {
+            return Err(Error::UnsupportedTokenizer {
+                model: model.to_string(),
+                reason: "Token processor".to_string(),
+            });
+        };
+        for (token, token_id) in tokenizer.get_vocab(false) {
+            let token_bytes = processor.process(token)?;
+            // TODO: lossy is temp:
+            // - in python in was handled by byte_symbol function
+            // - interface needs to be redefined to treat Token type as bytes: Vec<u8>
+            let processed_token = String::from_utf8_lossy(&token_bytes);
+            vocabulary = vocabulary.insert(processed_token, token_id);
+        }
+
+        Ok(vocabulary)
     }
 
     /// Per provided token returns vector of `TokenId`s if available in the vocabulary.
@@ -111,33 +133,6 @@ impl Vocabulary {
                 _ => {}
             }
         }
-    }
-}
-
-impl TryFrom<(Tokenizer, u32)> for Vocabulary {
-    type Error = Error;
-
-    fn try_from(value: (Tokenizer, u32)) -> Result<Self> {
-        let (tokenizer, eos_token_id) = value;
-
-        let mut vocabulary = Vocabulary::new(Some(eos_token_id));
-        for (id, added_token) in tokenizer.get_added_tokens_decoder().iter() {
-            if !added_token.special {
-                vocabulary = vocabulary.insert(added_token.content.clone(), *id);
-            }
-        }
-
-        let processor = TokenProcessor::new(&tokenizer)?;
-        for (token, token_id) in tokenizer.get_vocab(false) {
-            let token_bytes = processor.process(token)?;
-            // TODO: lossy is temp:
-            // - in python in was handled by byte_symbol function
-            // - interface needs to be redefined to treat Token type as bytes: Vec<u8>
-            let processed_token = String::from_utf8_lossy(&token_bytes);
-            vocabulary = vocabulary.insert(processed_token, token_id);
-        }
-
-        Ok(vocabulary)
     }
 }
 
@@ -279,12 +274,41 @@ mod tests {
     }
 
     #[test]
+    fn supported_pretrained_models() {
+        // Support is expected for these:
+        for model in [
+            // GPT 2
+            "openai-community/gpt2",
+            // Llama 2
+            "hf-internal-testing/Llama-2-7B-GPTQ",
+            // Llama 3
+            // OpenCoder: shares llama tokenizers
+            "hf-internal-testing/llama-3-8b-internal",
+            // Qwen
+            "Qwen/Qwen2-7B-Instruct",
+            // Salamandra
+            "BSC-LT/salamandra-2b",
+        ] {
+            let vocabulary = Vocabulary::from_pretrained(model, None);
+            match vocabulary {
+                Ok(v) => {
+                    assert!(v.eos_token_id().is_some());
+                    assert_eq!(v.eos_token_id, v.eos_token_id());
+                    assert!(!v.tokens.is_empty());
+                }
+                Err(_) => unreachable!(),
+            }
+        }
+    }
+
+    #[test]
     fn pretrained_from_gpt2() {
         let model = "openai-community/gpt2";
         let tokenizer = Tokenizer::from_pretrained(model, None).expect("Tokenizer failed");
         let vocabulary = Vocabulary::from_pretrained(model, None).expect("Vocabulary failed");
 
         let v_eos = vocabulary.eos_token_id;
+        assert_eq!(v_eos, vocabulary.eos_token_id());
         assert!(v_eos.is_some());
 
         let v_eos = v_eos.unwrap();
@@ -317,6 +341,7 @@ mod tests {
         let vocabulary = Vocabulary::from_pretrained(model, None).expect("Vocabulary failed");
 
         let v_eos = vocabulary.eos_token_id;
+        assert_eq!(v_eos, vocabulary.eos_token_id());
         assert!(v_eos.is_some());
 
         let v_eos = v_eos.unwrap();
@@ -351,9 +376,12 @@ mod tests {
         let model = "hf-internal-testing/tiny-random-XLMRobertaXLForCausalLM";
         let vocabulary = Vocabulary::from_pretrained(model, None);
 
-        assert!(vocabulary.is_err());
-        if let Err(e) = vocabulary {
-            assert_eq!(e, Error::UnsupportedByTokenProcessor)
+        match vocabulary {
+            Err(Error::UnsupportedTokenizer { model, reason }) => {
+                assert_eq!(model, model.to_string());
+                assert_eq!(&reason, "Token processor");
+            }
+            _ => unreachable!(),
         }
     }
 
@@ -362,9 +390,9 @@ mod tests {
         let model = "hf-internal-testing/some-non-existent-model";
         let vocabulary = Vocabulary::from_pretrained(model, None);
 
-        assert!(vocabulary.is_err());
-        if let Err(Error::UnableToCreateTokenizer { model }) = vocabulary {
-            assert_eq!(model, model.to_string());
+        match vocabulary {
+            Err(Error::TokenizersError(e)) => assert!(!e.to_string().is_empty()),
+            _ => unreachable!(),
         }
     }
 
@@ -384,9 +412,12 @@ mod tests {
         let model = "hf-internal-testing/tiny-random-XLMRobertaXLForCausalLM";
         let vocabulary = Vocabulary::from_pretrained_with_locator::<NoneLocator>(model, None);
 
-        assert!(vocabulary.is_err());
-        if let Err(Error::UnableToLocateEosTokenId { model }) = vocabulary {
-            assert_eq!(model, model.to_string());
+        match vocabulary {
+            Err(Error::UnsupportedTokenizer { model, reason }) => {
+                assert_eq!(model, model.to_string());
+                assert_eq!(&reason, "EOS token id");
+            }
+            _ => unreachable!(),
         }
     }
 

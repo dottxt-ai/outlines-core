@@ -77,12 +77,6 @@ static CHAR_MAP: Lazy<HashMap<char, u8>> = Lazy::new(|| {
     char_map
 });
 
-/// Token processor to adjust tokens according to the tokenizer's level.
-#[derive(Debug)]
-pub(crate) struct TokenProcessor {
-    level: TokenProcessorLevel,
-}
-
 /// Recognizes different tokenizer's levels.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum TokenProcessorLevel {
@@ -99,13 +93,17 @@ pub(crate) struct Mods {
     spacechar: char,
 }
 
-/// Default string modification to be applied by `TokenProcessor` of `ByteFallback` level.
-static DEFAULT_MODS: Mods = Mods { spacechar: ' ' };
+impl Default for Mods {
+    /// Default string modification to be applied by `TokenProcessor` of `ByteFallback` level.
+    fn default() -> Self {
+        Self { spacechar: ' ' }
+    }
+}
 
 impl Mods {
-    /// Apply default modifications.
+    /// Apply default modifications to each token.
     fn apply_default(&self, token: String) -> String {
-        let to = DEFAULT_MODS.spacechar.to_string();
+        let to = Self::default().spacechar.to_string();
         token.replace(self.spacechar, &to)
     }
 }
@@ -140,6 +138,12 @@ impl ReplaceDecoder {
 #[derive(Debug, Deserialize)]
 enum ReplacePattern {
     String(String),
+}
+
+/// Token processor to adjust tokens according to the tokenizer's level.
+#[derive(Debug)]
+pub(crate) struct TokenProcessor {
+    level: TokenProcessorLevel,
 }
 
 impl TokenProcessor {

@@ -4,6 +4,7 @@ use tokenizers::{FromPretrainedParameters, Tokenizer};
 
 use crate::primitives::*;
 
+/// Mapping of characters to bytes for GPT-2 like tokenizers.
 /// List of common eos token locations appearing on hugging face hub, ordered by priority.
 const COMMON_LOCATIONS: &[EosTokenLocation] = &[
     // Most projects have `generation_config.json` that looks like:
@@ -71,6 +72,7 @@ struct Object {
     eos_token: Content,
 }
 
+/// `eos_token` provided in a `Content`.
 #[derive(Debug, Serialize, Deserialize)]
 struct Content {
     content: String,
@@ -91,6 +93,7 @@ struct EosTokenLocation {
 
 /// Locates eos token id.
 pub(crate) trait Locator {
+    /// Locates eos token id in defined locations by `Locator`.
     fn locate_eos_token_id(
         model: &str,
         tokenizer: &Tokenizer,
@@ -102,6 +105,7 @@ pub(crate) trait Locator {
 pub(crate) struct HFLocator;
 
 impl Locator for HFLocator {
+    /// Locates eos token id in defined locations.
     fn locate_eos_token_id(
         model: &str,
         tokenizer: &Tokenizer,

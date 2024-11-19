@@ -6,9 +6,7 @@ pub mod primitives;
 pub mod regex;
 pub mod vocabulary;
 
-use error::Error;
-
-pub type Result<T, E = Error> = std::result::Result<T, E>;
+pub use error::{Error, Result};
 
 #[cfg(feature = "python-bindings")]
 mod python_bindings;

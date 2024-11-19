@@ -1,17 +1,14 @@
 use thiserror::Error;
 
+pub type Result<T, E = crate::Error> = std::result::Result<T, E>;
+
 #[derive(Error, Debug)]
+#[error("{0}")]
 pub struct TokenizersError(pub tokenizers::Error);
 
 impl PartialEq for TokenizersError {
     fn eq(&self, other: &Self) -> bool {
         self.0.to_string() == other.0.to_string()
-    }
-}
-
-impl std::fmt::Display for TokenizersError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
     }
 }
 

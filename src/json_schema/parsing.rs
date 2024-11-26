@@ -239,6 +239,10 @@ pub fn parse_ref(
         .as_str()
         .ok_or_else(|| anyhow!("'$ref' must be a string"))?;
 
+    if ref_path == "#" {
+        return Err(anyhow!("Recursive references are not supported for now"));
+    }
+
     let parts: Vec<&str> = ref_path.split('#').collect();
 
     match parts.as_slice() {

@@ -82,3 +82,66 @@ pub fn to_regex(
         _ => Err(anyhow!("Invalid JSON Schema: expected an object")),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn error_on_recursive_ref() {
+        let json = r##"
+        {
+            "type": "object",
+            "properties": {
+                "name": { "type": "string" },
+                "children": {
+                    "type": "array",
+                    "items": { "$ref": "#" }
+                }
+            }
+        }"##;
+
+        let json_value: Value = serde_json::from_str(json).expect("Can't parse json");
+        let result = to_regex(&json_value, None, &json_value);
+
+        match result {
+            Err(e) => {
+                let message = "Recursive references are not supported for now";
+                assert_eq!(message, e.to_string());
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    #[test]
+    fn internal_ref_works() {
+        let json = r##"
+        {
+            "definitions": {
+                "address": {
+                    "type": "object",
+                    "properties": {
+                        "street": { "type": "string" },
+                        "city": { "type": "string" }
+                    }
+                }
+            },
+            "type": "object",
+            "properties": {
+                "home_address": { "$ref": "#/definitions/address" },
+                "work_address": { "$ref": "#/definitions/address" }
+            }
+        }"##;
+
+        let json_value: Value = serde_json::from_str(json).expect("Can't parse json");
+        let result = to_regex(&json_value, None, &json_value);
+
+        match result {
+            Ok(r) => {
+                assert!(r.contains("home_address"));
+                assert!(r.contains("work_address"));
+            }
+            _ => unreachable!(),
+        }
+    }
+}

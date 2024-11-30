@@ -5,6 +5,7 @@ use crate::regex::get_token_transition_keys;
 use crate::regex::get_vocabulary_transition_keys;
 use crate::regex::state_scan_tokens;
 use crate::regex::walk_fsm;
+use bincode::config;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
@@ -89,20 +90,19 @@ impl PyIndex {
             .map_err(Into::into)
     }
 
-    fn __reduce__(&self) -> PyResult<(PyObject, (String,))> {
+    fn __reduce__(&self) -> PyResult<(PyObject, (Vec<u8>,))> {
         Python::with_gil(|py| {
             let cls = PyModule::import_bound(py, "outlines_core.fsm.outlines_core_rs")?
                 .getattr("Index")?;
-            let json_data = serde_json::to_string(&self.0)
-                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
-            Ok((cls.getattr("from_json")?.to_object(py), (json_data,)))
+            let binary_data: Vec<u8> = bincode::encode_to_vec(&self.0, config::standard()).unwrap();
+            Ok((cls.getattr("from_binary")?.to_object(py), (binary_data,)))
         })
     }
 
     #[staticmethod]
-    fn from_json(json_data: String) -> PyResult<Self> {
-        let index: Index = serde_json::from_str(&json_data)
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+    fn from_binary(binary_data: Vec<u8>) -> PyResult<Self> {
+        let (index, _): (Index, usize) =
+            bincode::decode_from_slice(&binary_data[..], config::standard()).unwrap();
         Ok(PyIndex(index))
     }
 

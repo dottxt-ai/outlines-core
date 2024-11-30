@@ -15,6 +15,7 @@ regex = "1.10.6"
 serde-pyobject = "0.4.0"
 serde_json = { version = "1.0", features = ["preserve_order"] }
 serde = {version = "1.0", features = ["derive"]}
+bincode = "2.0.0-rc.3"
 # Fragile dependencies, minor updates often break the code
 hf-hub = "=0.3.2"
 tokenizers = { version = "=0.20.3", features = ["http"] }

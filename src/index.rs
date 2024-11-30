@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 /// Construct an Index.
 use crate::prelude::{State, TransitionKey};
 use crate::regex::{get_vocabulary_transition_keys, state_scan_tokens};
@@ -32,7 +34,7 @@ impl FSMInfo {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Index {
     initial: u32,
     finals: HashSet<u32>,

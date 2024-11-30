@@ -72,7 +72,7 @@ impl PyFSMInfo {
     }
 }
 
-#[pyclass(name = "Index")]
+#[pyclass(name = "Index", module = "outlines_core.fsm.outlines_core_rs")]
 pub struct PyIndex(Index);
 
 #[pymethods]
@@ -87,6 +87,23 @@ impl PyIndex {
         Index::new(&fsm_info.into(), &vocabulary.0, eos_token_id, frozen_tokens)
             .map(PyIndex)
             .map_err(Into::into)
+    }
+
+    fn __reduce__(&self) -> PyResult<(PyObject, (String,))> {
+        Python::with_gil(|py| {
+            let cls = PyModule::import_bound(py, "outlines_core.fsm.outlines_core_rs")?
+                .getattr("Index")?;
+            let json_data = serde_json::to_string(&self.0)
+                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+            Ok((cls.getattr("from_json")?.to_object(py), (json_data,)))
+        })
+    }
+
+    #[staticmethod]
+    fn from_json(json_data: String) -> PyResult<Self> {
+        let index: Index = serde_json::from_str(&json_data)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+        Ok(PyIndex(index))
     }
 
     fn get_allowed_tokens(&self, state: u32) -> Option<Vec<u32>> {

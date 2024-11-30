@@ -1,5 +1,4 @@
 import pickle
-from timeit import default_timer as timer
 
 import pytest
 from outlines_core.fsm.guide import RegexGuide
@@ -50,18 +49,8 @@ def test_complex_serialization(hf_tokenizer_uri, revision):
 
     fsm = RegexGuide.from_regex(regex_str, tokenizer)
 
-    start = timer()
     serialized = pickle.dumps(fsm)
-    serialization_time = timer() - start
-
-    # Measure deserialization time
-    start = timer()
     deserialized = pickle.loads(serialized)
-    deserialization_time = timer() - start
 
     assert fsm.eos_tensor == deserialized.eos_tensor
     assert fsm.initial_state == deserialized.initial_state
-
-    # Print or log the timing results
-    print(f"Serialization time: {serialization_time:.6f} seconds")
-    print(f"Deserialization time: {deserialization_time:.6f} seconds")

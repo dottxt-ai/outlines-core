@@ -146,7 +146,7 @@ pub fn build_regex_from_schema_py(
 #[pyo3(signature = (json, whitespace_pattern=None))]
 pub fn to_regex_py(json: Bound<PyDict>, whitespace_pattern: Option<&str>) -> PyResult<String> {
     let json_value: Value = serde_pyobject::from_pyobject(json)?;
-    json_schema::to_regex(&json_value, whitespace_pattern, &json_value)
+    json_schema::to_regex(&json_value, whitespace_pattern)
         .map_err(|e| PyValueError::new_err(e.to_string()))
 }
 

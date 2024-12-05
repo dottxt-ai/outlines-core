@@ -1,6 +1,6 @@
 [package]
 name = "outlines-core"
-version = "0.1.0"
+version = "0.1.19"
 edition = "2021"
 description = "Structured Generation"
 license = "Apache-2.0"

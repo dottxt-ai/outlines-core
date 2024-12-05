@@ -46,8 +46,23 @@ jobs:
           CIBW_ARCHS_LINUX: x86_64 i686
           CIBW_ARCHS_WINDOWS: AMD64 x86
           CIBW_ARCHS_MACOS: x86_64 arm64
-          CIBW_BEFORE_ALL_LINUX: curl -sSf https://sh.rustup.rs | sh -s -- -y
-          CIBW_BEFORE_ALL_MACOS: curl -sSf https://sh.rustup.rs | sh -s -- -y
+          CIBW_BEFORE_ALL_LINUX: |
+            curl -sSf https://sh.rustup.rs | sh -s -- -y
+            # From https://github.com/Intreecom/scyllapy/blob/05fdab32dd7468c26533de5fdfe9627fa3e38445/.github/workflows/release.yaml#L38
+            if command -v yum &> /dev/null; then
+                yum update -y && yum install -y perl-core openssl openssl-devel pkgconfig libatomic
+
+                # If we're running on i686 we need to symlink libatomic
+                # in order to build openssl with -latomic flag.
+                if [[ ! -d "/usr/lib64" ]]; then
+                    ln -s /usr/lib/libatomic.so.1 /usr/lib/libatomic.so
+                fi
+            elif command -v apt &> /dev/null; then
+                apt update -y && apt-get install -y libssl-dev openssl pkg-config
+            fi
+          CIBW_BEFORE_ALL_MACOS: |
+            curl -sSf https://sh.rustup.rs | sh -s -- -y
+            rustup target add aarch64-apple-darwin x86_64-apple-darwin
           CIBW_BEFORE_ALL_WINDOWS: rustup target add i686-pc-windows-msvc
           CIBW_BEFORE_BUILD: pip install setuptools-rust
           CIBW_ENVIRONMENT: PATH="$HOME/.cargo/bin:$PATH"

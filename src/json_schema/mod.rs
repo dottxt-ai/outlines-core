@@ -14,7 +14,6 @@ pub fn build_regex_from_schema(json: &str, whitespace_pattern: Option<&str>) -> 
     to_regex(&json_value, whitespace_pattern)
 }
 
-#[allow(clippy::wrong_self_convention)]
 pub fn to_regex(json: &Value, whitespace_pattern: Option<&str>) -> Result<String> {
     let mut parser = parsing::Parser::new(json);
     if let Some(pattern) = whitespace_pattern {
@@ -1060,5 +1059,43 @@ mod tests {
             r#"\{([ ]?"node"[ ]?:[ ]?\{([ ]?"value"[ ]?:[ ]?(-)?(0|[1-9][0-9]*)([ ]?,[ ]?"next"[ ]?:[ ]?\{([ ]?"value"[ ]?:[ ]?(-)?(0|[1-9][0-9]*))?[ ]?\})?|([ ]?"value"[ ]?:[ ]?(-)?(0|[1-9][0-9]*)[ ]?,)?[ ]?"next"[ ]?:[ ]?\{([ ]?"value"[ ]?:[ ]?(-)?(0|[1-9][0-9]*))?[ ]?\})?[ ]?\})?[ ]?\}"#,
             regex,
         );
+    }
+
+    #[test]
+    fn triple_recursion_doesnt_fail() {
+        let json = r##"
+        {
+            "definitions": {
+                "typeA": {
+                    "type": "object",
+                    "properties": {
+                        "name": { "type": "string" },
+                        "child": { "$ref": "#/definitions/typeB" }
+                    },
+                    "required": ["name"]
+                },
+                "typeB": {
+                    "type": "object",
+                    "properties": {
+                        "value": { "type": "number" },
+                        "next": { "$ref": "#/definitions/typeC" }
+                    },
+                    "required": ["value"]
+                },
+                "typeC": {
+                    "type": "object",
+                    "properties": {
+                        "flag": { "type": "boolean" },
+                        "parent": { "$ref": "#/definitions/typeA" }
+                    },
+                    "required": ["flag"]
+                }
+           },
+          "$ref": "#/definitions/typeA"
+        }"##;
+
+        let json_value: Value = serde_json::from_str(json).expect("Can't parse json");
+        let regex = to_regex(&json_value, None);
+        assert!(regex.is_ok(), "{:?}", regex);
     }
 }

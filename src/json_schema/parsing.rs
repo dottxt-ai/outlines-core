@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::num::NonZeroU64;
 
 use regex::escape;
@@ -13,7 +12,6 @@ type Result<T> = std::result::Result<T, JsonSchemaParserError>;
 pub(crate) struct Parser<'a> {
     root: &'a Value,
     whitespace_pattern: &'a str,
-    visited: HashSet<usize>,
     recursion_depth: usize,
     max_recursion_depth: usize,
 }
@@ -30,7 +28,6 @@ impl<'a> Parser<'a> {
         Self {
             root,
             whitespace_pattern: types::WHITESPACE,
-            visited: HashSet::new(),
             recursion_depth: 0,
             max_recursion_depth: 3,
         }
@@ -280,7 +277,6 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_ref(&mut self, obj: &serde_json::Map<String, Value>) -> Result<String> {
-        self.visited.insert(obj as *const _ as usize);
         if self.recursion_depth > self.max_recursion_depth {
             return Err(JsonSchemaParserError::RefRecursionLimitReached(
                 self.max_recursion_depth,

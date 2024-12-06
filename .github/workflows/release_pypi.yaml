@@ -21,6 +21,10 @@ jobs:
         with:
           python-version: '3.10'
 
+      - name: Bump Cargo version
+        run: |
+          python ./.github/scripts/cargo_version_bumper.py --target Cargo.toml "${{ github.ref_name }}"
+
       - name: Set up QEMU
         if: runner.os == 'Linux'
         uses: docker/setup-qemu-action@v3
@@ -68,7 +72,6 @@ jobs:
           CIBW_ENVIRONMENT_MACOS: MACOSX_DEPLOYMENT_TARGET=10.12
           CIBW_TEST_COMMAND: python -c "import outlines_core; print(outlines_core.__version__)"
           CMAKE_PREFIX_PATH: ./dist
-
 
       - uses: actions/upload-artifact@v3
         with:

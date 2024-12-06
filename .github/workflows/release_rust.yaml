@@ -13,6 +13,10 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v2
 
+    - name: Bump Cargo version
+      run: |
+        python ./.github/scripts/cargo_version_bumper.py --target Cargo.toml "${{ github.ref_name }}"
+
     - name: Install Rust
       uses: actions-rs/toolchain@v1
       with:

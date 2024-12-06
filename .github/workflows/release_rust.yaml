@@ -31,8 +31,8 @@ jobs:
     - name: Check Cargo.toml version matches Release tag
       run: |
         CARGO_VERSION=$(grep '^version =' Cargo.toml | sed 's/.*"\(.*\)".*/\1/')
-        if [ "${GITHUB_REF#refs/tags/v}" != "$CARGO_VERSION" ]; then
-          echo "Version mismatch: Cargo.toml ($CARGO_VERSION) doesn't match Release tag (${GITHUB_REF#refs/tags/v})"
+        if [ "${GITHUB_REF#refs/tags/}" != "$CARGO_VERSION" ]; then
+          echo "Version mismatch: Cargo.toml ($CARGO_VERSION) doesn't match Release tag (${GITHUB_REF#refs/tags/})"
           exit 1
         fi
 

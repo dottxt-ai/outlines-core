@@ -32,6 +32,57 @@ pub enum Error {
     ByteFallbackProcessorFailed,
 }
 
+// TODO: Integrate JsonSchema errors and simplify
+#[derive(Error, Debug)]
+pub enum JsonSchemaParserError {
+    #[error("serde json error")]
+    SerdeJsonError(#[from] serde_json::Error),
+    #[error("Unsupported JSON Schema structure {0} \nMake sure it is valid to the JSON Schema specification and check if it's supported by Outlines.\nIf it should be supported, please open an issue.")]
+    UnsupportedJsonSchema(Box<serde_json::Value>),
+    #[error("'properties' not found or not an object")]
+    PropertiesNotFound,
+    #[error("'allOf' must be an array")]
+    AllOfMustBeAnArray,
+    #[error("'anyOf' must be an array")]
+    AnyOfMustBeAnArray,
+    #[error("'oneOf' must be an array")]
+    OneOfMustBeAnArray,
+    #[error("'prefixItems' must be an array")]
+    PrefixItemsMustBeAnArray,
+    #[error("Unsupported data type in enum: {0}")]
+    UnsupportedEnumDataType(Box<serde_json::Value>),
+    #[error("'enum' must be an array")]
+    EnumMustBeAnArray,
+    #[error("Unsupported data type in const: {0}")]
+    UnsupportedConstDataType(Box<serde_json::Value>),
+    #[error("'const' key not found in object")]
+    ConstKeyNotFound,
+    #[error("'$ref' must be a string")]
+    RefMustBeAString,
+    #[error("External references are not supported: {0}")]
+    ExternalReferencesNotSupported(Box<str>),
+    #[error("Invalid reference format: {0}")]
+    InvalidReferenceFormat(Box<str>),
+    #[error("'type' must be a string")]
+    TypeMustBeAString,
+    #[error("Unsupported type: {0}")]
+    UnsupportedType(Box<str>),
+    #[error("maxLength must be greater than or equal to minLength")]
+    MaxBoundError,
+    #[error("Format {0} is not supported by Outlines")]
+    StringTypeUnsupportedFormat(Box<str>),
+    #[error("Invalid reference path: {0}")]
+    InvalidRefecencePath(Box<str>),
+    #[error("Ref recusion limit reached: {0}")]
+    RefRecursionLimitReached(usize),
+}
+
+impl JsonSchemaParserError {
+    pub fn is_recursion_limit(&self) -> bool {
+        matches!(self, Self::RefRecursionLimitReached(_))
+    }
+}
+
 #[cfg(feature = "python-bindings")]
 impl From<Error> for pyo3::PyErr {
     fn from(e: Error) -> Self {

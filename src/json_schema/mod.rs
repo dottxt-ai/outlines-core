@@ -3,116 +3,30 @@ mod types;
 
 pub use types::*;
 
-use anyhow::Result;
 use serde_json::Value;
+
+use crate::JsonSchemaParserError;
+
+type Result<T> = std::result::Result<T, JsonSchemaParserError>;
 
 pub fn build_regex_from_schema(json: &str, whitespace_pattern: Option<&str>) -> Result<String> {
     let json_value: Value = serde_json::from_str(json)?;
     to_regex(&json_value, whitespace_pattern)
 }
 
+#[allow(clippy::wrong_self_convention)]
 pub fn to_regex(json: &Value, whitespace_pattern: Option<&str>) -> Result<String> {
     let mut parser = parsing::Parser::new(json);
     if let Some(pattern) = whitespace_pattern {
         parser = parser.with_whitespace_pattern(pattern)
     }
-    Ok(parser.to_regex(json)?)
+    parser.to_regex(json)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use regex::Regex;
-
-    #[test]
-    fn recursive_ref() {
-        let json = r##"{
-          "type": "object",
-          "properties": {
-              "node": { "$ref": "#/definitions/node" }
-          },
-          "definitions": {
-              "node": {
-                  "type": "object",
-                  "properties": {
-                      "value": { "type": "integer" },
-                      "next": { "$ref": "#/definitions/node" }
-                  }
-              }
-          }
-        }"##;
-        let json_value: Value = serde_json::from_str(json).expect("Can't parse json");
-        let mut parser = parsing::Parser::new(&json_value).with_max_recursion_depth(1);
-        let result = parser.to_regex(&json_value);
-        assert!(result.is_ok(), "{:?}", result);
-        let regex = result.unwrap();
-        assert_eq!(
-            r#"\{([ ]?"node"[ ]?:[ ]?\{([ ]?"value"[ ]?:[ ]?(-)?(0|[1-9][0-9]*)([ ]?,[ ]?"next"[ ]?:[ ]?\{([ ]?"value"[ ]?:[ ]?(-)?(0|[1-9][0-9]*)([ ]?,[ ]?"next"[ ]?:[ ]?{})?|([ ]?"value"[ ]?:[ ]?(-)?(0|[1-9][0-9]*)[ ]?,)?[ ]?"next"[ ]?:[ ]?{})?[ ]?\})?|([ ]?"value"[ ]?:[ ]?(-)?(0|[1-9][0-9]*)[ ]?,)?[ ]?"next"[ ]?:[ ]?\{([ ]?"value"[ ]?:[ ]?(-)?(0|[1-9][0-9]*)([ ]?,[ ]?"next"[ ]?:[ ]?{})?|([ ]?"value"[ ]?:[ ]?(-)?(0|[1-9][0-9]*)[ ]?,)?[ ]?"next"[ ]?:[ ]?{})?[ ]?\})?[ ]?\})?[ ]?\}"#,
-            regex,
-        );
-    }
-
-    #[test]
-    fn internal_ref_works() {
-        let json = r##"
-        {
-            "definitions": {
-                "address": {
-                    "type": "object",
-                    "properties": {
-                        "street": { "type": "string" },
-                        "city": { "type": "string" }
-                    }
-                }
-            },
-            "type": "object",
-            "properties": {
-                "home_address": { "$ref": "#/definitions/address" },
-                "work_address": { "$ref": "#/definitions/address" }
-            }
-        }"##;
-
-        let json_value: Value = serde_json::from_str(json).expect("Can't parse json");
-        let result = to_regex(&json_value, None);
-
-        match result {
-            Ok(r) => {
-                assert!(r.contains("home_address"));
-                assert!(r.contains("work_address"));
-            }
-            _ => unreachable!(),
-        }
-    }
-
-    //  #[test]
-    //  fn error_on_indirect_recursion() {
-    //      let json = r##"{
-    //          "type": "object",
-    //          "properties": {
-    //              "node": { "$ref": "#/definitions/node" }
-    //          },
-    //          "definitions": {
-    //              "node": {
-    //                  "type": "object",
-    //                  "properties": {
-    //                      "value": { "type": "integer" },
-    //                      "next": { "$ref": "#/definitions/node" }
-    //                  }
-    //              }
-    //          }
-    //      }"##;
-
-    //      let json_value: Value = serde_json::from_str(json).expect("Can't parse json");
-    //      let result = to_regex(&json_value, None, &json_value);
-
-    //      match result {
-    //          Err(e) => {
-    //              let message = "Recursive references are not supported for now";
-    //              assert_eq!(message, e.to_string());
-    //          }
-    //          _ => unreachable!(),
-    //      }
-    //  }
 
     fn should_match(re: &Regex, value: &str) {
         // Asserts that value is fully matched.
@@ -121,11 +35,13 @@ mod tests {
                 assert_eq!(
                     matched.as_str(),
                     value,
-                    "Value should match, but does not for: {value}"
+                    "Value should match, but does not for: {value}, re:\n{re}"
                 );
                 assert_eq!(matched.range(), 0..value.len());
             }
-            None => unreachable!("Value should match, but does not, in unreachable for: {value}"),
+            None => unreachable!(
+                "Value should match, but does not, in unreachable for: {value}, re:\n{re}"
+            ),
         }
     }
 
@@ -135,7 +51,7 @@ mod tests {
             assert_ne!(
                 matched.as_str(),
                 value,
-                "Value should NOT match, but does for: {value}"
+                "Value should NOT match, but does for: {value}, re:\n{re}"
             );
             assert_ne!(matched.range(), 0..value.len());
         }
@@ -1029,5 +945,120 @@ mod tests {
                 should_not_match(&re, not_m);
             }
         }
+    }
+
+    #[test]
+    fn direct_recursion_in_array_and_default_behaviour() {
+        let json = r##"
+        {
+            "type": "object",
+            "properties": {
+                "name": { "type": "string" },
+                "children": {
+                    "type": "array",
+                    "items": { "$ref": "#" }
+                }
+            }
+        }"##;
+
+        let json_value: Value = serde_json::from_str(json).expect("Can't parse json");
+        let regex = to_regex(&json_value, None);
+        assert!(regex.is_ok(), "{:?}", regex);
+
+        // Confirm the depth of 3 recursion levels by default, recursion level starts
+        // when children start to have children
+        let re = Regex::new(&regex.unwrap()).expect("Regex failed");
+        for lvl in [
+            // level 0
+            r#"{ "name": "Az"}"#,
+            r#"{ "name": "Az", "children": [] }"#,
+            r#"{ "name": "Az", "children": [{"name": "Bo"}] }"#,
+            // level 1
+            r#"{ "name": "Az", "children": [{"name": "Bo", "children": [] }] }"#,
+            r#"{ "name": "Az", "children": [{"name": "Bo", "children": [{"name": "Li"}] }] }"#,
+            // level 2
+            r#"{ "name": "Az", "children": [{"name": "Bo", "children": [{"name": "Li", "children": [] }] }] }"#,
+            r#"{ "name": "Az", "children": [{"name": "Bo", "children": [{"name": "Li", "children": [{"name": "Ho"}] }] }] }"#,
+            // level 3
+            r#"{ "name": "Az", "children": [{"name": "Bo", "children": [{"name": "Li", "children": [{"name": "Ho", "children": [] }] }] }] }"#,
+            r#"{ "name": "Az", "children": [{"name": "Bo", "children": [{"name": "Li", "children": [{"name": "Ho", "children": [{"name": "Ro"}] }] }] }] }"#,
+        ] {
+            should_match(&re, lvl);
+        }
+
+        for lvl in [
+            // level 4
+            r#"{ "name": "Az", "children": [{"name": "Bo", "children": [{"name": "Li", "children": [{"name": "Ho", "children": [{"name": "Ro", "children": [] }] }] }] }] }"#,
+            r#"{ "name": "Az", "children": [{"name": "Bo", "children": [{"name": "Li", "children": [{"name": "Ho", "children": [{"name": "Ro", "children": [{"name": "Ks"}] }] }] }] }] }"#,
+        ] {
+            should_not_match(&re, lvl);
+        }
+    }
+
+    #[test]
+    fn indirect_recursion_with_recursion_level_regex_match() {
+        let json = r##"{
+          "type": "object",
+          "properties": {
+              "node": { "$ref": "#/definitions/node" }
+          },
+          "definitions": {
+              "node": {
+                  "type": "object",
+                  "properties": {
+                      "value": { "type": "integer" },
+                      "next": { "$ref": "#/definitions/node" }
+                  }
+              }
+          }
+        }"##;
+        let json_value: Value = serde_json::from_str(json).expect("Can't parse json");
+        let mut parser = parsing::Parser::new(&json_value).with_max_recursion_depth(0);
+
+        let result = parser.to_regex(&json_value);
+        assert!(result.is_ok(), "{:?}", result);
+        let regex = result.unwrap();
+        assert_eq!(
+            r#"\{([ ]?"node"[ ]?:[ ]?\{([ ]?"value"[ ]?:[ ]?(-)?(0|[1-9][0-9]*))?[ ]?\})?[ ]?\}"#,
+            regex,
+        );
+
+        //  More readable version to confirm that logic is correct.
+        //  Recursion depth 1:
+        //  {
+        //      ("node":
+        //          {
+        //              ("value":(-)?(0|[1-9][0-9]*)(,"next":{("value":(-)?(0|[1-9][0-9]*))?})?
+        //              |
+        //              ("value":(-)?(0|[1-9][0-9]*),)?"next":{("value":(-)?(0|[1-9][0-9]*))?})?
+        //          }
+        //      )?
+        //  }
+        //  Recursion depth 2:
+        //  {
+        //      ("node":
+        //          {
+        //              ("value":(-)?(0|[1-9][0-9]*)(,"next":{
+        //                  ("value":(-)?(0|[1-9][0-9]*)(,"next":{("value":(-)?(0|[1-9][0-9]*))?})?
+        //                  |
+        //                  ("value":(-)?(0|[1-9][0-9]*),)?"next":{("value":(-)?(0|[1-9][0-9]*))?})?
+        //              })?
+        //              |
+        //              ("value":(-)?(0|[1-9][0-9]*),)?"next":{
+        //                  ("value":(-)?(0|[1-9][0-9]*)(,"next":{("value":(-)?(0|[1-9][0-9]*))?})?
+        //                  |
+        //                  ("value":(-)?(0|[1-9][0-9]*),)?"next":{("value":(-)?(0|[1-9][0-9]*))?})?
+        //              })?
+        //          }
+        //      )?
+        // }
+        let mut parser = parser.with_max_recursion_depth(1);
+        let result = parser.to_regex(&json_value);
+        assert!(result.is_ok(), "{:?}", result);
+        let regex = result.unwrap();
+        assert_eq!(
+            r#"\{([ ]?"node"[ ]?:[ ]?\{([ ]?"value"[ ]?:[ ]?(-)?(0|[1-9][0-9]*)([ ]?,[ ]?"next"[ ]?:[ ]?\{([ ]?"value"[ ]?:[ ]?(-)?(0|[1-9][0-9]*))?[ ]?\})?|([ ]?"value"[ ]?:[ ]?(-)?(0|[1-9][0-9]*)[ ]?,)?[ ]?"next"[ ]?:[ ]?\{([ ]?"value"[ ]?:[ ]?(-)?(0|[1-9][0-9]*))?[ ]?\})?[ ]?\})?[ ]?\}"#,
+            regex,
+        );
     }
 }

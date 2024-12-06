@@ -4,53 +4,11 @@ use std::num::NonZeroU64;
 use regex::escape;
 use serde_json::json;
 use serde_json::Value;
-use thiserror::Error as ThisError;
 
 use crate::json_schema::types;
+use crate::JsonSchemaParserError;
 
-#[derive(Debug, ThisError)]
-pub enum ParserError {
-    #[error("serde json error")]
-    SerdeJsonError(#[from] serde_json::Error),
-    #[error("Unsupported JSON Schema structure {0} \nMake sure it is valid to the JSON Schema specification and check if it's supported by Outlines.\nIf it should be supported, please open an issue.")]
-    UnsupportedJsonSchema(Box<Value>),
-    #[error("'properties' not found or not an object")]
-    PropertiesNotFound,
-    #[error("'allOf' must be an array")]
-    AllOfMustBeAnArray,
-    #[error("'anyOf' must be an array")]
-    AnyOfMustBeAnArray,
-    #[error("'oneOf' must be an array")]
-    OneOfMustBeAnArray,
-    #[error("'prefixItems' must be an array")]
-    PrefixItemsMustBeAnArray,
-    #[error("Unsupported data type in enum: {0}")]
-    UnsupportedEnumDataType(Box<Value>),
-    #[error("'enum' must be an array")]
-    EnumMustBeAnArray,
-    #[error("Unsupported data type in const: {0}")]
-    UnsupportedConstDataType(Box<Value>),
-    #[error("'const' key not found in object")]
-    ConstKeyNotFound,
-    #[error("'$ref' must be a string")]
-    RefMustBeAString,
-    #[error("External references are not supported: {0}")]
-    ExternalReferencesNotSupported(Box<str>),
-    #[error("Invalid reference format: {0}")]
-    InvalidReferenceFormat(Box<str>),
-    #[error("'type' must be a string")]
-    TypeMustBeAString,
-    #[error("Unsupported type: {0}")]
-    UnsupportedType(Box<str>),
-    #[error("maxLength must be greater than or equal to minLength")]
-    MaxBoundError,
-    #[error("Format {0} is not supported by Outlines")]
-    StringTypeUnsupportedFormat(Box<str>),
-    #[error("Invalid reference path: {0}")]
-    InvalidRefecencePath(Box<str>),
-}
-
-type Result<T> = std::result::Result<T, ParserError>;
+type Result<T> = std::result::Result<T, JsonSchemaParserError>;
 
 pub(crate) struct Parser<'a> {
     root: &'a Value,
@@ -61,13 +19,20 @@ pub(crate) struct Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
+    // Max recursion depth is defined at level 3.
+    // Defining recursion depth higher than that should be done cautiously, since
+    // each +1 step on the depth blows up regex's size exponentially.
+    //
+    // For example, for simple referential json schema level 5 will produce regex size over 700K,
+    // which seems counterproductive and likely to introduce performance issues.
+    // It also breaks even `regex` sensible defaults with `CompiledTooBig` error.
     pub fn new(root: &'a Value) -> Self {
         Self {
             root,
             whitespace_pattern: types::WHITESPACE,
             visited: HashSet::new(),
             recursion_depth: 0,
-            max_recursion_depth: 5,
+            max_recursion_depth: 3,
         }
     }
 
@@ -78,6 +43,7 @@ impl<'a> Parser<'a> {
         }
     }
 
+    #[allow(dead_code)]
     pub fn with_max_recursion_depth(self, max_recursion_depth: usize) -> Self {
         Self {
             max_recursion_depth,
@@ -85,6 +51,7 @@ impl<'a> Parser<'a> {
         }
     }
 
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_regex(&mut self, json: &Value) -> Result<String> {
         match json {
             Value::Object(obj) if obj.is_empty() => self.parse_empty_object(),
@@ -97,7 +64,9 @@ impl<'a> Parser<'a> {
             Value::Object(obj) if obj.contains_key("const") => self.parse_const(obj),
             Value::Object(obj) if obj.contains_key("$ref") => self.parse_ref(obj),
             Value::Object(obj) if obj.contains_key("type") => self.parse_type(obj),
-            json => Err(ParserError::UnsupportedJsonSchema(Box::new(json.clone()))),
+            json => Err(JsonSchemaParserError::UnsupportedJsonSchema(Box::new(
+                json.clone(),
+            ))),
         }
     }
 
@@ -130,7 +99,7 @@ impl<'a> Parser<'a> {
         let properties = obj
             .get("properties")
             .and_then(Value::as_object)
-            .ok_or_else(|| ParserError::PropertiesNotFound)?;
+            .ok_or_else(|| JsonSchemaParserError::PropertiesNotFound)?;
 
         let required_properties = obj
             .get("required")
@@ -155,7 +124,11 @@ impl<'a> Parser<'a> {
             for (i, (name, value)) in properties.iter().enumerate() {
                 let mut subregex =
                     format!(r#"{0}"{1}"{0}:{0}"#, self.whitespace_pattern, escape(name));
-                subregex += &mut self.to_regex(value)?;
+                subregex += &mut match self.to_regex(value) {
+                    Ok(regex) => regex,
+                    Err(e) if e.is_recursion_limit() => continue,
+                    Err(e) => return Err(e),
+                };
                 match i {
                     i if i < last_required_pos => {
                         subregex = format!("{}{},", subregex, self.whitespace_pattern)
@@ -176,7 +149,11 @@ impl<'a> Parser<'a> {
             for (name, value) in properties.iter() {
                 let mut subregex =
                     format!(r#"{0}"{1}"{0}:{0}"#, self.whitespace_pattern, escape(name));
-                subregex += &mut self.to_regex(value)?;
+                subregex += &mut match self.to_regex(value) {
+                    Ok(regex) => regex,
+                    Err(e) if e.is_recursion_limit() => continue,
+                    Err(e) => return Err(e),
+                };
                 property_subregexes.push(subregex);
             }
 
@@ -211,7 +188,7 @@ impl<'a> Parser<'a> {
 
                 Ok(format!(r"({})", combined_regex))
             }
-            _ => Err(ParserError::AllOfMustBeAnArray),
+            _ => Err(JsonSchemaParserError::AllOfMustBeAnArray),
         }
     }
 
@@ -225,7 +202,7 @@ impl<'a> Parser<'a> {
 
                 Ok(format!(r"({})", subregexes.join("|")))
             }
-            _ => Err(ParserError::AnyOfMustBeAnArray),
+            _ => Err(JsonSchemaParserError::AnyOfMustBeAnArray),
         }
     }
 
@@ -243,7 +220,7 @@ impl<'a> Parser<'a> {
 
                 Ok(format!(r"({})", xor_patterns.join("|")))
             }
-            _ => Err(ParserError::OneOfMustBeAnArray),
+            _ => Err(JsonSchemaParserError::OneOfMustBeAnArray),
         }
     }
 
@@ -260,7 +237,7 @@ impl<'a> Parser<'a> {
 
                 Ok(format!(r"\[{0}{tuple_inner}{0}\]", self.whitespace_pattern))
             }
-            _ => Err(ParserError::PrefixItemsMustBeAnArray),
+            _ => Err(JsonSchemaParserError::PrefixItemsMustBeAnArray),
         }
     }
 
@@ -274,7 +251,7 @@ impl<'a> Parser<'a> {
                             let json_string = serde_json::to_string(choice)?;
                             Ok(regex::escape(&json_string))
                         }
-                        _ => Err(ParserError::UnsupportedEnumDataType(Box::new(
+                        _ => Err(JsonSchemaParserError::UnsupportedEnumDataType(Box::new(
                             choice.clone(),
                         ))),
                     })
@@ -283,7 +260,7 @@ impl<'a> Parser<'a> {
                 let choices = choices?;
                 Ok(format!(r"({})", choices.join("|")))
             }
-            _ => Err(ParserError::EnumMustBeAnArray),
+            _ => Err(JsonSchemaParserError::EnumMustBeAnArray),
         }
     }
 
@@ -294,34 +271,33 @@ impl<'a> Parser<'a> {
                     let json_string = serde_json::to_string(const_value)?;
                     Ok(regex::escape(&json_string))
                 }
-                _ => Err(ParserError::UnsupportedConstDataType(Box::new(
+                _ => Err(JsonSchemaParserError::UnsupportedConstDataType(Box::new(
                     const_value.clone(),
                 ))),
             },
-            None => Err(ParserError::ConstKeyNotFound),
+            None => Err(JsonSchemaParserError::ConstKeyNotFound),
         }
     }
 
     fn parse_ref(&mut self, obj: &serde_json::Map<String, Value>) -> Result<String> {
-        let addr = obj as *const _ as usize;
-        if !self.visited.insert(addr) {
-            self.recursion_depth += 1;
+        self.visited.insert(obj as *const _ as usize);
+        if self.recursion_depth > self.max_recursion_depth {
+            return Err(JsonSchemaParserError::RefRecursionLimitReached(
+                self.max_recursion_depth,
+            ));
         }
-        // TODO: add recursion depth error and handle it higher
-        if self.recursion_depth >= self.max_recursion_depth {
-            return Ok("{}".into());
-        }
+        self.recursion_depth += 1;
         let ref_path = obj["$ref"]
             .as_str()
-            .ok_or_else(|| ParserError::RefMustBeAString)?;
+            .ok_or_else(|| JsonSchemaParserError::RefMustBeAString)?;
 
         let parts: Vec<&str> = ref_path.split('#').collect();
 
-        match parts.as_slice() {
+        let result = match parts.as_slice() {
             [fragment] | ["", fragment] => {
                 let path_parts: Vec<&str> =
                     fragment.split('/').filter(|&s| !s.is_empty()).collect();
-                let referenced_schema = resolve_local_ref(self.root, &path_parts)?;
+                let referenced_schema = Self::resolve_local_ref(self.root, &path_parts)?;
                 self.to_regex(referenced_schema)
             }
             [base, fragment] => {
@@ -329,22 +305,26 @@ impl<'a> Parser<'a> {
                     if *base == id || base.is_empty() {
                         let path_parts: Vec<&str> =
                             fragment.split('/').filter(|&s| !s.is_empty()).collect();
-                        let referenced_schema = resolve_local_ref(self.root, &path_parts)?;
+                        let referenced_schema = Self::resolve_local_ref(self.root, &path_parts)?;
                         return self.to_regex(referenced_schema);
                     }
                 }
-                Err(ParserError::ExternalReferencesNotSupported(Box::from(
-                    ref_path,
-                )))
+                Err(JsonSchemaParserError::ExternalReferencesNotSupported(
+                    Box::from(ref_path),
+                ))
             }
-            _ => Err(ParserError::InvalidReferenceFormat(Box::from(ref_path))),
-        }
+            _ => Err(JsonSchemaParserError::InvalidReferenceFormat(Box::from(
+                ref_path,
+            ))),
+        };
+        self.recursion_depth -= 1;
+        result
     }
 
     fn parse_type(&mut self, obj: &serde_json::Map<String, Value>) -> Result<String> {
         let instance_type = obj["type"]
             .as_str()
-            .ok_or_else(|| ParserError::TypeMustBeAString)?;
+            .ok_or_else(|| JsonSchemaParserError::TypeMustBeAString)?;
         match instance_type {
             "string" => self.parse_string_type(obj),
             "number" => self.parse_number_type(obj),
@@ -353,7 +333,9 @@ impl<'a> Parser<'a> {
             "object" => self.parse_object_type(obj),
             "boolean" => self.parse_boolean_type(),
             "null" => self.parse_null_type(),
-            _ => Err(ParserError::UnsupportedType(Box::from(instance_type))),
+            _ => Err(JsonSchemaParserError::UnsupportedType(Box::from(
+                instance_type,
+            ))),
         }
     }
 
@@ -374,7 +356,7 @@ impl<'a> Parser<'a> {
 
             match (min_items, max_items) {
                 (Some(min), Some(max)) if min.as_f64() > max.as_f64() => {
-                    return Err(ParserError::MaxBoundError)
+                    return Err(JsonSchemaParserError::MaxBoundError)
                 }
                 _ => {}
             }
@@ -401,7 +383,9 @@ impl<'a> Parser<'a> {
         } else if let Some(format) = obj.get("format").and_then(Value::as_str) {
             match types::FormatType::from_str(format) {
                 Some(format_type) => Ok(format_type.to_regex().to_string()),
-                None => Err(ParserError::StringTypeUnsupportedFormat(Box::from(format))),
+                None => Err(JsonSchemaParserError::StringTypeUnsupportedFormat(
+                    Box::from(format),
+                )),
             }
         } else {
             Ok(types::JsonType::String.to_regex().to_string())
@@ -421,19 +405,19 @@ impl<'a> Parser<'a> {
         let has_bounds = bounds.iter().any(|&key| obj.contains_key(key));
 
         if has_bounds {
-            let (min_digits_integer, max_digits_integer) = validate_quantifiers(
+            let (min_digits_integer, max_digits_integer) = Self::validate_quantifiers(
                 obj.get("minDigitsInteger").and_then(Value::as_u64),
                 obj.get("maxDigitsInteger").and_then(Value::as_u64),
                 1,
             )?;
 
-            let (min_digits_fraction, max_digits_fraction) = validate_quantifiers(
+            let (min_digits_fraction, max_digits_fraction) = Self::validate_quantifiers(
                 obj.get("minDigitsFraction").and_then(Value::as_u64),
                 obj.get("maxDigitsFraction").and_then(Value::as_u64),
                 0,
             )?;
 
-            let (min_digits_exponent, max_digits_exponent) = validate_quantifiers(
+            let (min_digits_exponent, max_digits_exponent) = Self::validate_quantifiers(
                 obj.get("minDigitsExponent").and_then(Value::as_u64),
                 obj.get("maxDigitsExponent").and_then(Value::as_u64),
                 0,
@@ -472,7 +456,7 @@ impl<'a> Parser<'a> {
 
     fn parse_integer_type(&mut self, obj: &serde_json::Map<String, Value>) -> Result<String> {
         if obj.contains_key("minDigits") || obj.contains_key("maxDigits") {
-            let (min_digits, max_digits) = validate_quantifiers(
+            let (min_digits, max_digits) = Self::validate_quantifiers(
                 obj.get("minDigits").and_then(Value::as_u64),
                 obj.get("maxDigits").and_then(Value::as_u64),
                 1,
@@ -496,7 +480,7 @@ impl<'a> Parser<'a> {
         let min_properties = obj.get("minProperties").and_then(|v| v.as_u64());
         let max_properties = obj.get("maxProperties").and_then(|v| v.as_u64());
 
-        let num_repeats = get_num_items_pattern(min_properties, max_properties);
+        let num_repeats = Self::get_num_items_pattern(min_properties, max_properties);
 
         if num_repeats.is_none() {
             return Ok(format!(r"\{{{}\}}", self.whitespace_pattern));
@@ -550,7 +534,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_array_type(&mut self, obj: &serde_json::Map<String, Value>) -> Result<String> {
-        let num_repeats = get_num_items_pattern(
+        let num_repeats = Self::get_num_items_pattern(
             obj.get("minItems").and_then(Value::as_u64),
             obj.get("maxItems").and_then(Value::as_u64),
         )
@@ -600,49 +584,49 @@ impl<'a> Parser<'a> {
             ))
         }
     }
-}
 
-fn resolve_local_ref<'a>(schema: &'a Value, path_parts: &[&str]) -> Result<&'a Value> {
-    let mut current = schema;
-    for &part in path_parts {
-        current = current
-            .get(part)
-            .ok_or_else(|| ParserError::InvalidRefecencePath(Box::from(part)))?;
-    }
-    Ok(current)
-}
-
-fn validate_quantifiers(
-    min_bound: Option<u64>,
-    max_bound: Option<u64>,
-    start_offset: u64,
-) -> Result<(Option<NonZeroU64>, Option<NonZeroU64>)> {
-    let min_bound = min_bound.map(|n| NonZeroU64::new(n.saturating_sub(start_offset)));
-    let max_bound = max_bound.map(|n| NonZeroU64::new(n.saturating_sub(start_offset)));
-
-    if let (Some(min), Some(max)) = (min_bound, max_bound) {
-        if max < min {
-            return Err(ParserError::MaxBoundError);
+    fn resolve_local_ref<'b>(schema: &'b Value, path_parts: &[&str]) -> Result<&'b Value> {
+        let mut current = schema;
+        for &part in path_parts {
+            current = current
+                .get(part)
+                .ok_or_else(|| JsonSchemaParserError::InvalidRefecencePath(Box::from(part)))?;
         }
+        Ok(current)
     }
 
-    Ok((min_bound.flatten(), max_bound.flatten()))
-}
+    fn validate_quantifiers(
+        min_bound: Option<u64>,
+        max_bound: Option<u64>,
+        start_offset: u64,
+    ) -> Result<(Option<NonZeroU64>, Option<NonZeroU64>)> {
+        let min_bound = min_bound.map(|n| NonZeroU64::new(n.saturating_sub(start_offset)));
+        let max_bound = max_bound.map(|n| NonZeroU64::new(n.saturating_sub(start_offset)));
 
-fn get_num_items_pattern(min_items: Option<u64>, max_items: Option<u64>) -> Option<String> {
-    let min_items = min_items.unwrap_or(0);
+        if let (Some(min), Some(max)) = (min_bound, max_bound) {
+            if max < min {
+                return Err(JsonSchemaParserError::MaxBoundError);
+            }
+        }
 
-    match max_items {
-        None => Some(format!("{{{},}}", min_items.saturating_sub(1))),
-        Some(max_items) => {
-            if max_items < 1 {
-                None
-            } else {
-                Some(format!(
-                    "{{{},{}}}",
-                    min_items.saturating_sub(1),
-                    max_items.saturating_sub(1)
-                ))
+        Ok((min_bound.flatten(), max_bound.flatten()))
+    }
+
+    fn get_num_items_pattern(min_items: Option<u64>, max_items: Option<u64>) -> Option<String> {
+        let min_items = min_items.unwrap_or(0);
+
+        match max_items {
+            None => Some(format!("{{{},}}", min_items.saturating_sub(1))),
+            Some(max_items) => {
+                if max_items < 1 {
+                    None
+                } else {
+                    Some(format!(
+                        "{{{},{}}}",
+                        min_items.saturating_sub(1),
+                        max_items.saturating_sub(1)
+                    ))
+                }
             }
         }
     }

@@ -87,7 +87,7 @@ class BetterFSM(FSM):
                 {
                     k: v
                     for k, v in self.alphabet._symbol_mapping.items()
-                    if k != anything_else
+                    if not isinstance(k, _AnythingElseCls)
                 },
             )
 

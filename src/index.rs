@@ -4,24 +4,24 @@ use crate::regex::{get_vocabulary_transition_keys, state_scan_tokens};
 use crate::vocabulary::Vocabulary;
 use crate::{Error, Result};
 use bincode::{Decode, Encode};
-use std::collections::{HashMap, HashSet};
+use rustc_hash::{FxHashMap, FxHashSet};
 
 #[derive(Debug)]
 pub struct FSMInfo {
     pub(crate) initial: State,
-    pub(crate) finals: HashSet<State>,
-    pub(crate) transitions: HashMap<(State, TransitionKey), State>,
+    pub(crate) finals: FxHashSet<State>,
+    pub(crate) transitions: FxHashMap<(State, TransitionKey), State>,
     pub(crate) alphabet_anything_value: TransitionKey,
-    pub(crate) alphabet_symbol_mapping: HashMap<String, TransitionKey>,
+    pub(crate) alphabet_symbol_mapping: FxHashMap<String, TransitionKey>,
 }
 
 impl FSMInfo {
     pub fn new(
         initial: State,
-        finals: HashSet<State>,
-        transitions: HashMap<(State, TransitionKey), State>,
+        finals: FxHashSet<State>,
+        transitions: FxHashMap<(State, TransitionKey), State>,
         alphabet_anything_value: TransitionKey,
-        alphabet_symbol_mapping: HashMap<String, TransitionKey>,
+        alphabet_symbol_mapping: FxHashMap<String, TransitionKey>,
     ) -> Self {
         Self {
             initial,
@@ -36,8 +36,8 @@ impl FSMInfo {
 #[derive(Debug, Encode, Decode)]
 pub struct Index {
     initial: u32,
-    finals: HashSet<u32>,
-    states_to_token_subsets: HashMap<u32, HashMap<u32, u32>>,
+    finals: FxHashSet<u32>,
+    states_to_token_subsets: FxHashMap<u32, FxHashMap<u32, u32>>,
     eos_token_id: u32,
 }
 
@@ -46,11 +46,11 @@ impl Index {
         fsm_info: &FSMInfo,
         vocabulary: &Vocabulary,
         eos_token_id: u32,
-        frozen_tokens: HashSet<String>,
+        frozen_tokens: FxHashSet<String>,
     ) -> Result<Self> {
-        let mut states_to_token_subsets: HashMap<u32, HashMap<u32, u32>> = HashMap::new();
-        let mut seen: HashSet<State> = HashSet::new();
-        let mut next_states: HashSet<State> = HashSet::from([fsm_info.initial]);
+        let mut states_to_token_subsets: FxHashMap<u32, FxHashMap<u32, u32>> = FxHashMap::default();
+        let mut seen: FxHashSet<State> = FxHashSet::default();
+        let mut next_states: FxHashSet<State> = FxHashSet::from_iter([fsm_info.initial]);
 
         let vocabulary_transition_keys = get_vocabulary_transition_keys(
             &fsm_info.alphabet_symbol_mapping,
@@ -126,7 +126,7 @@ impl Index {
         self.finals.contains(&state)
     }
 
-    pub(crate) fn transitions(&self) -> &HashMap<u32, HashMap<u32, u32>> {
+    pub(crate) fn transitions(&self) -> &FxHashMap<u32, FxHashMap<u32, u32>> {
         &self.states_to_token_subsets
     }
 }

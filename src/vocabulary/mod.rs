@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use rustc_hash::FxHashMap;
 
 use tokenizers::normalizers::Sequence;
 use tokenizers::{FromPretrainedParameters, NormalizerWrapper, Tokenizer};
@@ -29,7 +29,7 @@ mod processor;
 pub struct Vocabulary {
     // TODO: Option is temp for back compatibility
     eos_token_id: Option<TokenId>,
-    tokens: HashMap<Token, Vec<TokenId>>,
+    tokens: FxHashMap<Token, Vec<TokenId>>,
 }
 
 impl Vocabulary {
@@ -37,7 +37,7 @@ impl Vocabulary {
     pub fn new(eos_token_id: Option<TokenId>) -> Self {
         Self {
             eos_token_id,
-            tokens: HashMap::new(),
+            tokens: FxHashMap::default(),
         }
     }
 
@@ -174,9 +174,9 @@ impl Vocabulary {
 }
 
 impl std::ops::Deref for Vocabulary {
-    type Target = HashMap<Token, Vec<TokenId>>;
+    type Target = FxHashMap<Token, Vec<TokenId>>;
 
-    fn deref(&self) -> &HashMap<Token, Vec<TokenId>> {
+    fn deref(&self) -> &FxHashMap<Token, Vec<TokenId>> {
         &self.tokens
     }
 }
@@ -194,8 +194,8 @@ impl std::fmt::Display for Vocabulary {
     }
 }
 
-impl From<HashMap<Token, Vec<TokenId>>> for Vocabulary {
-    fn from(tokens: HashMap<Token, Vec<TokenId>>) -> Vocabulary {
+impl From<FxHashMap<Token, Vec<TokenId>>> for Vocabulary {
+    fn from(tokens: FxHashMap<Token, Vec<TokenId>>) -> Vocabulary {
         Vocabulary {
             eos_token_id: None,
             tokens,
@@ -257,7 +257,7 @@ mod tests {
 
     #[test]
     fn new_empty_vocabulary_from_hashmap() {
-        let map = HashMap::new();
+        let map = FxHashMap::default();
         let vocabulary = Vocabulary::from(map);
         assert!(vocabulary.eos_token_id.is_none());
         assert!(vocabulary.tokens.is_empty());

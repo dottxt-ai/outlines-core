@@ -1,10 +1,10 @@
 use crate::prelude::*;
-use std::collections::{HashMap, HashSet};
+use rustc_hash::{FxHashMap, FxHashSet};
 
 pub fn walk_fsm(
-    fsm_transitions: &HashMap<(State, TransitionKey), State>,
+    fsm_transitions: &FxHashMap<(State, TransitionKey), State>,
     _fsm_initial: State,
-    fsm_finals: &HashSet<State>,
+    fsm_finals: &FxHashSet<State>,
     token_transition_keys: &[TransitionKey],
     start_state: State,
     full_match: bool,
@@ -39,14 +39,14 @@ pub fn walk_fsm(
 }
 
 pub fn state_scan_tokens(
-    fsm_transitions: &HashMap<(State, TransitionKey), State>,
+    fsm_transitions: &FxHashMap<(State, TransitionKey), State>,
     fsm_initial: State,
-    fsm_finals: &HashSet<State>,
+    fsm_finals: &FxHashSet<State>,
     vocabulary: &Vocabulary,
-    vocabulary_transition_keys: &HashMap<Token, Vec<TransitionKey>>,
+    vocabulary_transition_keys: &FxHashMap<Token, Vec<TransitionKey>>,
     start_state: State,
-) -> HashSet<(TokenId, State)> {
-    let mut res = HashSet::new();
+) -> FxHashSet<(TokenId, State)> {
+    let mut res = FxHashSet::default();
 
     for (token, token_ids) in vocabulary.iter() {
         let token_transition_keys = &vocabulary_transition_keys[token];
@@ -72,7 +72,7 @@ pub fn state_scan_tokens(
 }
 
 pub fn get_token_transition_keys(
-    alphabet_symbol_mapping: &HashMap<String, TransitionKey>,
+    alphabet_symbol_mapping: &FxHashMap<String, TransitionKey>,
     alphabet_anything_value: TransitionKey,
     token_str: &str,
 ) -> Vec<TransitionKey> {
@@ -105,12 +105,12 @@ pub fn get_token_transition_keys(
 }
 
 pub fn get_vocabulary_transition_keys(
-    alphabet_symbol_mapping: &HashMap<String, TransitionKey>,
+    alphabet_symbol_mapping: &FxHashMap<String, TransitionKey>,
     alphabet_anything_value: TransitionKey,
     vocabulary: &Vocabulary,
-    frozen_tokens: &HashSet<String>,
-) -> HashMap<Token, Vec<TransitionKey>> {
-    let mut vocab_transition_keys = HashMap::new();
+    frozen_tokens: &FxHashSet<String>,
+) -> FxHashMap<Token, Vec<TransitionKey>> {
+    let mut vocab_transition_keys = FxHashMap::default();
 
     for item in vocabulary.iter() {
         let token_str = item.0.clone();

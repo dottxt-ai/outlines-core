@@ -43,4 +43,5 @@ jobs:
     - name: Publish to crates.io
       env:
         CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-      run: cargo publish
+      # We need --allow-dirty since we dynamically change the version in Cargo.toml
+      run: cargo publish --allow-dirty

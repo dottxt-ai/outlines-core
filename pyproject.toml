@@ -49,6 +49,7 @@ test = [
     "datasets",
     "pillow",
     "asv",
+    "psutil",
     "setuptools-rust",
 ]
 

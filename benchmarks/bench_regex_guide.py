@@ -1,3 +1,6 @@
+from concurrent.futures import ThreadPoolExecutor
+
+import psutil
 from outlines_core.fsm.guide import RegexGuide
 
 from .common import setup_tokenizer
@@ -23,6 +26,28 @@ class RegexGuideBenchmark:
         self.pattern = regex_samples[pattern_name]
 
     def time_regex_to_guide(self, pattern_name):
+        RegexGuide.from_regex(self.pattern, self.tokenizer)
+
+    def time_regex_to_guide_parallel(self, pattern_name):
+        # Default GIL switch interval is 5ms (0.005), which isn't helpful for cpu heavy tasks,
+        # this parallel case should be relatively close in runtime to one thread, but it is not,
+        # because of the GIL.
+        core_count = psutil.cpu_count(logical=False)
+        with ThreadPoolExecutor(max_workers=core_count) as executor:
+            list(executor.map(self._from_regex, [pattern_name] * core_count))
+
+    def time_regex_to_guide_parallel_with_custom_switch_interval(self, pattern_name):
+        # This test is to show, that if GIL's switch interval is set to be longer, then the parallel
+        # test's runtime on physical cores will be much closer to the one-threaded case.
+        import sys
+
+        sys.setswitchinterval(5)
+
+        core_count = psutil.cpu_count(logical=False)
+        with ThreadPoolExecutor(max_workers=core_count) as executor:
+            list(executor.map(self._from_regex, [pattern_name] * core_count))
+
+    def _from_regex(self, pattern_name):
         RegexGuide.from_regex(self.pattern, self.tokenizer)
 
 

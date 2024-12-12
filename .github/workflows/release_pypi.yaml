@@ -4,6 +4,8 @@ on:
   release:
     types:
       - created
+  pull_request:
+    branches: [main]
 
 jobs:
   build_wheels:
@@ -42,7 +44,7 @@ jobs:
         env:
           CIBW_BUILD: cp39-* cp310-* cp311-* cp312-*
           CIBW_SKIP: "*musllinux*"
-          CIBW_ARCHS_LINUX: x86_64
+          CIBW_ARCHS_LINUX: x86_64 aarch64
           CIBW_ARCHS_WINDOWS: AMD64 x86
           CIBW_ARCHS_MACOS: x86_64 arm64
           CIBW_BEFORE_ALL_LINUX: |

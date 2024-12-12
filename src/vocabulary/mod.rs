@@ -3,7 +3,7 @@ use rustc_hash::FxHashMap;
 use tokenizers::normalizers::Sequence;
 use tokenizers::{FromPretrainedParameters, NormalizerWrapper, Tokenizer};
 
-use crate::{error, prelude::*};
+use crate::prelude::*;
 use crate::{Error, Result};
 
 use locator::{HFLocator, Locator};
@@ -41,6 +41,13 @@ impl Vocabulary {
         }
     }
 
+    pub fn with_eos_token_id(self, eos_token_id: Option<TokenId>) -> Self {
+        Self {
+            eos_token_id,
+            ..self
+        }
+    }
+
     /// Creates the vocabulary of pre-trained model from Hugging Face Hub.
     pub fn from_pretrained(
         model: &str,
@@ -55,8 +62,7 @@ impl Vocabulary {
         model: &str,
         parameters: Option<FromPretrainedParameters>,
     ) -> Result<Self> {
-        let mut tokenizer = Tokenizer::from_pretrained(model, parameters.clone())
-            .map_err(|e| Error::TokenizersError(error::TokenizersError(e)))?;
+        let mut tokenizer = Tokenizer::from_pretrained(model, parameters.clone())?;
         Self::filter_prepend_normalizers(&mut tokenizer);
 
         // Locate eos_token_id in defined locations.
@@ -93,6 +99,11 @@ impl Vocabulary {
         }
 
         Ok(vocabulary)
+    }
+
+    /// Returns all tokens with their token ids in vocabulary
+    pub fn tokens_to_ids(&self) -> &FxHashMap<Token, Vec<TokenId>> {
+        &self.tokens
     }
 
     /// Per provided token returns vector of `TokenId`s if available in the vocabulary.

@@ -3,21 +3,18 @@ use thiserror::Error;
 pub type Result<T, E = crate::Error> = std::result::Result<T, E>;
 
 #[derive(Error, Debug)]
-#[error("{0}")]
-pub struct TokenizersError(pub tokenizers::Error);
-
-impl PartialEq for TokenizersError {
-    fn eq(&self, other: &Self) -> bool {
-        self.0.to_string() == other.0.to_string()
-    }
-}
-
-#[derive(Error, Debug, PartialEq)]
 pub enum Error {
-    #[error("The vocabulary does not allow us to build a sequence that matches the input")]
-    IndexError,
+    #[error("The vocabulary does not allow to build an index that matches the input")]
+    InsufficientVocabulary,
+    // TODO: this error will be removed once eos_token_id for vocabulary won't be optional
+    #[error("Index failed since vocabulary doesn't provide eos token id")]
+    IndexEosTokenIdNotAvailable,
+    #[error("Failed to build DFA {0}")]
+    IndexDfaError(#[from] Box<regex_automata::dfa::dense::BuildError>),
+    #[error("Index failed since anchored universal start state doesn't exist")]
+    IndexNoAnchoredUniversalStartState,
     #[error(transparent)]
-    TokenizersError(#[from] TokenizersError),
+    TokenizersError(#[from] tokenizers::Error),
     #[error("Unsupported tokenizer for {model}: {reason}, please open an issue with the full error message: https://github.com/dottxt-ai/outlines-core/issues")]
     UnsupportedTokenizer { model: String, reason: String },
     #[error("Unable to locate EOS token for {model}")]

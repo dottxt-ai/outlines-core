@@ -93,6 +93,15 @@ impl PyIndex {
         })
     }
 
+    #[staticmethod]
+    fn from_regex(py: Python<'_>, regex: &str, vocabulary: &PyVocabulary) -> PyResult<Self> {
+        py.allow_threads(|| {
+            Index::from_regex(regex, &vocabulary.0)
+                .map(PyIndex)
+                .map_err(Into::into)
+        })
+    }
+
     fn __reduce__(&self) -> PyResult<(PyObject, (Vec<u8>,))> {
         Python::with_gil(|py| {
             let cls = PyModule::import_bound(py, "outlines_core.fsm.outlines_core_rs")?
@@ -124,6 +133,10 @@ impl PyIndex {
 
     fn is_final_state(&self, state: u32) -> bool {
         self.0.is_final(state)
+    }
+
+    fn final_states(&self) -> FxHashSet<State> {
+        self.0.final_states().clone()
     }
 
     fn get_transitions(&self) -> FxHashMap<u32, FxHashMap<u32, u32>> {
@@ -289,6 +302,15 @@ impl PyVocabulary {
     #[staticmethod]
     fn from_dict(map: FxHashMap<Token, Vec<TokenId>>) -> PyVocabulary {
         PyVocabulary(Vocabulary::from(map))
+    }
+
+    #[staticmethod]
+    fn from_dict_with_eos_token_id(
+        map: FxHashMap<Token, Vec<TokenId>>,
+        eos_token_id: TokenId,
+    ) -> PyVocabulary {
+        let v = Vocabulary::from(map).with_eos_token_id(Some(eos_token_id));
+        PyVocabulary(v)
     }
 
     fn __repr__(&self) -> String {

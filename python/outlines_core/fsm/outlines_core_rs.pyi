@@ -78,6 +78,14 @@ class Vocabulary:
         Creates a vocabulary from a dictionary of tokens to token IDs.
         """
         ...
+    @staticmethod
+    def from_dict_with_eos_token_id(
+        map: Dict[str, List[int]], eos_token_id: int
+    ) -> "Vocabulary":
+        """
+        Creates a vocabulary from a dictionary of tokens to token IDs and eos token id.
+        """
+        ...
     def __repr__(self) -> str:
         """
         Gets the debug string representation of the vocabulary.
@@ -90,6 +98,12 @@ class Vocabulary:
         ...
 
 class Index:
+    @staticmethod
+    def from_regex(regex: str, vocabulary: "Vocabulary") -> "Index":
+        """
+        Creates an index from a regex and vocabulary.
+        """
+        ...
     def get_allowed_tokens(self, state: int) -> Optional[List[int]]:
         """Returns allowed tokens in this state."""
         ...
@@ -98,6 +112,9 @@ class Index:
         ...
     def is_final_state(self, state: int) -> bool:
         """Determines whether the current state is a final state."""
+        ...
+    def final_states(self) -> List[int]:
+        """Get all final states."""
         ...
     def get_index_dict(self) -> Dict[int, Dict[int, int]]:
         """Returns the Index as a Python Dict object."""

@@ -10,8 +10,8 @@ use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::PyDict;
 use pyo3::wrap_pyfunction;
-use serde_json::Value;
 use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
+use serde_json::Value;
 
 #[pyclass(name = "FSMInfo")]
 pub struct PyFSMInfo {

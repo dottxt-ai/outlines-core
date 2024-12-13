@@ -12,7 +12,7 @@ pub enum Error {
     #[error("Failed to build DFA {0}")]
     IndexDfaError(#[from] Box<regex_automata::dfa::dense::BuildError>),
     #[error("Index failed since anchored universal start state doesn't exist")]
-    IndexNoAnchoredUniversalStartState,
+    DfaHasNoStartState,
     #[error(transparent)]
     TokenizersError(#[from] tokenizers::Error),
     #[error("Unsupported tokenizer for {model}: {reason}, please open an issue with the full error message: https://github.com/dottxt-ai/outlines-core/issues")]

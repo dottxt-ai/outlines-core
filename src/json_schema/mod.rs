@@ -918,8 +918,90 @@ mod tests {
                     "username@example..com",          // double dot in domain name
                     "username@.example..com",         // multiple errors in domain
                 ]
-            )
-
+            ),
+            // Confirm that oneOf doesn't produce illegal lookaround: https://github.com/dottxt-ai/outlines/issues/823
+            //
+            // The pet field uses the discriminator field to decide which schema (Cat or Dog) applies, based on the pet_type property.
+            // - if pet_type is "cat", the Cat schema applies, requiring a meows field (integer)
+            // - if pet_type is "dog", the Dog schema applies, requiring a barks field (number)
+            //
+            // So, expected object requires two fields:
+            //  - pet, which must be one of two types: Cat or Dog, determined by the pet_type field
+            //  - n, an integer
+            (
+                r##"{
+                    "$defs": {
+                        "Cat": {
+                            "properties": {
+                                "pet_type": {
+                                    "const": "cat",
+                                    "enum": ["cat"],
+                                    "title": "Pet Type",
+                                    "type": "string"
+                                },
+                                "meows": {
+                                    "title": "Meows",
+                                    "type": "integer"
+                                }
+                            },
+                            "required": ["pet_type", "meows"],
+                            "title": "Cat",
+                            "type": "object"
+                        },
+                        "Dog": {
+                            "properties": {
+                                "pet_type": {
+                                    "const": "dog",
+                                    "enum": ["dog"],
+                                    "title": "Pet Type",
+                                    "type": "string"
+                                },
+                                "barks": {
+                                    "title": "Barks",
+                                    "type": "number"
+                                }
+                            },
+                            "required": ["pet_type", "barks"],
+                            "title": "Dog",
+                            "type": "object"
+                        }
+                    },
+                    "properties": {
+                        "pet": {
+                            "discriminator": {
+                                "mapping": {
+                                    "cat": "#/$defs/Cat",
+                                    "dog": "#/$defs/Dog"
+                                },
+                                "propertyName": "pet_type"
+                            },
+                            "oneOf": [
+                                {"$ref": "#/$defs/Cat"},
+                                {"$ref": "#/$defs/Dog"}
+                            ],
+                            "title": "Pet"
+                        },
+                        "n": {
+                            "title": "N",
+                            "type": "integer"
+                        }
+                    },
+                    "required": ["pet", "n"],
+                    "title": "Model",
+                    "type": "object"
+                }"##,
+                r#"\{[ ]?"pet"[ ]?:[ ]?((?:\{[ ]?"pet_type"[ ]?:[ ]?("cat")[ ]?,[ ]?"meows"[ ]?:[ ]?(-)?(0|[1-9][0-9]*)[ ]?\})|(?:\{[ ]?"pet_type"[ ]?:[ ]?("dog")[ ]?,[ ]?"barks"[ ]?:[ ]?((-)?(0|[1-9][0-9]*))(\.[0-9]+)?([eE][+-][0-9]+)?[ ]?\}))[ ]?,[ ]?"n"[ ]?:[ ]?(-)?(0|[1-9][0-9]*)[ ]?\}"#,
+                vec![
+                    r#"{ "pet": { "pet_type": "cat", "meows": 5 }, "n": 10 }"#,
+                    r#"{ "pet": { "pet_type": "dog", "barks": 3.5 }, "n": 7 }"#,
+                ],
+                vec![
+                    // Missing required fields
+                    r#"{ "pet": { "pet_type": "cat" }, "n": 10 }"#,
+                    // Incorrect pet_type
+                    r#"{ "pet": { "pet_type": "bird", "meows": 2 }, "n": 5 }"#
+                ],
+            ),
         ] {
             let json: Value = serde_json::from_str(schema).expect("Can't parse json");
             let result = to_regex(&json, None).expect("To regex failed");

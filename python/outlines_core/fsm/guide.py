@@ -7,9 +7,10 @@ from outlines_core.fsm.regex import (
     create_fsm_index_tokenizer,
     make_byte_level_fsm,
     make_deterministic_fsm,
+    reduced_vocabulary,
 )
 
-from .outlines_core_rs import Index
+from .outlines_core_rs import Index, Vocabulary
 
 
 @dataclass(frozen=True)
@@ -137,8 +138,17 @@ def create_states_mapping(
     final_states:
         A set of final states in the FSM.
     """
-    regex_fsm = regex_parser(regex_string).to_fsm()
-    return create_states_mapping_from_fsm(regex_fsm, tokenizer, frozen_tokens)
+    # regex_fsm = regex_parser(regex_string).to_fsm()
+    # return create_states_mapping_from_fsm(regex_fsm, tokenizer, frozen_tokens)
+
+    # inlining logic of create_fsm_index_tokenizer
+    tokens_to_token_ids, empty_token_ids = reduced_vocabulary(tokenizer)
+    vocabulary = Vocabulary.from_dict_with_eos_token_id(
+        tokens_to_token_ids, tokenizer.eos_token_id
+    )
+    index = Index.from_regex(regex_string, vocabulary)
+
+    return index, empty_token_ids, set(index.final_states())
 
 
 def create_states_mapping_from_fsm(

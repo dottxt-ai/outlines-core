@@ -8,12 +8,12 @@ use regex_automata::util::primitives::StateID as AutomataStateId;
 use regex_automata::Anchored;
 use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 
-#[derive(Debug, Encode, Decode)]
+#[derive(Clone, Debug, Encode, Decode)]
 pub struct Index {
-    initial: u32,
-    finals: HashSet<u32>,
-    states_to_token_subsets: HashMap<u32, HashMap<u32, u32>>,
-    eos_token_id: u32,
+    initial: StateId,
+    finals: HashSet<StateId>,
+    states_to_token_subsets: HashMap<StateId, HashMap<TokenId, StateId>>,
+    eos_token_id: TokenId,
 }
 
 impl Index {
@@ -98,24 +98,24 @@ impl Index {
         }
     }
 
-    pub(crate) fn allowed_tokens(&self, state: u32) -> Option<Vec<u32>> {
+    pub(crate) fn allowed_tokens(&self, state: StateId) -> Option<Vec<TokenId>> {
         self.states_to_token_subsets
             .get(&state)
             .map_or_else(|| None, |res| Some(res.keys().cloned().collect()))
     }
 
-    pub(crate) fn next_state(&self, state: u32, token_id: u32) -> Option<u32> {
+    pub(crate) fn next_state(&self, state: StateId, token_id: TokenId) -> Option<StateId> {
         if token_id == self.eos_token_id {
             return None;
         }
         Some(*self.states_to_token_subsets.get(&state)?.get(&token_id)?)
     }
 
-    pub(crate) fn initial(&self) -> u32 {
+    pub(crate) fn initial(&self) -> StateId {
         self.initial
     }
 
-    pub(crate) fn is_final(&self, state: u32) -> bool {
+    pub(crate) fn is_final(&self, state: StateId) -> bool {
         self.finals.contains(&state)
     }
 
@@ -123,7 +123,7 @@ impl Index {
         &self.finals
     }
 
-    pub(crate) fn transitions(&self) -> &HashMap<u32, HashMap<u32, u32>> {
+    pub(crate) fn transitions(&self) -> &HashMap<StateId, HashMap<TokenId, StateId>> {
         &self.states_to_token_subsets
     }
 }

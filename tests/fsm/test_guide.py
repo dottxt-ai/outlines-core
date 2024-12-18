@@ -48,7 +48,7 @@ def test_regex_vocabulary_error():
 
 def test_from_regex():
     class MockTokenizer:
-        vocabulary = {"1": 1, "a": 2, "eos": 3}
+        vocabulary = {"1": [1], "a": [2], "eos": [3]}
         special_tokens = {"eos"}
         eos_token_id = 3
 
@@ -152,17 +152,17 @@ def test_regex_multi_byte_llama_like():
 def test_regex_multi_byte_gpt2_like():
     class MockTokenizer:
         vocabulary = {
-            "1": 1,
-            "a": 2,
-            "eos": 3,
-            "😍": 4,
-            " ": 5,
-            "\ufffd": 6,
-            "\ufffd\ufffd": 7,
-            "ðŁĺ": 8,
-            "Ī": 9,  # '😈'
-            "Ġð": 10,
-            "ŁĺĪ": 11,  # ' 😈'
+            "1": [1],
+            "a": [2],
+            "eos": [3],
+            "😍": [4],
+            " ": [5],
+            "\ufffd": [6],
+            "\ufffd\ufffd": [7],
+            "ðŁĺ": [8],
+            "Ī": [9],  # '😈'
+            "Ġð": [10],
+            "ŁĺĪ": [11],  # ' 😈'
         }
         special_tokens = {"eos"}
         eos_token_id = 3

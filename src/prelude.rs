@@ -1,4 +1,4 @@
 pub use super::{
-    primitives::{State, Token, TokenId, TransitionKey},
+    primitives::{StateId, Token, TokenId},
     vocabulary::Vocabulary,
 };

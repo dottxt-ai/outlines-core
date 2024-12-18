@@ -3,7 +3,6 @@ pub mod index;
 pub mod json_schema;
 pub mod prelude;
 pub mod primitives;
-pub mod regex;
 pub mod vocabulary;
 
 pub use error::{Error, JsonSchemaParserError, Result};

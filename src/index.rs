@@ -138,7 +138,7 @@ impl Index {
                 }
 
                 let mut next_state = current_state;
-                for transition_byte in token.as_bytes() {
+                for transition_byte in token {
                     next_state = dfa.next_state(next_state, *transition_byte);
                     if dfa.is_dead_state(next_state) || dfa.is_quit_state(next_state) {
                         continue 'token_loop;
@@ -230,19 +230,64 @@ mod tests {
             .insert("blah", 0)
             .insert("1a", 1)
             .insert("2", 2)
-            .insert("0", 3)
-            .insert("<eos>", 4);
+            .insert("0", 3);
 
         let index = Index::from_regex(regex, &vocabulary).expect("Index failed");
         assert_eq!(index.initial(), 40);
         assert_eq!(index.final_states(), &HashSet::from_iter([24, 48, 56]));
 
-        let expected: HashMap<u32, HashMap<u32, u32>> = HashMap::from_iter([
+        let expected = HashMap::from_iter([
             (24, HashMap::from_iter([(3, 24), (4, 24), (2, 24)])),
             (48, HashMap::from_iter([(4, 48)])),
             (40, HashMap::from_iter([(3, 48), (2, 56)])),
             (56, HashMap::from_iter([(3, 24), (4, 56), (2, 24)])),
         ]);
-        assert_eq!(&expected, index.transitions());
+        assert_eq!(index.transitions(), &expected);
+    }
+
+    #[test]
+    fn index_from_regex_initital_in_allowed() {
+        let regex = "`\\n(\\.\\n)?`\\n";
+        let vocabulary = Vocabulary::new(Some(104))
+            .insert("\n", 103)
+            .insert(".", 102)
+            .insert("`", 101);
+
+        let index = Index::from_regex(regex, &vocabulary).expect("Index failed");
+        let allowed = index
+            .allowed_tokens(index.initial())
+            .expect("No allowed tokens");
+        assert!(allowed.contains(&101));
+    }
+
+    #[test]
+    fn index_from_regex_multibyte() {
+        let regex = "😇| [😈-😍][😇-😎]*";
+        let vocabulary = Vocabulary::new(Some(8))
+            .insert(" 😍", 5)
+            .insert("blah", 0)
+            .insert("😇", 2)
+            .insert("😈a", 1)
+            .insert("😍", 3)
+            .insert(vec![32, 240, 159, 152], 7)
+            .insert(vec![32, 240, 159, 152, 141], 6)
+            .insert(vec![240, 159, 152, 141], 4);
+
+        let index = Index::from_regex(regex, &vocabulary).expect("Index failed");
+
+        assert_eq!(index.final_states(), &HashSet::from_iter([208, 128]));
+
+        let expected = HashMap::from_iter([
+            (
+                208,
+                HashMap::from_iter([(3, 208), (8, 208), (4, 208), (2, 208)]),
+            ),
+            (
+                80,
+                HashMap::from_iter([(2, 128), (7, 192), (5, 208), (6, 208)]),
+            ),
+            (128, HashMap::from_iter([(8, 128)])),
+        ]);
+        assert_eq!(index.transitions(), &expected);
     }
 }

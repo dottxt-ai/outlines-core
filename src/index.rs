@@ -1,6 +1,5 @@
 /// Construct an Index.
 use crate::prelude::*;
-use crate::regex::{get_vocabulary_transition_keys, state_scan_tokens};
 use crate::vocabulary::Vocabulary;
 use crate::{Error, Result};
 use bincode::{Decode, Encode};
@@ -8,33 +7,6 @@ use regex_automata::dfa::{dense::DFA, Automaton};
 use regex_automata::util::primitives::StateID as AutomataStateId;
 use regex_automata::Anchored;
 use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
-
-#[derive(Debug)]
-pub struct FSMInfo {
-    pub(crate) initial: State,
-    pub(crate) finals: HashSet<State>,
-    pub(crate) transitions: HashMap<(State, TransitionKey), State>,
-    pub(crate) alphabet_anything_value: TransitionKey,
-    pub(crate) alphabet_symbol_mapping: HashMap<String, TransitionKey>,
-}
-
-impl FSMInfo {
-    pub fn new(
-        initial: State,
-        finals: HashSet<State>,
-        transitions: HashMap<(State, TransitionKey), State>,
-        alphabet_anything_value: TransitionKey,
-        alphabet_symbol_mapping: HashMap<String, TransitionKey>,
-    ) -> Self {
-        Self {
-            initial,
-            finals,
-            transitions,
-            alphabet_anything_value,
-            alphabet_symbol_mapping,
-        }
-    }
-}
 
 #[derive(Debug, Encode, Decode)]
 pub struct Index {
@@ -45,70 +17,7 @@ pub struct Index {
 }
 
 impl Index {
-    pub fn new(
-        fsm_info: &FSMInfo,
-        vocabulary: &Vocabulary,
-        eos_token_id: u32,
-        frozen_tokens: HashSet<String>,
-    ) -> Result<Self> {
-        let mut states_to_token_subsets: HashMap<u32, HashMap<u32, u32>> = HashMap::default();
-        let mut seen: HashSet<State> = HashSet::default();
-        let mut next_states: HashSet<State> = HashSet::from_iter([fsm_info.initial]);
-
-        let vocabulary_transition_keys = get_vocabulary_transition_keys(
-            &fsm_info.alphabet_symbol_mapping,
-            fsm_info.alphabet_anything_value,
-            vocabulary,
-            &frozen_tokens,
-        );
-
-        while let Some(start_state) = next_states.iter().cloned().next() {
-            next_states.remove(&start_state);
-
-            let token_ids_end_states = state_scan_tokens(
-                &fsm_info.transitions,
-                fsm_info.initial,
-                &fsm_info.finals,
-                vocabulary,
-                &vocabulary_transition_keys,
-                start_state,
-            );
-
-            for (token_id, end_state) in &token_ids_end_states {
-                let inner_map = states_to_token_subsets.entry(start_state).or_default();
-                inner_map.insert(*token_id, *end_state);
-
-                if !seen.contains(end_state) {
-                    next_states.insert(*end_state);
-                }
-            }
-
-            if fsm_info.finals.contains(&start_state) && !token_ids_end_states.is_empty() {
-                let inner_map = states_to_token_subsets.entry(start_state).or_default();
-                inner_map.insert(eos_token_id, start_state);
-            }
-
-            seen.insert(start_state);
-        }
-
-        let is_valid = states_to_token_subsets
-            .values()
-            .flat_map(|token_id_end_states| token_id_end_states.values())
-            .any(|end_state| fsm_info.finals.contains(end_state));
-
-        if is_valid {
-            Ok(Self {
-                initial: fsm_info.initial,
-                finals: fsm_info.finals.clone(),
-                states_to_token_subsets,
-                eos_token_id,
-            })
-        } else {
-            Err(Error::InsufficientVocabulary)
-        }
-    }
-
-    pub(crate) fn from_regex(regex: &str, vocabulary: &Vocabulary) -> Result<Self> {
+    pub(crate) fn new(regex: &str, vocabulary: &Vocabulary) -> Result<Self> {
         let eos_token_id = match vocabulary.eos_token_id() {
             Some(s) => s,
             // TODO: this error will be removed once eos_token_id for vocabulary won't be optional
@@ -121,8 +30,8 @@ impl Index {
             None => return Err(Error::DfaHasNoStartState),
         };
 
-        let mut transitions: HashMap<State, HashMap<TokenId, State>> = HashMap::default();
-        let mut final_states: HashSet<State> = HashSet::default();
+        let mut transitions: HashMap<StateId, HashMap<TokenId, StateId>> = HashMap::default();
+        let mut final_states: HashSet<StateId> = HashSet::default();
 
         let mut seen: HashSet<AutomataStateId> = HashSet::from_iter([start_state]);
         let mut next_states: Vec<AutomataStateId> = vec![start_state];
@@ -210,7 +119,7 @@ impl Index {
         self.finals.contains(&state)
     }
 
-    pub(crate) fn final_states(&self) -> &HashSet<State> {
+    pub(crate) fn final_states(&self) -> &HashSet<StateId> {
         &self.finals
     }
 
@@ -232,7 +141,7 @@ mod tests {
             .insert("2", 2)
             .insert("0", 3);
 
-        let index = Index::from_regex(regex, &vocabulary).expect("Index failed");
+        let index = Index::new(regex, &vocabulary).expect("Index failed");
         assert_eq!(index.initial(), 40);
         assert_eq!(index.final_states(), &HashSet::from_iter([24, 48, 56]));
 
@@ -253,7 +162,7 @@ mod tests {
             .insert(".", 102)
             .insert("`", 101);
 
-        let index = Index::from_regex(regex, &vocabulary).expect("Index failed");
+        let index = Index::new(regex, &vocabulary).expect("Index failed");
         let allowed = index
             .allowed_tokens(index.initial())
             .expect("No allowed tokens");
@@ -273,7 +182,7 @@ mod tests {
             .insert(vec![32, 240, 159, 152, 141], 6)
             .insert(vec![240, 159, 152, 141], 4);
 
-        let index = Index::from_regex(regex, &vocabulary).expect("Index failed");
+        let index = Index::new(regex, &vocabulary).expect("Index failed");
 
         assert_eq!(index.final_states(), &HashSet::from_iter([208, 128]));
 

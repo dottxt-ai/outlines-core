@@ -2,7 +2,7 @@
 pub type TransitionKey = u32;
 
 /// Token content.
-pub type Token = String;
+pub type Token = Vec<u8>;
 
 /// Token identifier.
 pub type TokenId = u32;

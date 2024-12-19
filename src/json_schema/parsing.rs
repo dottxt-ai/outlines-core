@@ -378,8 +378,6 @@ impl<'a> Parser<'a> {
             }
         } else if let Some(format) = obj.get("format").and_then(Value::as_str) {
             if format == "uri" {
-                // Regex for URI format as per JSON Schema
-                // let uri_regex = r"^(https?|ftp|urn):\/\/([^\s:@]+(:[^\s:@]*)?@)?([a-zA-Z\d.-]+\.[a-zA-Z]{2,}|localhost)(:\d+)?(\/[^\s?#]*)?(\?[^\s#]*)?(#[^\s]*)?$";
                 let uri_regex = r"^(https?|ftp):\/\/([^\s:@]+(:[^\s:@]*)?@)?([a-zA-Z\d.-]+\.[a-zA-Z]{2,}|localhost)(:\d+)?(\/[^\s?#]*)?(\?[^\s#]*)?(#[^\s]*)?$|^urn:[a-zA-Z\d][a-zA-Z\d\-]{0,31}:[^\s]+$";
                 Ok(uri_regex.to_string())
             } else {

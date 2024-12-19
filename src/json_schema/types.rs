@@ -37,6 +37,7 @@ pub static UUID: &str = r#""[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9
 pub static URI: &str = r#"^(https?|ftp):\/\/([^\s:@]+(:[^\s:@]*)?@)?([a-zA-Z\d.-]+\.[a-zA-Z]{2,}|localhost)(:\d+)?(\/[^\s?#]*)?(\?[^\s#]*)?(#[^\s]*)?$|^urn:[a-zA-Z\d][a-zA-Z\d\-]{0,31}:[^\s]+$"#;
 pub static EMAIL: &str = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$";
 pub static URI: &str = r#"^(https?|ftp):\/\/([^\s:@]+(:[^\s:@]*)?@)?([a-zA-Z\d.-]+\.[a-zA-Z]{2,}|localhost)(:\d+)?(\/[^\s?#]*)?(\?[^\s#]*)?(#[^\s]*)?$|^urn:[a-zA-Z\d][a-zA-Z\d\-]{0,31}:[^\s]+$"#;
+pub static EMAIL: &str = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$";
 
 #[derive(Debug, PartialEq)]
 pub enum FormatType {
@@ -47,6 +48,7 @@ pub enum FormatType {
     Uri,
     Email,
     Uri,
+    Email,
 }
 
 impl FormatType {
@@ -59,6 +61,7 @@ impl FormatType {
             FormatType::Uri => URI,
             FormatType::Email => EMAIL,
             FormatType::Uri => URI,
+            FormatType::Email => EMAIL,
         }
     }
 
@@ -72,6 +75,7 @@ impl FormatType {
             "uri" => Some(FormatType::Uri),
             "email" => Some(FormatType::Email),
             "uri" => Some(FormatType::Uri),
+            "email" => Some(FormatType::Email),
             _ => None,
         }
     }

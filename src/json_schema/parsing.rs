@@ -377,11 +377,18 @@ impl<'a> Parser<'a> {
                 Ok(format!(r#"("{}")"#, pattern))
             }
         } else if let Some(format) = obj.get("format").and_then(Value::as_str) {
-            match types::FormatType::from_str(format) {
-                Some(format_type) => Ok(format_type.to_regex().to_string()),
-                None => Err(JsonSchemaParserError::StringTypeUnsupportedFormat(
-                    Box::from(format),
-                )),
+            if format == "uri" {
+                // Regex for URI format as per JSON Schema
+                // let uri_regex = r"^(https?|ftp|urn):\/\/([^\s:@]+(:[^\s:@]*)?@)?([a-zA-Z\d.-]+\.[a-zA-Z]{2,}|localhost)(:\d+)?(\/[^\s?#]*)?(\?[^\s#]*)?(#[^\s]*)?$";
+                let uri_regex = r"^(https?|ftp):\/\/([^\s:@]+(:[^\s:@]*)?@)?([a-zA-Z\d.-]+\.[a-zA-Z]{2,}|localhost)(:\d+)?(\/[^\s?#]*)?(\?[^\s#]*)?(#[^\s]*)?$|^urn:[a-zA-Z\d][a-zA-Z\d\-]{0,31}:[^\s]+$";
+                Ok(uri_regex.to_string())
+            } else {
+                match types::FormatType::from_str(format) {
+                    Some(format_type) => Ok(format_type.to_regex().to_string()),
+                    None => Err(JsonSchemaParserError::StringTypeUnsupportedFormat(
+                        Box::from(format),
+                    )),
+                }
             }
         } else {
             Ok(types::JsonType::String.to_regex().to_string())

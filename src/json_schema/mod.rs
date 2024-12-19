@@ -881,7 +881,7 @@ mod tests {
             // ==========================================================
             (
                 r#"{"title": "Foo", "type": "string", "format": "uri"}"#,
-                r"^(https?|ftp):\/\/([^\s:@]+(:[^\s:@]*)?@)?([a-zA-Z\d.-]+\.[a-zA-Z]{2,}|localhost)(:\d+)?(\/[^\s?#]*)?(\?[^\s#]*)?(#[^\s]*)?$|^urn:[a-zA-Z\d][a-zA-Z\d\-]{0,31}:[^\s]+$",
+                URI,
                 vec![
                     "http://example.com",
                     "https://example.com/path?query=param#fragment",

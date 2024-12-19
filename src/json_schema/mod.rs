@@ -893,8 +893,33 @@ mod tests {
                     "htp://example.com", // invalid scheme
                     "http://",           // missing host
                     "example.com",       // missing scheme
-                ],
+                ]
             ),
+            (
+                r#"{"title": "Bar", "type": "string", "format": "email"}"#,
+                EMAIL,
+                vec![
+                    // Valid emails
+                    "user@example.com",               // valid
+                    "user.name+tag+sorting@example.com", // valid
+                    "user_name@example.co.uk",         // valid
+                    "user-name@sub.example.com",       // valid
+                ],
+                vec![
+                    // Invalid emails
+                    "plainaddress",                   // missing '@' and domain
+                    "@missingusername.com",           // missing username
+                    "username@.com",                  // leading dot in domain
+                    "username@com",                   // TLD must have at least 2 characters
+                    "username@example,com",           // invalid character in domain
+                    "username@.example.com",          // leading dot in domain
+                    "username@-example.com",          // domain cannot start with a hyphen
+                    "username@example-.com",          // domain cannot end with a hyphen
+                    "username@example..com",          // double dot in domain name
+                    "username@.example..com",         // multiple errors in domain
+                ]
+            )
+
         ] {
             let json: Value = serde_json::from_str(schema).expect("Can't parse json");
             let result = to_regex(&json, None).expect("To regex failed");

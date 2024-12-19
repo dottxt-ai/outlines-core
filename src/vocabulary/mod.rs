@@ -25,7 +25,7 @@ mod processor;
 ///     .insert("2", 2)
 ///     .insert("0", 3);
 /// ```
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Vocabulary {
     // TODO: Option is temp for back compatibility
     eos_token_id: Option<TokenId>,

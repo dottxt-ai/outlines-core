@@ -1098,4 +1098,34 @@ mod tests {
         let regex = to_regex(&json_value, None);
         assert!(regex.is_ok(), "{:?}", regex);
     }
+
+    #[test]
+    fn test_uri_format() {
+        let schema = r#"{"title": "Foo", "type": "string", "format": "uri"}"#;
+        let json: Value = serde_json::from_str(schema).expect("Can't parse json");
+        let regex = to_regex(&json, None).expect("To regex failed");
+        let re = Regex::new(&regex).expect("Regex failed");
+
+        let valid_uris = vec![
+            "http://example.com",
+            "https://example.com/path?query=param#fragment",
+            "ftp://ftp.example.com/resource",
+            "urn:isbn:0451450523",
+        ];
+
+        let invalid_uris = vec![
+            "http:/example.com", // missing slash
+            "htp://example.com", // invalid scheme
+            "http://",           // missing host
+            "example.com",       // missing scheme
+        ];
+
+        for uri in valid_uris {
+            assert!(re.is_match(uri), "Valid URI failed: {}", uri);
+        }
+
+        for uri in invalid_uris {
+            assert!(!re.is_match(uri), "Invalid URI matched: {}", uri);
+        }
+    }
 }

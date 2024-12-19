@@ -61,7 +61,9 @@ impl<'a> Parser<'a> {
             Value::Object(obj) if obj.contains_key("const") => self.parse_const(obj),
             Value::Object(obj) if obj.contains_key("$ref") => self.parse_ref(obj),
             Value::Object(obj) if obj.contains_key("type") => self.parse_type(obj),
-            Value::Object(obj) if obj.contains_key("format") && obj["format"] == "email" => self.parse_email(),
+            Value::Object(obj) if obj.contains_key("format") && obj["format"] == "email" => {
+                self.parse_email()
+            }
             json => Err(JsonSchemaParserError::UnsupportedJsonSchema(Box::new(
                 json.clone(),
             ))),

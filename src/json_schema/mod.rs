@@ -937,6 +937,31 @@ mod tests {
                     "htp://example.com", // invalid scheme
                     "http://",           // missing host
                     "example.com",       // missing scheme
+                ]
+            ),
+            (
+                r#"{"title": "Bar", "type": "string", "format": "email"}"#,
+                EMAIL,
+                vec![
+                    "user@example.com",
+                    "user.name+tag+sorting@example.com",
+                    "user_name@example.co.uk",
+                    "user-name@sub.example.com",
+                    "user@123.123.123.123",
+                    "user@[IPv6:2001:db8::1]",
+                ],
+                vec![
+                    "plainaddress",             // missing '@' and domain
+                    "@missingusername.com",     // missing username
+                    "username@.com",            // missing domain name
+                    "username@com",             // TLD must have at least 2 characters
+                    "username@example,com",     // invalid character in domain
+                    "username@.example.com",    // leading dot in domain is invalid
+                    "username@-example.com",    // domain cannot start with a hyphen
+                    "username@example.com-",    // domain cannot end with a hyphen
+                    "username@example..com",    // double dot in domain name
+                    "username@.example..com",   // multiple errors in domain
+                    "username@123.123.123.12345", // invalid IP format
                 ],
             ),
         ] {

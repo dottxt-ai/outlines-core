@@ -19,23 +19,42 @@ WHITESPACE: str
 EMAIL: str
 URI: str
 
+class Guide:
+    def __init__(self, index: Index):
+        """
+        Defines a guide object an index an initializes it in its start state.
+        """
+    def get_start_tokens(self) -> List[int]:
+        """
+        Gets the list of allowed tokens from the start state.
+        """
+        ...
+    def read_next_token(self, token_id: int) -> List[int]:
+        """
+        Reads the next token according to the model and returns a list of allowable tokens.
+        """
+        ...
+    def is_finished(self) -> bool:
+        """
+        Checks if the automaton is in a final state.
+        """
+        ...
+
 class Vocabulary:
     """
     Vocabulary of an LLM.
     """
 
     @staticmethod
-    def from_dict(map: Dict[str, List[int]]) -> "Vocabulary":
+    def from_dict(eos_token_id: int, map: Dict[str, List[int]]) -> "Vocabulary":
         """
-        Creates a vocabulary from a dictionary of tokens to token IDs.
+        Creates a vocabulary from a map of tokens to token ids and eos token id.
         """
         ...
     @staticmethod
-    def from_dict_with_eos_token_id(
-        map: Dict[str, List[int]], eos_token_id: int
-    ) -> "Vocabulary":
+    def from_pretrained(model: str) -> "Vocabulary":
         """
-        Creates a vocabulary from a dictionary of tokens to token IDs and eos token id.
+        Creates the vocabulary of a pre-trained model.
         """
         ...
     def __repr__(self) -> str:
@@ -46,6 +65,16 @@ class Vocabulary:
     def __str__(self) -> str:
         """
         Gets the string representation of the vocabulary.
+        """
+        ...
+    def __eq__(self, other: object) -> bool:
+        """
+        Gets whether two vocabularies are the same.
+        """
+        ...
+    def get_eos_token_id(self) -> Optional[int]:
+        """
+        Gets the end of sentence token id.
         """
         ...
 

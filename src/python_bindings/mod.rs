@@ -42,11 +42,11 @@ impl PyGuide {
                 self.index
                     .get_allowed_tokens(new_state)
                     .ok_or(PyErr::new::<PyValueError, _>(format!(
-                        "No token ids found for the next state {new_state}"
+                        "No token ids found for the next state: {new_state}"
                     )))
             }
             None => Err(PyErr::new::<PyValueError, _>(format!(
-                "Next state is not found for {} and token id {token_id}",
+                "No next state found for the current state: {} with token ID: {token_id}",
                 self.state
             ))),
         }
@@ -163,15 +163,7 @@ pub struct PyVocabulary(Vocabulary);
 #[pymethods]
 impl PyVocabulary {
     #[staticmethod]
-    fn from_dict(map: HashMap<String, Vec<TokenId>>) -> PyVocabulary {
-        PyVocabulary(Vocabulary::from(map))
-    }
-
-    #[staticmethod]
-    fn from_dict_with_eos_token_id(
-        map: HashMap<String, Vec<TokenId>>,
-        eos_token_id: TokenId,
-    ) -> PyVocabulary {
+    fn from_dict(eos_token_id: TokenId, map: HashMap<String, Vec<TokenId>>) -> PyVocabulary {
         let v = Vocabulary::from(map).with_eos_token_id(Some(eos_token_id));
         PyVocabulary(v)
     }
@@ -182,12 +174,20 @@ impl PyVocabulary {
         Ok(PyVocabulary(v))
     }
 
+    fn get_eos_token_id(&self) -> Option<TokenId> {
+        self.0.eos_token_id()
+    }
+
     fn __repr__(&self) -> String {
         format!("{:#?}", self.0)
     }
 
     fn __str__(&self) -> String {
         format!("{}", self.0)
+    }
+
+    fn __eq__(&self, other: &PyVocabulary) -> bool {
+        self.0 == other.0
     }
 }
 

@@ -36,8 +36,6 @@ pub static TIME: &str = r#""(2[0-3]|[01][0-9]):([0-5][0-9]):([0-5][0-9])(\\.[0-9
 pub static UUID: &str = r#""[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}""#;
 pub static URI: &str = r#"^(https?|ftp):\/\/([^\s:@]+(:[^\s:@]*)?@)?([a-zA-Z\d.-]+\.[a-zA-Z]{2,}|localhost)(:\d+)?(\/[^\s?#]*)?(\?[^\s#]*)?(#[^\s]*)?$|^urn:[a-zA-Z\d][a-zA-Z\d\-]{0,31}:[^\s]+$"#;
 pub static EMAIL: &str = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$";
-pub static URI: &str = r#"^(https?|ftp):\/\/([^\s:@]+(:[^\s:@]*)?@)?([a-zA-Z\d.-]+\.[a-zA-Z]{2,}|localhost)(:\d+)?(\/[^\s?#]*)?(\?[^\s#]*)?(#[^\s]*)?$|^urn:[a-zA-Z\d][a-zA-Z\d\-]{0,31}:[^\s]+$"#;
-pub static EMAIL: &str = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$";
 
 #[derive(Debug, PartialEq)]
 pub enum FormatType {
@@ -45,8 +43,6 @@ pub enum FormatType {
     Date,
     Time,
     Uuid,
-    Uri,
-    Email,
     Uri,
     Email,
 }
@@ -60,8 +56,6 @@ impl FormatType {
             FormatType::Uuid => UUID,
             FormatType::Uri => URI,
             FormatType::Email => EMAIL,
-            FormatType::Uri => URI,
-            FormatType::Email => EMAIL,
         }
     }
 
@@ -72,8 +66,6 @@ impl FormatType {
             "date" => Some(FormatType::Date),
             "time" => Some(FormatType::Time),
             "uuid" => Some(FormatType::Uuid),
-            "uri" => Some(FormatType::Uri),
-            "email" => Some(FormatType::Email),
             "uri" => Some(FormatType::Uri),
             "email" => Some(FormatType::Email),
             _ => None,

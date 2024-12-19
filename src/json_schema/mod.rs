@@ -918,6 +918,25 @@ mod tests {
                     "username@example..com",    // double dot in domain name
                     "username@.example..com",   // multiple errors in domain
                     "username@123.123.123.12345", // invalid IP format
+                ]
+            ),
+            // ==========================================================
+            //                      URI Format
+            // ==========================================================
+            (
+                r#"{"title": "Foo", "type": "string", "format": "uri"}"#,
+                URI,
+                vec![
+                    "http://example.com",
+                    "https://example.com/path?query=param#fragment",
+                    "ftp://ftp.example.com/resource",
+                    "urn:isbn:0451450523",
+                ],
+                vec![
+                    "http:/example.com", // missing slash
+                    "htp://example.com", // invalid scheme
+                    "http://",           // missing host
+                    "example.com",       // missing scheme
                 ],
             ),
         ] {

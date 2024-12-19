@@ -913,6 +913,8 @@ mod tests {
                     "username@com",                   // TLD must have at least 2 characters
                     "username@example,com",           // invalid character in domain
                     "username@.example.com",          // leading dot in domain
+                    "username@-example.com",          // domain cannot start with a hyphen
+                    "username@example-.com",          // domain cannot end with a hyphen
                     "username@example..com",          // double dot in domain name
                     "username@.example..com",         // multiple errors in domain
                 ]

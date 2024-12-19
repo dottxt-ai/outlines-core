@@ -34,6 +34,7 @@ pub static DATE_TIME: &str = r#""(-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3
 pub static DATE: &str = r#""(?:\d{4})-(?:0[1-9]|1[0-2])-(?:0[1-9]|[1-2][0-9]|3[0-1])""#;
 pub static TIME: &str = r#""(2[0-3]|[01][0-9]):([0-5][0-9]):([0-5][0-9])(\\.[0-9]+)?(Z)?""#;
 pub static UUID: &str = r#""[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}""#;
+pub static URI: &str = r#"^(https?|ftp):\/\/([^\s:@]+(:[^\s:@]*)?@)?([a-zA-Z\d.-]+\.[a-zA-Z]{2,}|localhost)(:\d+)?(\/[^\s?#]*)?(\?[^\s#]*)?(#[^\s]*)?$|^urn:[a-zA-Z\d][a-zA-Z\d\-]{0,31}:[^\s]+$"#;
 
 #[derive(Debug, PartialEq)]
 pub enum FormatType {
@@ -41,6 +42,7 @@ pub enum FormatType {
     Date,
     Time,
     Uuid,
+    Uri,
 }
 
 impl FormatType {
@@ -50,6 +52,7 @@ impl FormatType {
             FormatType::Date => DATE,
             FormatType::Time => TIME,
             FormatType::Uuid => UUID,
+            FormatType::Uri => URI,
         }
     }
 
@@ -60,6 +63,7 @@ impl FormatType {
             "date" => Some(FormatType::Date),
             "time" => Some(FormatType::Time),
             "uuid" => Some(FormatType::Uuid),
+            "uri" => Some(FormatType::Uri),
             _ => None,
         }
     }

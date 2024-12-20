@@ -1,4 +1,6 @@
+use bincode::{Decode, Encode};
 use rustc_hash::FxHashMap as HashMap;
+use std::borrow::Borrow;
 
 use tokenizers::normalizers::Sequence;
 use tokenizers::{FromPretrainedParameters, NormalizerWrapper, Tokenizer};
@@ -25,7 +27,7 @@ mod processor;
 ///     .insert("2", 2)
 ///     .insert("0", 3);
 /// ```
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq, Encode, Decode)]
 pub struct Vocabulary {
     // TODO: Option is temp for back compatibility
     eos_token_id: Option<TokenId>,
@@ -103,8 +105,8 @@ impl Vocabulary {
     }
 
     /// Per provided token returns vector of `TokenId`s if available in the vocabulary.
-    pub fn token_to_ids(&self, token: &Token) -> Option<&Vec<TokenId>> {
-        self.tokens.get(token)
+    pub fn token_to_ids<T: Borrow<Token>>(&self, token: &T) -> Option<&Vec<TokenId>> {
+        self.tokens.get(token.borrow())
     }
 
     /// Gets the identifier of the special end of the sentence token.
@@ -201,19 +203,21 @@ impl std::fmt::Display for Vocabulary {
     }
 }
 
-impl From<HashMap<Token, Vec<TokenId>>> for Vocabulary {
-    fn from(tokens: HashMap<Token, Vec<TokenId>>) -> Vocabulary {
+impl From<(TokenId, HashMap<Token, Vec<TokenId>>)> for Vocabulary {
+    fn from(values: (TokenId, HashMap<Token, Vec<TokenId>>)) -> Vocabulary {
+        let (eos_token_id, tokens) = values;
         Vocabulary {
-            eos_token_id: None,
+            eos_token_id: Some(eos_token_id),
             tokens,
         }
     }
 }
 
-impl From<HashMap<String, Vec<TokenId>>> for Vocabulary {
-    fn from(tokens: HashMap<String, Vec<TokenId>>) -> Vocabulary {
+impl From<(TokenId, HashMap<String, Vec<TokenId>>)> for Vocabulary {
+    fn from(values: (TokenId, HashMap<String, Vec<TokenId>>)) -> Vocabulary {
+        let (eos_token_id, tokens) = values;
         Vocabulary {
-            eos_token_id: None,
+            eos_token_id: Some(eos_token_id),
             tokens: tokens
                 .into_iter()
                 .map(|(k, v)| (k.as_bytes().to_vec(), v))
@@ -235,7 +239,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
+    use rustc_hash::FxHashSet as HashSet;
 
     #[test]
     fn insert() {
@@ -277,8 +281,7 @@ mod tests {
 
     #[test]
     fn new_empty_vocabulary_from_hashmap() {
-        let map: HashMap<Token, Vec<TokenId>> = HashMap::default();
-        let vocabulary = Vocabulary::from(map);
+        let vocabulary = Vocabulary::new(None);
         assert!(vocabulary.eos_token_id.is_none());
         assert!(vocabulary.tokens.is_empty());
     }

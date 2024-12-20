@@ -4,5 +4,5 @@ pub type Token = Vec<u8>;
 /// Token identifier.
 pub type TokenId = u32;
 
-/// State.
+/// State id.
 pub type StateId = u32;

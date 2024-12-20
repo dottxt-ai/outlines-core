@@ -5,7 +5,7 @@ use bincode::config;
 use bincode::{Decode, Encode};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use pyo3::types::PyDict;
+use pyo3::types::{PyAny, PyDict};
 use pyo3::wrap_pyfunction;
 use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 use serde_json::Value;
@@ -157,15 +157,23 @@ pub fn to_regex_py(json: Bound<PyDict>, whitespace_pattern: Option<&str>) -> PyR
         .map_err(|e| PyValueError::new_err(e.to_string()))
 }
 
-#[pyclass(name = "Vocabulary")]
+#[pyclass(name = "Vocabulary", module = "outlines_core.fsm.outlines_core_rs")]
+#[derive(Clone, Debug, Encode, Decode)]
 pub struct PyVocabulary(Vocabulary);
 
 #[pymethods]
 impl PyVocabulary {
     #[staticmethod]
-    fn from_dict(eos_token_id: TokenId, map: HashMap<String, Vec<TokenId>>) -> PyVocabulary {
-        let v = Vocabulary::from(map).with_eos_token_id(Some(eos_token_id));
-        PyVocabulary(v)
+    fn from_dict(py: Python<'_>, eos_token_id: TokenId, map: Py<PyAny>) -> PyResult<PyVocabulary> {
+        if let Ok(dict) = map.extract::<HashMap<String, Vec<TokenId>>>(py) {
+            return Ok(PyVocabulary(Vocabulary::from((eos_token_id, dict))));
+        }
+        if let Ok(dict) = map.extract::<HashMap<Vec<u8>, Vec<TokenId>>>(py) {
+            return Ok(PyVocabulary(Vocabulary::from((eos_token_id, dict))));
+        }
+        Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
+            "Expected a dictionary with keys of type String or Bytes",
+        ))
     }
 
     #[staticmethod]
@@ -178,6 +186,18 @@ impl PyVocabulary {
         self.0.eos_token_id()
     }
 
+    fn get(&self, py: Python<'_>, token: Py<PyAny>) -> PyResult<Option<Vec<TokenId>>> {
+        if let Ok(t) = token.extract::<String>(py) {
+            return Ok(self.0.token_to_ids(&t.into_bytes()).cloned());
+        }
+        if let Ok(t) = token.extract::<Token>(py) {
+            return Ok(self.0.token_to_ids(&t).cloned());
+        }
+        Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
+            "Expected a token of type String or Bytes",
+        ))
+    }
+
     fn __repr__(&self) -> String {
         format!("{:#?}", self.0)
     }
@@ -188,6 +208,37 @@ impl PyVocabulary {
 
     fn __eq__(&self, other: &PyVocabulary) -> bool {
         self.0 == other.0
+    }
+
+    fn __len__(&self) -> usize {
+        self.0.tokens_to_ids().len()
+    }
+
+    fn __reduce__(&self) -> PyResult<(PyObject, (Vec<u8>,))> {
+        Python::with_gil(|py| {
+            let cls = PyModule::import_bound(py, "outlines_core.fsm.outlines_core_rs")?
+                .getattr("PyVocabulary")?;
+            let binary_data: Vec<u8> =
+                bincode::encode_to_vec(self, config::standard()).map_err(|e| {
+                    PyErr::new::<PyValueError, _>(format!(
+                        "Serialization of Vocabulary failed: {}",
+                        e
+                    ))
+                })?;
+            Ok((cls.getattr("from_binary")?.to_object(py), (binary_data,)))
+        })
+    }
+
+    #[staticmethod]
+    fn from_binary(binary_data: Vec<u8>) -> PyResult<Self> {
+        let (guide, _): (PyVocabulary, usize) =
+            bincode::decode_from_slice(&binary_data[..], config::standard()).map_err(|e| {
+                PyErr::new::<PyValueError, _>(format!(
+                    "Deserialization of Vocabulary failed: {}",
+                    e
+                ))
+            })?;
+        Ok(guide)
     }
 }
 

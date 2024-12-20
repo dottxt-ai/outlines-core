@@ -161,9 +161,6 @@ impl<'a> Parser<'a> {
                     pattern += &format!("({}{},)?", subregex, self.whitespace_pattern);
                 }
                 pattern += &property_subregexes[i];
-                for subregex in &property_subregexes[i + 1..] {
-                    pattern += &format!("({},{})?", self.whitespace_pattern, subregex);
-                }
                 possible_patterns.push(pattern);
             }
 

@@ -838,7 +838,7 @@ mod tests {
                     "title": "Character",
                     "type": "object"
                 }"#,
-                format!(r#"\{{([ ]?"name"[ ]?:[ ]?({STRING}|null)([ ]?,[ ]?"age"[ ]?:[ ]?({INTEGER}|null))?([ ]?,[ ]?"strength"[ ]?:[ ]?({INTEGER}|null))?|([ ]?"name"[ ]?:[ ]?({STRING}|null)[ ]?,)?[ ]?"age"[ ]?:[ ]?({INTEGER}|null)([ ]?,[ ]?"strength"[ ]?:[ ]?({INTEGER}|null))?|([ ]?"name"[ ]?:[ ]?({STRING}|null)[ ]?,)?([ ]?"age"[ ]?:[ ]?({INTEGER}|null)[ ]?,)?[ ]?"strength"[ ]?:[ ]?({INTEGER}|null))?[ ]?\}}"#).as_str(),
+                format!(r#"\{{([ ]?"name"[ ]?:[ ]?({STRING}|null)|([ ]?"name"[ ]?:[ ]?({STRING}|null)[ ]?,)?[ ]?"age"[ ]?:[ ]?({INTEGER}|null)|([ ]?"name"[ ]?:[ ]?({STRING}|null)[ ]?,)?([ ]?"age"[ ]?:[ ]?({INTEGER}|null)[ ]?,)?[ ]?"strength"[ ]?:[ ]?({INTEGER}|null))?[ ]?\}}"#).as_str(),
                 vec![
                     r#"{ "name" : "Player" }"#,
                     r#"{ "name" : "Player", "age" : 10, "strength" : 10 }"#,
@@ -898,7 +898,7 @@ mod tests {
         ] {
             let json: Value = serde_json::from_str(schema).expect("Can't parse json");
             let result = to_regex(&json, None).expect("To regex failed");
-            assert_eq!(result, regex);
+            assert_eq!(result, regex, "JSON Schema {} didn't match", schema);
 
             let re = Regex::new(&result).expect("Regex failed");
             for m in a_match {
@@ -1075,7 +1075,7 @@ mod tests {
         assert!(result.is_ok(), "{:?}", result);
         let regex = result.unwrap();
         assert_eq!(
-            r#"\{([ ]?"node"[ ]?:[ ]?\{([ ]?"value"[ ]?:[ ]?(-)?(0|[1-9][0-9]*)([ ]?,[ ]?"next"[ ]?:[ ]?\{([ ]?"value"[ ]?:[ ]?(-)?(0|[1-9][0-9]*))?[ ]?\})?|([ ]?"value"[ ]?:[ ]?(-)?(0|[1-9][0-9]*)[ ]?,)?[ ]?"next"[ ]?:[ ]?\{([ ]?"value"[ ]?:[ ]?(-)?(0|[1-9][0-9]*))?[ ]?\})?[ ]?\})?[ ]?\}"#,
+            r#"\{([ ]?"node"[ ]?:[ ]?\{([ ]?"value"[ ]?:[ ]?(-)?(0|[1-9][0-9]*)|([ ]?"value"[ ]?:[ ]?(-)?(0|[1-9][0-9]*)[ ]?,)?[ ]?"next"[ ]?:[ ]?\{([ ]?"value"[ ]?:[ ]?(-)?(0|[1-9][0-9]*))?[ ]?\})?[ ]?\})?[ ]?\}"#,
             regex,
         );
     }

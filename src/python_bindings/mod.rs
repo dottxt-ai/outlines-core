@@ -319,6 +319,8 @@ fn outlines_core_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("TIME", json_schema::TIME)?;
     m.add("UUID", json_schema::UUID)?;
     m.add("WHITESPACE", json_schema::WHITESPACE)?;
+    m.add("EMAIL", json_schema::EMAIL)?;
+    m.add("URI", json_schema::URI)?;
 
     m.add_function(wrap_pyfunction!(build_regex_from_schema_py, m)?)?;
     m.add_function(wrap_pyfunction!(to_regex_py, m)?)?;

@@ -64,6 +64,8 @@ STRING_INNER: str
 TIME: str
 UUID: str
 WHITESPACE: str
+EMAIL: str
+URI: str
 
 class Vocabulary:
     """

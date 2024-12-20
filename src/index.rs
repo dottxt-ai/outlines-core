@@ -18,12 +18,7 @@ pub struct Index {
 
 impl Index {
     pub(crate) fn new(regex: &str, vocabulary: &Vocabulary) -> Result<Self> {
-        let eos_token_id = match vocabulary.eos_token_id() {
-            Some(s) => s,
-            // TODO: this error will be removed once eos_token_id for vocabulary won't be optional
-            None => return Err(Error::IndexEosTokenIdNotAvailable),
-        };
-
+        let eos_token_id = vocabulary.eos_token_id();
         let dfa = DFA::new(regex).map_err(Box::new)?;
         let start_state = match dfa.universal_start_state(Anchored::Yes) {
             Some(s) => s,
@@ -135,7 +130,7 @@ mod tests {
     #[test]
     fn index_from_regex() {
         let regex = "0|[1-9][0-9]*";
-        let vocabulary = Vocabulary::new(Some(4))
+        let vocabulary = Vocabulary::new(4)
             .insert("blah", 0)
             .insert("1a", 1)
             .insert("2", 2)
@@ -157,7 +152,7 @@ mod tests {
     #[test]
     fn index_from_regex_initital_in_allowed() {
         let regex = "`\\n(\\.\\n)?`\\n";
-        let vocabulary = Vocabulary::new(Some(104))
+        let vocabulary = Vocabulary::new(104)
             .insert("\n", 103)
             .insert(".", 102)
             .insert("`", 101);
@@ -172,7 +167,7 @@ mod tests {
     #[test]
     fn index_from_regex_multibyte() {
         let regex = "😇| [😈-😍][😇-😎]*";
-        let vocabulary = Vocabulary::new(Some(8))
+        let vocabulary = Vocabulary::new(8)
             .insert(" 😍", 5)
             .insert("blah", 0)
             .insert("😇", 2)

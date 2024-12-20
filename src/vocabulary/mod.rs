@@ -29,24 +29,16 @@ mod processor;
 /// ```
 #[derive(Clone, Debug, Default, PartialEq, Encode, Decode)]
 pub struct Vocabulary {
-    // TODO: Option is temp for back compatibility
-    eos_token_id: Option<TokenId>,
+    eos_token_id: TokenId,
     tokens: HashMap<Token, Vec<TokenId>>,
 }
 
 impl Vocabulary {
     /// Creates an empty vocabulary.
-    pub fn new(eos_token_id: Option<TokenId>) -> Self {
+    pub fn new(eos_token_id: TokenId) -> Self {
         Self {
             eos_token_id,
             tokens: HashMap::default(),
-        }
-    }
-
-    pub fn with_eos_token_id(self, eos_token_id: Option<TokenId>) -> Self {
-        Self {
-            eos_token_id,
-            ..self
         }
     }
 
@@ -77,7 +69,7 @@ impl Vocabulary {
         };
 
         // Start building the vocabulary from eos_token_id and added tokens.
-        let mut vocabulary = Vocabulary::new(Some(eos_token_id));
+        let mut vocabulary = Vocabulary::new(eos_token_id);
         for (id, added_token) in tokenizer.get_added_tokens_decoder().iter() {
             if !added_token.special {
                 vocabulary = vocabulary.insert(added_token.content.clone(), *id);
@@ -110,7 +102,7 @@ impl Vocabulary {
     }
 
     /// Gets the identifier of the special end of the sentence token.
-    pub fn eos_token_id(&self) -> Option<TokenId> {
+    pub fn eos_token_id(&self) -> TokenId {
         self.eos_token_id
     }
 
@@ -207,7 +199,7 @@ impl From<(TokenId, HashMap<Token, Vec<TokenId>>)> for Vocabulary {
     fn from(values: (TokenId, HashMap<Token, Vec<TokenId>>)) -> Vocabulary {
         let (eos_token_id, tokens) = values;
         Vocabulary {
-            eos_token_id: Some(eos_token_id),
+            eos_token_id,
             tokens,
         }
     }
@@ -217,22 +209,12 @@ impl From<(TokenId, HashMap<String, Vec<TokenId>>)> for Vocabulary {
     fn from(values: (TokenId, HashMap<String, Vec<TokenId>>)) -> Vocabulary {
         let (eos_token_id, tokens) = values;
         Vocabulary {
-            eos_token_id: Some(eos_token_id),
+            eos_token_id,
             tokens: tokens
                 .into_iter()
                 .map(|(k, v)| (k.as_bytes().to_vec(), v))
                 .collect::<HashMap<Token, Vec<TokenId>>>(),
         }
-    }
-}
-
-impl<T, I> FromIterator<(T, I)> for Vocabulary
-where
-    T: Into<Token>,
-    I: IntoIterator<Item = TokenId>,
-{
-    fn from_iter<A: IntoIterator<Item = (T, I)>>(tokens_and_ids: A) -> Self {
-        Vocabulary::new(None).extend(tokens_and_ids)
     }
 }
 
@@ -243,7 +225,7 @@ mod tests {
 
     #[test]
     fn insert() {
-        let vocabulary = Vocabulary::new(None)
+        let vocabulary = Vocabulary::new(4)
             .insert("blah", 0)
             .insert("1a", 1)
             .insert("2", 2)
@@ -258,7 +240,7 @@ mod tests {
 
     #[test]
     fn extend() {
-        let vocabulary = Vocabulary::new(None).extend([
+        let vocabulary = Vocabulary::new(4).extend([
             ("blah", vec![0]),
             ("1a", vec![1]),
             ("2", vec![2]),
@@ -274,26 +256,17 @@ mod tests {
 
     #[test]
     fn new_empty_vocabulary() {
-        let vocabulary = Vocabulary::new(None);
-        assert!(vocabulary.eos_token_id.is_none());
+        let vocabulary = Vocabulary::new(1);
+        assert_eq!(vocabulary.eos_token_id, 1);
         assert!(vocabulary.tokens.is_empty());
     }
 
     #[test]
     fn new_empty_vocabulary_from_hashmap() {
-        let vocabulary = Vocabulary::new(None);
-        assert!(vocabulary.eos_token_id.is_none());
+        let map: HashMap<Token, Vec<TokenId>> = HashMap::default();
+        let vocabulary = Vocabulary::from((1_u32, map));
+        assert_eq!(vocabulary.eos_token_id, 1);
         assert!(vocabulary.tokens.is_empty());
-    }
-
-    #[test]
-    fn new_vocabulary_from_iterator() {
-        let token: Token = "abc".as_bytes().to_vec();
-        let id: Vec<TokenId> = vec![1];
-        let it = vec![(token, id)];
-        let vocabulary = Vocabulary::from_iter(it);
-        assert!(vocabulary.eos_token_id.is_none());
-        assert!(!vocabulary.tokens.is_empty());
     }
 
     #[test]
@@ -315,7 +288,6 @@ mod tests {
             let vocabulary = Vocabulary::from_pretrained(model, None);
             match vocabulary {
                 Ok(v) => {
-                    assert!(v.eos_token_id().is_some());
                     assert_eq!(v.eos_token_id, v.eos_token_id());
                     assert!(!v.tokens.is_empty());
                 }
@@ -332,9 +304,6 @@ mod tests {
 
         let v_eos = vocabulary.eos_token_id;
         assert_eq!(v_eos, vocabulary.eos_token_id());
-        assert!(v_eos.is_some());
-
-        let v_eos = v_eos.unwrap();
         assert_eq!(v_eos, 50256);
         assert_eq!(
             tokenizer.id_to_token(v_eos).expect("Token not found"),
@@ -366,9 +335,6 @@ mod tests {
 
         let v_eos = vocabulary.eos_token_id;
         assert_eq!(v_eos, vocabulary.eos_token_id());
-        assert!(v_eos.is_some());
-
-        let v_eos = v_eos.unwrap();
         assert_eq!(v_eos, 2);
         assert_eq!(
             tokenizer.id_to_token(v_eos).expect("Token not found"),

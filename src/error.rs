@@ -6,9 +6,6 @@ pub type Result<T, E = crate::Error> = std::result::Result<T, E>;
 pub enum Error {
     #[error("The vocabulary does not allow to build an index that matches the input")]
     InsufficientVocabulary,
-    // TODO: this error will be removed once eos_token_id for vocabulary won't be optional
-    #[error("Index failed since vocabulary doesn't provide eos token id")]
-    IndexEosTokenIdNotAvailable,
     #[error("Failed to build DFA {0}")]
     IndexDfaError(#[from] Box<regex_automata::dfa::dense::BuildError>),
     #[error("Index failed since anchored universal start state doesn't exist")]

@@ -182,7 +182,7 @@ impl PyVocabulary {
         Ok(PyVocabulary(v))
     }
 
-    fn get_eos_token_id(&self) -> Option<TokenId> {
+    fn get_eos_token_id(&self) -> TokenId {
         self.0.eos_token_id()
     }
 

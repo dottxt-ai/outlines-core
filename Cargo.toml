@@ -40,3 +40,8 @@ build-python-extension-release = "python setup.py build_rust --inplace --release
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(tarpaulin_include)'] }
+
+[[bin]]
+name = "convert-json-schema"
+test = false
+bench = false

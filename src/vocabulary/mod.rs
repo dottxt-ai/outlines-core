@@ -1,9 +1,11 @@
-use rustc_hash::FxHashMap;
+use bincode::{Decode, Encode};
+use rustc_hash::FxHashMap as HashMap;
+use std::borrow::Borrow;
 
 use tokenizers::normalizers::Sequence;
 use tokenizers::{FromPretrainedParameters, NormalizerWrapper, Tokenizer};
 
-use crate::{error, prelude::*};
+use crate::prelude::*;
 use crate::{Error, Result};
 
 use locator::{HFLocator, Locator};
@@ -25,19 +27,18 @@ mod processor;
 ///     .insert("2", 2)
 ///     .insert("0", 3);
 /// ```
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug, Default, PartialEq, Encode, Decode)]
 pub struct Vocabulary {
-    // TODO: Option is temp for back compatibility
-    eos_token_id: Option<TokenId>,
-    tokens: FxHashMap<Token, Vec<TokenId>>,
+    eos_token_id: TokenId,
+    tokens: HashMap<Token, Vec<TokenId>>,
 }
 
 impl Vocabulary {
     /// Creates an empty vocabulary.
-    pub fn new(eos_token_id: Option<TokenId>) -> Self {
+    pub fn new(eos_token_id: TokenId) -> Self {
         Self {
             eos_token_id,
-            tokens: FxHashMap::default(),
+            tokens: HashMap::default(),
         }
     }
 
@@ -55,8 +56,7 @@ impl Vocabulary {
         model: &str,
         parameters: Option<FromPretrainedParameters>,
     ) -> Result<Self> {
-        let mut tokenizer = Tokenizer::from_pretrained(model, parameters.clone())
-            .map_err(|e| Error::TokenizersError(error::TokenizersError(e)))?;
+        let mut tokenizer = Tokenizer::from_pretrained(model, parameters.clone())?;
         Self::filter_prepend_normalizers(&mut tokenizer);
 
         // Locate eos_token_id in defined locations.
@@ -69,7 +69,7 @@ impl Vocabulary {
         };
 
         // Start building the vocabulary from eos_token_id and added tokens.
-        let mut vocabulary = Vocabulary::new(Some(eos_token_id));
+        let mut vocabulary = Vocabulary::new(eos_token_id);
         for (id, added_token) in tokenizer.get_added_tokens_decoder().iter() {
             if !added_token.special {
                 vocabulary = vocabulary.insert(added_token.content.clone(), *id);
@@ -84,24 +84,25 @@ impl Vocabulary {
             });
         };
         for (token, token_id) in tokenizer.get_vocab(false) {
-            let token_bytes = processor.process(token)?;
-            // TODO: lossy is temp:
-            // - in python in was handled by byte_symbol function
-            // - interface needs to be redefined to treat Token type as bytes: Vec<u8>
-            let processed_token = String::from_utf8_lossy(&token_bytes);
+            let processed_token = processor.process(token)?;
             vocabulary = vocabulary.insert(processed_token, token_id);
         }
 
         Ok(vocabulary)
     }
 
+    /// Returns all tokens with their token ids in vocabulary
+    pub fn tokens_to_ids(&self) -> &HashMap<Token, Vec<TokenId>> {
+        &self.tokens
+    }
+
     /// Per provided token returns vector of `TokenId`s if available in the vocabulary.
-    pub fn token_to_ids(&self, token: &str) -> Option<&Vec<TokenId>> {
-        self.tokens.get(token)
+    pub fn token_to_ids<T: Borrow<Token>>(&self, token: &T) -> Option<&Vec<TokenId>> {
+        self.tokens.get(token.borrow())
     }
 
     /// Gets the identifier of the special end of the sentence token.
-    pub fn eos_token_id(&self) -> Option<TokenId> {
+    pub fn eos_token_id(&self) -> TokenId {
         self.eos_token_id
     }
 
@@ -174,9 +175,9 @@ impl Vocabulary {
 }
 
 impl std::ops::Deref for Vocabulary {
-    type Target = FxHashMap<Token, Vec<TokenId>>;
+    type Target = HashMap<Token, Vec<TokenId>>;
 
-    fn deref(&self) -> &FxHashMap<Token, Vec<TokenId>> {
+    fn deref(&self) -> &HashMap<Token, Vec<TokenId>> {
         &self.tokens
     }
 }
@@ -194,47 +195,52 @@ impl std::fmt::Display for Vocabulary {
     }
 }
 
-impl From<FxHashMap<Token, Vec<TokenId>>> for Vocabulary {
-    fn from(tokens: FxHashMap<Token, Vec<TokenId>>) -> Vocabulary {
+impl From<(TokenId, HashMap<Token, Vec<TokenId>>)> for Vocabulary {
+    fn from(values: (TokenId, HashMap<Token, Vec<TokenId>>)) -> Vocabulary {
+        let (eos_token_id, tokens) = values;
         Vocabulary {
-            eos_token_id: None,
+            eos_token_id,
             tokens,
         }
     }
 }
 
-impl<T, I> FromIterator<(T, I)> for Vocabulary
-where
-    T: Into<Token>,
-    I: IntoIterator<Item = TokenId>,
-{
-    fn from_iter<A: IntoIterator<Item = (T, I)>>(tokens_and_ids: A) -> Self {
-        Vocabulary::new(None).extend(tokens_and_ids)
+impl From<(TokenId, HashMap<String, Vec<TokenId>>)> for Vocabulary {
+    fn from(values: (TokenId, HashMap<String, Vec<TokenId>>)) -> Vocabulary {
+        let (eos_token_id, tokens) = values;
+        Vocabulary {
+            eos_token_id,
+            tokens: tokens
+                .into_iter()
+                .map(|(k, v)| (k.as_bytes().to_vec(), v))
+                .collect::<HashMap<Token, Vec<TokenId>>>(),
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rustc_hash::FxHashSet as HashSet;
 
     #[test]
     fn insert() {
-        let vocabulary = Vocabulary::new(None)
+        let vocabulary = Vocabulary::new(4)
             .insert("blah", 0)
             .insert("1a", 1)
             .insert("2", 2)
             .insert("0", 3);
 
         assert_eq!(vocabulary.len(), 4);
-        assert_eq!(vocabulary["blah"], &[0]);
-        assert_eq!(vocabulary["1a"], &[1]);
-        assert_eq!(vocabulary["2"], &[2]);
-        assert_eq!(vocabulary["0"], &[3]);
+        assert_eq!(vocabulary["blah".as_bytes()], &[0]);
+        assert_eq!(vocabulary["1a".as_bytes()], &[1]);
+        assert_eq!(vocabulary["2".as_bytes()], &[2]);
+        assert_eq!(vocabulary["0".as_bytes()], &[3]);
     }
 
     #[test]
     fn extend() {
-        let vocabulary = Vocabulary::new(None).extend([
+        let vocabulary = Vocabulary::new(4).extend([
             ("blah", vec![0]),
             ("1a", vec![1]),
             ("2", vec![2]),
@@ -242,35 +248,25 @@ mod tests {
         ]);
 
         assert_eq!(vocabulary.len(), 4);
-        assert_eq!(vocabulary["blah"], &[0]);
-        assert_eq!(vocabulary["1a"], &[1]);
-        assert_eq!(vocabulary["2"], &[2]);
-        assert_eq!(vocabulary["0"], &[3]);
+        assert_eq!(vocabulary["blah".as_bytes()], &[0]);
+        assert_eq!(vocabulary["1a".as_bytes()], &[1]);
+        assert_eq!(vocabulary["2".as_bytes()], &[2]);
+        assert_eq!(vocabulary["0".as_bytes()], &[3]);
     }
 
     #[test]
     fn new_empty_vocabulary() {
-        let vocabulary = Vocabulary::new(None);
-        assert!(vocabulary.eos_token_id.is_none());
+        let vocabulary = Vocabulary::new(1);
+        assert_eq!(vocabulary.eos_token_id, 1);
         assert!(vocabulary.tokens.is_empty());
     }
 
     #[test]
     fn new_empty_vocabulary_from_hashmap() {
-        let map = FxHashMap::default();
-        let vocabulary = Vocabulary::from(map);
-        assert!(vocabulary.eos_token_id.is_none());
+        let map: HashMap<Token, Vec<TokenId>> = HashMap::default();
+        let vocabulary = Vocabulary::from((1_u32, map));
+        assert_eq!(vocabulary.eos_token_id, 1);
         assert!(vocabulary.tokens.is_empty());
-    }
-
-    #[test]
-    fn new_vocabulary_from_iterator() {
-        let token: Token = "abc".to_string();
-        let id: Vec<TokenId> = vec![1];
-        let it = vec![(token, id)];
-        let vocabulary = Vocabulary::from_iter(it);
-        assert!(vocabulary.eos_token_id.is_none());
-        assert!(!vocabulary.tokens.is_empty());
     }
 
     #[test]
@@ -292,7 +288,6 @@ mod tests {
             let vocabulary = Vocabulary::from_pretrained(model, None);
             match vocabulary {
                 Ok(v) => {
-                    assert!(v.eos_token_id().is_some());
                     assert_eq!(v.eos_token_id, v.eos_token_id());
                     assert!(!v.tokens.is_empty());
                 }
@@ -309,9 +304,6 @@ mod tests {
 
         let v_eos = vocabulary.eos_token_id;
         assert_eq!(v_eos, vocabulary.eos_token_id());
-        assert!(v_eos.is_some());
-
-        let v_eos = v_eos.unwrap();
         assert_eq!(v_eos, 50256);
         assert_eq!(
             tokenizer.id_to_token(v_eos).expect("Token not found"),
@@ -319,11 +311,12 @@ mod tests {
         );
 
         let token = "Ġal";
-        assert!(vocabulary.token_to_ids(token).is_none());
+        let btoken = token.as_bytes().to_vec();
+        assert!(vocabulary.token_to_ids(&btoken).is_none());
         assert!(tokenizer.token_to_id(token).is_some());
 
         for (v_token, t_token_expected) in [("abc", "abc"), (" O", "ĠO")] {
-            let v_ids = vocabulary.token_to_ids(v_token);
+            let v_ids = vocabulary.token_to_ids(&v_token.as_bytes().to_vec());
             assert!(v_ids.is_some());
             for v_id in v_ids.unwrap() {
                 let t_token = tokenizer
@@ -342,32 +335,37 @@ mod tests {
 
         let v_eos = vocabulary.eos_token_id;
         assert_eq!(v_eos, vocabulary.eos_token_id());
-        assert!(v_eos.is_some());
-
-        let v_eos = v_eos.unwrap();
         assert_eq!(v_eos, 2);
         assert_eq!(
             tokenizer.id_to_token(v_eos).expect("Token not found"),
             "</s>"
         );
 
-        for (v_token, t_token_expected) in [
-            ("abc", "abc"),
-            (" al", "▁al"),
-            (" O", "▁O"),
-            ("   ", "▁▁▁"),
-            // TODO: won't pass since first we need to change token's type to bytes
-            // ("<0xFF>", "ÿ"),
-            // ("<0x20>", "▁"),
-        ] {
+        let tests: &[(Vec<u8>, &[&str])] = &[
+            ("abc".as_bytes().to_vec(), &["abc"]),
+            (" al".as_bytes().to_vec(), &["▁al"]),
+            (" O".as_bytes().to_vec(), &["▁O"]),
+            ("   ".as_bytes().to_vec(), &["▁▁▁"]),
+            (" ".as_bytes().to_vec(), &["▁", "<0x20>"]),
+            ("a".as_bytes().to_vec(), &["a", "<0x61>"]),
+            (vec![0xFF], &["<0xFF>"]),
+            (vec![0x20], &["▁", "<0x20>"]),
+        ];
+        for (v_token, t_tokens_expected) in tests {
             let v_ids = vocabulary.token_to_ids(v_token);
             assert!(v_ids.is_some());
-            for v_id in v_ids.unwrap() {
-                let t_token = tokenizer
-                    .id_to_token(*v_id)
-                    .expect("Token id not found in tokenizer");
-                assert_eq!(&t_token, t_token_expected);
-            }
+
+            let t_tokens = v_ids
+                .unwrap()
+                .iter()
+                .map(|v_id| {
+                    tokenizer
+                        .id_to_token(*v_id)
+                        .expect("Token id not found in tokenizer")
+                })
+                .collect::<HashSet<String>>();
+            let expected = HashSet::from_iter(t_tokens_expected.iter().map(|s| s.to_string()));
+            assert_eq!(t_tokens, expected)
         }
     }
 

@@ -1,57 +1,9 @@
 from typing import Dict, List, Optional, Set, Tuple
 
-class FSMInfo:
-    initial: int
-    finals: Set[int]
-    transitions: Dict[Tuple[int, int], int]
-    alphabet_anything_value: int
-    alphabet_symbol_mapping: Dict[str, int]
-
-    def __init__(
-        self,
-        initial: int,
-        finals: Set[int],
-        transitions: Dict[Tuple[int, int], int],
-        alphabet_anything_value: int,
-        alphabet_symbol_mapping: Dict[str, int],
-    ) -> None: ...
-
 def build_regex_from_schema(
     json: str, whitespace_pattern: Optional[str] = None
 ) -> str: ...
 def to_regex(json: Dict, whitespace_pattern: Optional[str] = None) -> str: ...
-def _walk_fsm(
-    fsm_transitions: Dict[Tuple[int, int], int],
-    fsm_initial: int,
-    fsm_finals: Set[int],
-    token_transition_keys: List[int],
-    start_state: int,
-    full_match: bool,
-) -> List[int]: ...
-def state_scan_tokens(
-    fsm_transitions: Dict[Tuple[int, int], int],
-    fsm_initial: int,
-    fsm_finals: Set[int],
-    vocabulary: Vocabulary,
-    vocabulary_transition_keys: Dict[str, List[int]],
-    start_state: int,
-) -> Set[Tuple[int, int]]: ...
-def get_token_transition_keys(
-    alphabet_symbol_mapping: Dict[str, int],
-    alphabet_anything_value: int,
-    token_str: str,
-) -> List[int]: ...
-def get_vocabulary_transition_keys(
-    alphabet_symbol_mapping: Dict[str, int],
-    alphabet_anything_value: int,
-    vocabulary: Vocabulary,
-    frozen_tokens: Set[str],
-) -> Dict[str, List[int]]: ...
-def create_fsm_index_end_to_end(
-    fsm_info: FSMInfo,
-    vocabulary: Vocabulary,
-    frozen_tokens: frozenset[str],
-) -> Dict[int, Dict[int, int]]: ...
 
 BOOLEAN: str
 DATE: str
@@ -67,15 +19,42 @@ WHITESPACE: str
 EMAIL: str
 URI: str
 
+class Guide:
+    def __init__(self, index: Index):
+        """
+        Defines a guide object an index an initializes it in its start state.
+        """
+    def get_start_tokens(self) -> List[int]:
+        """
+        Gets the list of allowed tokens from the start state.
+        """
+        ...
+    def read_next_token(self, token_id: int) -> List[int]:
+        """
+        Reads the next token according to the model and returns a list of allowable tokens.
+        """
+        ...
+    def is_finished(self) -> bool:
+        """
+        Checks if the automaton is in a final state.
+        """
+        ...
+
 class Vocabulary:
     """
     Vocabulary of an LLM.
     """
 
     @staticmethod
-    def from_dict(map: Dict[str, List[int]]) -> "Vocabulary":
+    def from_dict(eos_token_id: int, map: Dict[str, List[int]]) -> "Vocabulary":
         """
-        Creates a vocabulary from a dictionary of tokens to token IDs.
+        Creates a vocabulary from a map of tokens to token ids and eos token id.
+        """
+        ...
+    @staticmethod
+    def from_pretrained(model: str) -> "Vocabulary":
+        """
+        Creates the vocabulary of a pre-trained model.
         """
         ...
     def __repr__(self) -> str:
@@ -88,8 +67,24 @@ class Vocabulary:
         Gets the string representation of the vocabulary.
         """
         ...
+    def __eq__(self, other: object) -> bool:
+        """
+        Gets whether two vocabularies are the same.
+        """
+        ...
+    def get_eos_token_id(self) -> Optional[int]:
+        """
+        Gets the end of sentence token id.
+        """
+        ...
 
 class Index:
+    @staticmethod
+    def from_regex(regex: str, vocabulary: "Vocabulary") -> "Index":
+        """
+        Creates an index from a regex and vocabulary.
+        """
+        ...
     def get_allowed_tokens(self, state: int) -> Optional[List[int]]:
         """Returns allowed tokens in this state."""
         ...
@@ -98,6 +93,9 @@ class Index:
         ...
     def is_final_state(self, state: int) -> bool:
         """Determines whether the current state is a final state."""
+        ...
+    def final_states(self) -> List[int]:
+        """Get all final states."""
         ...
     def get_index_dict(self) -> Dict[int, Dict[int, int]]:
         """Returns the Index as a Python Dict object."""

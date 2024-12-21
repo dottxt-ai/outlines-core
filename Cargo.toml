@@ -43,7 +43,15 @@ build-python-extension-release = "python setup.py build_rust --inplace --release
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(tarpaulin_include)'] }
 
+[[bench]]
+path = "benchmarks/criterion.rs"
+name = "criterion"
+harness = false
+
 [[bin]]
 name = "convert-json-schema"
 test = false
 bench = false
+
+[dev-dependencies]
+criterion = "0.5.1"

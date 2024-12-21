@@ -10,7 +10,15 @@ on:
 env:
   BENCHMARKS_OUTPUT: ${{ github.workspace }}/benchmarks_output
   CARGO_NET_GIT_FETCH_WITH_CLI: true
+  # The default is '-D warnings'
   RUSTFLAGS: ""
+
+# Cancels all previous workflow runs for pull requests that have not completed.
+concurrency:
+  # The concurrency group contains the workflow name and the branch name for pull requests
+  # or the commit hash for any other events.
+  group: ${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.head_ref || github.sha }}
+  cancel-in-progress: true
 
 permissions:
   deployments: write
@@ -37,40 +45,44 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ./cache
-          key: ${{ runner.os }}-benchmark
+          key: ${{ runner.os }}-${{ steps.system-info.outputs.cpu-model }}-benchmarks
 
-      - name: Cat previous data
-        run: cat ./cache/benchmark-data.json
+      - name: Tail previous data
+        run: cat ./cache/benchmark-data.json | tail -n 60
 
       - name: Run benchmarks
         run: cargo criterion --output-format bencher |& tee benchmarks.txt
 
-      - name: Store benchmark result
+      - name: Add benchmark datapoint
         uses: benchmark-action/github-action-benchmark@v1
         if: github.event_name == 'push'
         with:
           tool: 'cargo'
           output-file-path: benchmarks.txt
-          fail-on-alert: true
+          fail-on-alert: false
           github-token: ${{ secrets.GITHUB_TOKEN }}
           auto-push: true
           benchmark-data-dir-path: cb
 
-      - name: Store benchmark result
+      - name: Compare benchmarks
         uses: benchmark-action/github-action-benchmark@v1
         if: github.event_name == 'pull_request'
         with:
           tool: 'cargo'
           output-file-path: benchmarks.txt
-          external-data-json-path: ./cache/benchmark-data.json
+          alert-threshold: "110%"
           fail-on-alert: true
+          external-data-json-path: ./cache/benchmark-data.json
+          comment-on-alert: ${{ github.event.pull_request.head.repo.fork == false }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           summary-always: true
           auto-push: false
+          # No need to update data
+          save-data-file: false
 
       - name: Upload new benchmark data
         if: github.event_name == 'push'
         uses: actions/cache/save@v4
         with:
           path: ./cache
-          key: ${{ runner.os }}-benchmark
+          key: ${{ runner.os }}-${{ steps.system-info.outputs.cpu-model }}-benchmarks

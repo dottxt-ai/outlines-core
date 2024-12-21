@@ -69,4 +69,3 @@ jobs:
           comment-on-alert: true
           summary-always: true
           save-data-file: false
-

@@ -13,8 +13,8 @@ env:
   RUSTFLAGS: ""
 
 permissions:
-  id-token: write
-  contents: read
+  deployments: write
+  contents: write
 
 jobs:
   Criterion:
@@ -33,39 +33,43 @@ jobs:
         run: cargo install cargo-criterion
 
       - name: Download previous benchmark data
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: ./cache
           key: ${{ runner.os }}-benchmark
 
+      - name: Cat previous data
+        run: cat ./cache/benchmark-data.json
+
       - name: Run benchmarks
         run: cargo criterion --output-format bencher |& tee benchmarks.txt
 
-      - name: Compare benchmarks
-        if: github.event_name == 'pull_request'
+      - name: Store benchmark result
         uses: benchmark-action/github-action-benchmark@v1
-        with:
-          tool: 'cargo'
-          output-file-path: benchmarks.txt
-          external-data-json-path: ./cache/benchmark-data.json
-          alert-threshold: "150%"
-          fail-on-alert: true
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          comment-on-alert: true
-          summary-always: true
-          save-data-file: false
-
-      - name: Compare Benchmarks and Generate Page
         if: github.event_name == 'push'
-        uses: benchmark-action/github-action-benchmark@v1
         with:
-          name: Criterion benchmarks
+          tool: 'cargo'
+          output-file-path: benchmarks.txt
+          fail-on-alert: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: true
+          benchmark-data-dir-path: cb
+
+      - name: Store benchmark result
+        uses: benchmark-action/github-action-benchmark@v1
+        if: github.event_name == 'pull_request'
+        with:
           tool: 'cargo'
           output-file-path: benchmarks.txt
           external-data-json-path: ./cache/benchmark-data.json
-          alert-threshold: "150%"
           fail-on-alert: true
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          comment-on-alert: true
           summary-always: true
-          save-data-file: false
+          auto-push: false
+
+      - name: Upload new benchmark data
+        if: github.event_name == 'push'
+        uses: actions/cache/save@v4
+        with:
+          path: ./cache
+          key: ${{ runner.os }}-benchmark

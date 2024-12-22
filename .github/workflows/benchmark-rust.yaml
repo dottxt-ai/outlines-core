@@ -8,6 +8,7 @@ on:
   workflow_dispatch:
 
 env:
+  ACTIONS_RUNNER_DEBUG: true
   BENCHMARKS_OUTPUT: ${{ github.workspace }}/benchmarks_output
   CARGO_NET_GIT_FETCH_WITH_CLI: true
   # The default is '-D warnings'
@@ -68,7 +69,6 @@ jobs:
         with:
           tool: 'cargo'
           output-file-path: benchmarks.txt
-          external-data-json-path: ./cache/benchmark-data.json
           fail-on-alert: false
           github-token: ${{ secrets.GITHUB_TOKEN }}
           auto-push: true

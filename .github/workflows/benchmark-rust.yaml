@@ -56,6 +56,10 @@ jobs:
       - name: Run benchmarks
         run: cargo criterion --output-format bencher |& tee benchmarks.txt
 
+      - name: Update SHA in cache
+        if: github.event_name == 'push'
+        run: echo $GITHUB_SHA > ./cache/last-sha
+
       - name: Add benchmark datapoint
         uses: benchmark-action/github-action-benchmark@v1
         if: github.event_name == 'push'
@@ -82,9 +86,6 @@ jobs:
           auto-push: false
           # No need to update data
           save-data-file: false
-
-      - name: Update SHA in cache
-        run: echo $GITHUB_SHA > ./cache/last-sha
 
       - name: Upload new benchmark data
         if: github.event_name == 'push'

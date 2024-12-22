@@ -63,32 +63,19 @@ jobs:
           mkdir -p cache
           echo $GITHUB_SHA > ./cache/last-sha
 
-      - name: Add benchmark datapoint
+      - name: Compare benchmark results
         uses: benchmark-action/github-action-benchmark@v1
         if: github.event_name == 'push'
         with:
           tool: 'cargo'
           output-file-path: benchmarks.txt
-          fail-on-alert: false
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          auto-push: true
-          benchmark-data-dir-path: cb
-
-      - name: Compare benchmarks
-        uses: benchmark-action/github-action-benchmark@v1
-        if: github.event_name == 'pull_request'
-        with:
-          tool: 'cargo'
-          output-file-path: benchmarks.txt
           alert-threshold: "110%"
-          fail-on-alert: true
-          external-data-json-path: ./cache/benchmark-data.json
-          comment-on-alert: ${{ github.event.pull_request.head.repo.fork == false }}
+          fail-on-alert: ${{ github.event_name == 'pull_request' }}
+          comment-on-alert: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          summary-always: true
-          auto-push: false
-          # No need to update data
-          save-data-file: false
+          summary-always: ${{ github.event_name == 'push' }}
+          benchmark-data-dir-path: cb
+          auto-push: ${{ github.event_name == 'push' }}
 
       - name: Upload new benchmark data
         if: github.event_name == 'push'

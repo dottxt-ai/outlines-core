@@ -58,7 +58,9 @@ jobs:
 
       - name: Update SHA in cache
         if: github.event_name == 'push'
-        run: echo $GITHUB_SHA > ./cache/last-sha
+        run: |
+          mkdir -p cache
+          echo $GITHUB_SHA > ./cache/last-sha
 
       - name: Add benchmark datapoint
         uses: benchmark-action/github-action-benchmark@v1

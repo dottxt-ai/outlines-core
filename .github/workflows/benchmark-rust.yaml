@@ -68,6 +68,7 @@ jobs:
         with:
           tool: 'cargo'
           output-file-path: benchmarks.txt
+          external-data-json-path: ./cache/benchmark-data.json
           fail-on-alert: false
           github-token: ${{ secrets.GITHUB_TOKEN }}
           auto-push: true

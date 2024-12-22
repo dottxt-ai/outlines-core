@@ -47,6 +47,9 @@ jobs:
           path: ./cache
           key: ${{ runner.os }}-${{ steps.system-info.outputs.cpu-model }}-benchmarks
 
+      - name: Cat previous sha
+        run: 'echo "Comparing against baseline SHA: $(cat ./cache/last-sha)"'
+
       - name: Tail previous data
         run: cat ./cache/benchmark-data.json | tail -n 60
 
@@ -79,6 +82,9 @@ jobs:
           auto-push: false
           # No need to update data
           save-data-file: false
+
+      - name: Update SHA in cache
+        run: echo $GITHUB_SHA > ./cache/last-sha
 
       - name: Upload new benchmark data
         if: github.event_name == 'push'

@@ -42,12 +42,6 @@ jobs:
       - name: Install cargo-criterion
         run: cargo install cargo-criterion
 
-      - name: Download previous benchmark data
-        uses: actions/cache/restore@v4
-        with:
-          path: ./cache
-          key: ${{ runner.os }}-benchmarks
-
       - name: Cat previous sha
         run: 'echo "Comparing against baseline SHA: $(cat ./cache/last-sha)"'
 
@@ -76,10 +70,4 @@ jobs:
           summary-always: ${{ github.event_name == 'push' }}
           benchmark-data-dir-path: cb
           auto-push: ${{ github.event_name == 'push' }}
-
-      - name: Upload new benchmark data
-        if: github.event_name == 'push'
-        uses: actions/cache/save@v4
-        with:
-          path: ./cache
-          key: ${{ runner.os }}-benchmarks
+          save-data-file: ${{ github.event_name == 'push' }}

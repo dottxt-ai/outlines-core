@@ -65,7 +65,7 @@ jobs:
           output-file-path: benchmarks.txt
           alert-threshold: "110%"
           fail-on-alert: ${{ github.event_name == 'pull_request' }}
-          comment-on-alert: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.fork == false }}
+          comment-on-alert: ${{ github.event.pull_request.head.repo.fork == false }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           summary-always: ${{ github.event_name == 'push' }}
           benchmark-data-dir-path: cb

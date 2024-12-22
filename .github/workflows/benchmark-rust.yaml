@@ -46,7 +46,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ./cache
-          key: ${{ runner.os }}-${{ steps.system-info.outputs.cpu-model }}-benchmarks
+          key: ${{ runner.os }}-benchmarks
 
       - name: Cat previous sha
         run: 'echo "Comparing against baseline SHA: $(cat ./cache/last-sha)"'
@@ -95,4 +95,4 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: ./cache
-          key: ${{ runner.os }}-${{ steps.system-info.outputs.cpu-model }}-benchmarks
+          key: ${{ runner.os }}-benchmarks

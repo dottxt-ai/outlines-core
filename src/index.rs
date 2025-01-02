@@ -130,11 +130,10 @@ mod tests {
     #[test]
     fn index_from_regex() {
         let regex = "0|[1-9][0-9]*";
-        let vocabulary = Vocabulary::new(4)
-            .insert("blah", 0)
-            .insert("1a", 1)
-            .insert("2", 2)
-            .insert("0", 3);
+        let mut vocabulary = Vocabulary::new(4);
+        for (token, token_id) in [("blah", 0), ("1a", 1), ("2", 2), ("0", 3)] {
+            vocabulary.insert(token, token_id as u32);
+        }
 
         let index = Index::new(regex, &vocabulary).expect("Index failed");
         assert_eq!(index.initial(), 40);
@@ -152,10 +151,10 @@ mod tests {
     #[test]
     fn index_from_regex_initital_in_allowed() {
         let regex = "`\\n(\\.\\n)?`\\n";
-        let vocabulary = Vocabulary::new(104)
-            .insert("\n", 103)
-            .insert(".", 102)
-            .insert("`", 101);
+        let mut vocabulary = Vocabulary::new(104);
+        for (token, token_id) in [("\n", 103), (".", 102), ("`", 101)] {
+            vocabulary.insert(token, token_id as u32);
+        }
 
         let index = Index::new(regex, &vocabulary).expect("Index failed");
         let allowed = index
@@ -167,15 +166,18 @@ mod tests {
     #[test]
     fn index_from_regex_multibyte() {
         let regex = "😇| [😈-😍][😇-😎]*";
-        let vocabulary = Vocabulary::new(8)
-            .insert(" 😍", 5)
-            .insert("blah", 0)
-            .insert("😇", 2)
-            .insert("😈a", 1)
-            .insert("😍", 3)
-            .insert(vec![32, 240, 159, 152], 7)
-            .insert(vec![32, 240, 159, 152, 141], 6)
-            .insert(vec![240, 159, 152, 141], 4);
+        let mut vocabulary = Vocabulary::new(8);
+        for (token, token_id) in [(" 😍", 5), ("blah", 0), ("😇", 2), ("😈a", 1), ("😍", 3)]
+        {
+            vocabulary.insert(token, token_id as u32);
+        }
+        for (token, token_id) in [
+            (vec![32, 240, 159, 152], 7),
+            (vec![32, 240, 159, 152, 141], 6),
+            (vec![240, 159, 152, 141], 4),
+        ] {
+            vocabulary.insert(token, token_id as u32);
+        }
 
         let index = Index::new(regex, &vocabulary).expect("Index failed");
 

@@ -1,6 +1,5 @@
 use bincode::{Decode, Encode};
 use rustc_hash::FxHashMap as HashMap;
-use std::borrow::Borrow;
 
 use tokenizers::normalizers::Sequence;
 use tokenizers::{FromPretrainedParameters, NormalizerWrapper, Tokenizer};
@@ -18,14 +17,19 @@ mod processor;
 ///
 /// ## Examples
 ///
+/// ### Create a vocabulary from a pretrained model.
 /// ```rust
 /// # use outlines_core::prelude::*;
 /// #
-/// let vocabulary = Vocabulary::new(None)
-///     .insert("blah", 0)
-///     .insert("1a", 1)
-///     .insert("2", 2)
-///     .insert("0", 3);
+/// let vocabulary = Vocabulary::from_pretrained("openai-community/gpt2", None);
+/// ```
+///
+/// ### Create an empty vocabulary.
+/// ```rust
+/// # use outlines_core::prelude::*;
+/// #
+/// let mut vocabulary = Vocabulary::new(1);
+/// vocabulary.insert("token", 0);
 /// ```
 #[derive(Clone, Debug, Default, PartialEq, Encode, Decode)]
 pub struct Vocabulary {
@@ -40,6 +44,12 @@ impl Vocabulary {
             eos_token_id,
             tokens: HashMap::default(),
         }
+    }
+
+    /// Inserts a token to the vocabulary with the specified identifier.
+    pub fn insert(&mut self, token: impl Into<Token>, id: TokenId) {
+        let token = token.into();
+        self.tokens.entry(token).or_default().push(id);
     }
 
     /// Creates the vocabulary of pre-trained model from Hugging Face Hub.
@@ -72,7 +82,7 @@ impl Vocabulary {
         let mut vocabulary = Vocabulary::new(eos_token_id);
         for (id, added_token) in tokenizer.get_added_tokens_decoder().iter() {
             if !added_token.special {
-                vocabulary = vocabulary.insert(added_token.content.clone(), *id);
+                vocabulary.insert(added_token.content.clone(), *id);
             }
         }
 
@@ -85,7 +95,7 @@ impl Vocabulary {
         };
         for (token, token_id) in tokenizer.get_vocab(false) {
             let processed_token = processor.process(token)?;
-            vocabulary = vocabulary.insert(processed_token, token_id);
+            vocabulary.insert(processed_token, token_id);
         }
 
         Ok(vocabulary)
@@ -97,8 +107,8 @@ impl Vocabulary {
     }
 
     /// Per provided token returns vector of `TokenId`s if available in the vocabulary.
-    pub fn token_to_ids<T: Borrow<Token>>(&self, token: &T) -> Option<&Vec<TokenId>> {
-        self.tokens.get(token.borrow())
+    pub fn token_to_ids(&self, token: impl AsRef<[u8]>) -> Option<&Vec<TokenId>> {
+        self.tokens.get(token.as_ref())
     }
 
     /// Gets the identifier of the special end of the sentence token.
@@ -137,59 +147,11 @@ impl Vocabulary {
     }
 }
 
-impl Vocabulary {
-    /// Inserts a token to the vocabulary with the specified identifier.
-    pub fn insert(mut self, token: impl Into<Token>, id: TokenId) -> Vocabulary {
-        self.insert_in_place(token, id);
-        self
-    }
-
-    /// Extends the vocabulary with tokens and their identifiers.
-    pub fn extend<T: Into<Token>, I: IntoIterator<Item = TokenId>>(
-        mut self,
-        tokens_and_ids: impl IntoIterator<Item = (T, I)>,
-    ) -> Vocabulary {
-        self.extend_in_place(tokens_and_ids);
-        self
-    }
-}
-
-impl Vocabulary {
-    /// Inserts a token to the vocabulary with the specified identifier, in place.
-    pub fn insert_in_place(&mut self, token: impl Into<Token>, id: TokenId) {
-        // TODO: return error if eos token id is inserted
-        let token = token.into();
-        self.tokens.entry(token).or_default().push(id);
-    }
-
-    /// Extends the vocabulary with tokens and their identifiers, in place.
-    pub fn extend_in_place<T: Into<Token>, I: IntoIterator<Item = TokenId>>(
-        &mut self,
-        tokens_and_ids: impl IntoIterator<Item = (T, I)>,
-    ) {
-        for (token, ids) in tokens_and_ids.into_iter() {
-            let token = token.into();
-            self.tokens.entry(token).or_default().extend(ids);
-        }
-    }
-}
-
-impl std::ops::Deref for Vocabulary {
-    type Target = HashMap<Token, Vec<TokenId>>;
-
-    fn deref(&self) -> &HashMap<Token, Vec<TokenId>> {
-        &self.tokens
-    }
-}
-
 impl std::fmt::Display for Vocabulary {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for (index, (token, token_ids)) in self.iter().enumerate() {
-            if index != (self.len() - 1) {
-                writeln!(f, "{:?} -> {:?}", token, token_ids)?;
-            } else {
-                write!(f, "{:?} -> {:?}", token, token_ids)?;
-            }
+        writeln!(f, "[{:?}]", self.eos_token_id)?;
+        for (token, token_ids) in self.tokens.iter() {
+            writeln!(f, "{:?} -> {:?}", token, token_ids)?;
         }
         Ok(())
     }
@@ -224,41 +186,30 @@ mod tests {
     use rustc_hash::FxHashSet as HashSet;
 
     #[test]
-    fn insert() {
-        let vocabulary = Vocabulary::new(4)
-            .insert("blah", 0)
-            .insert("1a", 1)
-            .insert("2", 2)
-            .insert("0", 3);
+    fn basic_interface() {
+        let eos_token_id = 3;
+        let mut vocabulary = Vocabulary::new(eos_token_id);
 
-        assert_eq!(vocabulary.len(), 4);
-        assert_eq!(vocabulary["blah".as_bytes()], &[0]);
-        assert_eq!(vocabulary["1a".as_bytes()], &[1]);
-        assert_eq!(vocabulary["2".as_bytes()], &[2]);
-        assert_eq!(vocabulary["0".as_bytes()], &[3]);
-    }
-
-    #[test]
-    fn extend() {
-        let vocabulary = Vocabulary::new(4).extend([
-            ("blah", vec![0]),
-            ("1a", vec![1]),
-            ("2", vec![2]),
-            ("0", vec![3]),
-        ]);
-
-        assert_eq!(vocabulary.len(), 4);
-        assert_eq!(vocabulary["blah".as_bytes()], &[0]);
-        assert_eq!(vocabulary["1a".as_bytes()], &[1]);
-        assert_eq!(vocabulary["2".as_bytes()], &[2]);
-        assert_eq!(vocabulary["0".as_bytes()], &[3]);
-    }
-
-    #[test]
-    fn new_empty_vocabulary() {
-        let vocabulary = Vocabulary::new(1);
-        assert_eq!(vocabulary.eos_token_id, 1);
+        // New empty vocabulary.
+        assert_eq!(vocabulary.eos_token_id, eos_token_id);
         assert!(vocabulary.tokens.is_empty());
+
+        for (token, id) in [("zero", 0), ("one", 1), ("two", 2)] {
+            vocabulary.insert(token, id);
+            assert_eq!(vocabulary.token_to_ids(token), Some(&vec![id]));
+        }
+        assert_eq!(vocabulary.tokens.len(), 3);
+        assert_eq!(vocabulary.tokens_to_ids().len(), 3);
+
+        // Confirm different types.
+        vocabulary.insert(b"four", 4);
+        assert_eq!(vocabulary.token_to_ids("four"), Some(&vec![4]));
+
+        vocabulary.insert(b"five".to_vec(), 5);
+        assert_eq!(vocabulary.token_to_ids("five"), Some(&vec![5]));
+
+        vocabulary.insert("six".to_string(), 6);
+        assert_eq!(vocabulary.token_to_ids("six"), Some(&vec![6]));
     }
 
     #[test]
@@ -316,7 +267,7 @@ mod tests {
         assert!(tokenizer.token_to_id(token).is_some());
 
         for (v_token, t_token_expected) in [("abc", "abc"), (" O", "ĠO")] {
-            let v_ids = vocabulary.token_to_ids(&v_token.as_bytes().to_vec());
+            let v_ids = vocabulary.token_to_ids(v_token.as_bytes());
             assert!(v_ids.is_some());
             for v_id in v_ids.unwrap() {
                 let t_token = tokenizer

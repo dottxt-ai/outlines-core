@@ -10,6 +10,13 @@ use pyo3::wrap_pyfunction;
 use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 use serde_json::Value;
 
+macro_rules! type_name {
+    ($obj:expr) => {
+        // Safety: obj is always initialized and tp_name is a C-string
+        unsafe { std::ffi::CStr::from_ptr((&*(&*$obj.as_ptr()).ob_type).tp_name) }
+    };
+}
+
 #[pyclass(name = "Guide", module = "outlines_core.fsm.outlines_core_rs")]
 #[derive(Clone, Debug, Encode, Decode)]
 pub struct PyGuide {
@@ -59,7 +66,7 @@ impl PyGuide {
     fn __reduce__(&self) -> PyResult<(PyObject, (Vec<u8>,))> {
         Python::with_gil(|py| {
             let cls = PyModule::import_bound(py, "outlines_core.fsm.outlines_core_rs")?
-                .getattr("PyGuide")?;
+                .getattr("Guide")?;
             let binary_data: Vec<u8> =
                 bincode::encode_to_vec(self, config::standard()).map_err(|e| {
                     PyErr::new::<PyValueError, _>(format!("Serialization of Guide failed: {}", e))
@@ -163,8 +170,8 @@ pub struct PyVocabulary(Vocabulary);
 
 #[pymethods]
 impl PyVocabulary {
-    #[staticmethod]
-    fn from_dict(py: Python<'_>, eos_token_id: TokenId, map: Py<PyAny>) -> PyResult<PyVocabulary> {
+    #[new]
+    fn new(py: Python<'_>, eos_token_id: TokenId, map: Py<PyAny>) -> PyResult<PyVocabulary> {
         if let Ok(dict) = map.extract::<HashMap<String, Vec<TokenId>>>(py) {
             return Ok(PyVocabulary(Vocabulary::from((eos_token_id, dict))));
         }
@@ -172,7 +179,10 @@ impl PyVocabulary {
             return Ok(PyVocabulary(Vocabulary::from((eos_token_id, dict))));
         }
         Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
-            "Expected a dictionary with keys of type String or Bytes",
+            format!(
+                "Expected a dictionary with keys of type str or bytes and values of type list[int], got {:?}",
+                type_name!(map)
+            ),
         ))
     }
 
@@ -188,13 +198,13 @@ impl PyVocabulary {
 
     fn get(&self, py: Python<'_>, token: Py<PyAny>) -> PyResult<Option<Vec<TokenId>>> {
         if let Ok(t) = token.extract::<String>(py) {
-            return Ok(self.0.token_to_ids(&t.into_bytes()).cloned());
+            return Ok(self.0.token_to_ids(t.into_bytes()).cloned());
         }
         if let Ok(t) = token.extract::<Token>(py) {
             return Ok(self.0.token_to_ids(&t).cloned());
         }
         Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
-            "Expected a token of type String or Bytes",
+            format!("Expected a token of type str or bytes, got {:?}", type_name!(token)),
         ))
     }
 
@@ -217,7 +227,7 @@ impl PyVocabulary {
     fn __reduce__(&self) -> PyResult<(PyObject, (Vec<u8>,))> {
         Python::with_gil(|py| {
             let cls = PyModule::import_bound(py, "outlines_core.fsm.outlines_core_rs")?
-                .getattr("PyVocabulary")?;
+                .getattr("Vocabulary")?;
             let binary_data: Vec<u8> =
                 bincode::encode_to_vec(self, config::standard()).map_err(|e| {
                     PyErr::new::<PyValueError, _>(format!(

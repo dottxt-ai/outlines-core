@@ -9,6 +9,7 @@ use pyo3::types::{PyAny, PyDict};
 use pyo3::wrap_pyfunction;
 use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 use serde_json::Value;
+use tokenizers::FromPretrainedParameters;
 
 macro_rules! type_name {
     ($obj:expr) => {
@@ -193,8 +194,20 @@ impl PyVocabulary {
     }
 
     #[staticmethod]
-    fn from_pretrained(model: String) -> PyResult<PyVocabulary> {
-        let v = Vocabulary::from_pretrained(model.as_str(), None)?;
+    #[pyo3(signature = (model, revision=None, token=None))]
+    fn from_pretrained(
+        model: String,
+        revision: Option<String>,
+        token: Option<String>,
+    ) -> PyResult<PyVocabulary> {
+        let mut params = FromPretrainedParameters::default();
+        if let Some(r) = revision {
+            params.revision = r
+        }
+        if token.is_some() {
+            params.token = token
+        }
+        let v = Vocabulary::from_pretrained(model.as_str(), Some(params))?;
         Ok(PyVocabulary(v))
     }
 

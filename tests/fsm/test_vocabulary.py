@@ -26,15 +26,20 @@ def test_supports_bytes_as_keys():
     assert len(vocabulary) == 2
 
 
-def test_do_not_supports_other_types_as_keys():
-    eos_token_id = 3
-    tokens = {1: [1], 2: [2]}
+def test_do_not_supports_other_types():
+    eos_token_id = 0
 
     with pytest.raises(
         TypeError,
-        match=r"Expected a dictionary with keys of type str or bytes and values of type list\[int\], got",
+        match=r"Expected a dict with keys of type str or bytes and values of type list\[int\], got",
     ):
-        Vocabulary(eos_token_id, tokens)
+        Vocabulary(eos_token_id, 1)
+
+    with pytest.raises(
+        TypeError,
+        match="Dict keys or/and values of the wrong types",
+    ):
+        Vocabulary(eos_token_id, {1: [1], 2: [2]})
 
 
 def test_get_bad_type():

@@ -178,12 +178,18 @@ impl PyVocabulary {
         if let Ok(dict) = map.extract::<HashMap<Vec<u8>, Vec<TokenId>>>(py) {
             return Ok(PyVocabulary(Vocabulary::from((eos_token_id, dict))));
         }
-        Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
-            format!(
-                "Expected a dictionary with keys of type str or bytes and values of type list[int], got {:?}",
-                type_name!(map)
-            ),
-        ))
+
+        let message = "Expected a dict with keys of type str or bytes and values of type list[int]";
+        let tname = type_name!(map).to_string_lossy();
+        if tname == "dict" {
+            Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
+                "Dict keys or/and values of the wrong types. {message}"
+            )))
+        } else {
+            Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
+                "{message}, got {tname}"
+            )))
+        }
     }
 
     #[staticmethod]
@@ -203,9 +209,10 @@ impl PyVocabulary {
         if let Ok(t) = token.extract::<Token>(py) {
             return Ok(self.0.token_to_ids(&t).cloned());
         }
-        Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(
-            format!("Expected a token of type str or bytes, got {:?}", type_name!(token)),
-        ))
+        Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
+            "Expected a token of type str or bytes, got {:?}",
+            type_name!(token)
+        )))
     }
 
     fn __repr__(&self) -> String {

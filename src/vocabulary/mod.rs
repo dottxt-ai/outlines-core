@@ -149,9 +149,21 @@ impl Vocabulary {
 
 impl std::fmt::Display for Vocabulary {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "[{:?}]", self.eos_token_id)?;
+        writeln!(
+            f,
+            "Vocabulary object with eos_token_id={:?} and the following tokens to token_ids:",
+            self.eos_token_id
+        )?;
         for (token, token_ids) in self.tokens.iter() {
-            writeln!(f, "{:?} -> {:?}", token, token_ids)?;
+            writeln!(
+                f,
+                "{:?} -> {:?}",
+                token
+                    .iter()
+                    .map(|b| format!("0x{:02X}", b))
+                    .collect::<Vec<_>>(),
+                token_ids
+            )?;
         }
         Ok(())
     }

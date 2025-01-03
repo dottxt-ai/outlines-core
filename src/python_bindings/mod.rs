@@ -64,6 +64,20 @@ impl PyGuide {
         self.index.is_final_state(self.state)
     }
 
+    fn __repr__(&self) -> String {
+        format!(
+            "Guide object with the state={:#?} and {:#?}",
+            self.state, self.index
+        )
+    }
+
+    fn __str__(&self) -> String {
+        format!(
+            "Guide object with the state={} and {}",
+            self.state, self.index.0
+        )
+    }
+
     fn __reduce__(&self) -> PyResult<(PyObject, (Vec<u8>,))> {
         Python::with_gil(|py| {
             let cls = PyModule::import_bound(py, "outlines_core.fsm.outlines_core_rs")?
@@ -101,27 +115,6 @@ impl PyIndex {
         })
     }
 
-    fn __reduce__(&self) -> PyResult<(PyObject, (Vec<u8>,))> {
-        Python::with_gil(|py| {
-            let cls = PyModule::import_bound(py, "outlines_core.fsm.outlines_core_rs")?
-                .getattr("Index")?;
-            let binary_data: Vec<u8> = bincode::encode_to_vec(&self.0, config::standard())
-                .map_err(|e| {
-                    PyErr::new::<PyValueError, _>(format!("Serialization of Index failed: {}", e))
-                })?;
-            Ok((cls.getattr("from_binary")?.to_object(py), (binary_data,)))
-        })
-    }
-
-    #[staticmethod]
-    fn from_binary(binary_data: Vec<u8>) -> PyResult<Self> {
-        let (index, _): (Index, usize) =
-            bincode::decode_from_slice(&binary_data[..], config::standard()).map_err(|e| {
-                PyErr::new::<PyValueError, _>(format!("Deserialization of Index failed: {}", e))
-            })?;
-        Ok(PyIndex(index))
-    }
-
     fn get_allowed_tokens(&self, state: StateId) -> Option<Vec<TokenId>> {
         self.0.allowed_tokens(state)
     }
@@ -144,6 +137,34 @@ impl PyIndex {
 
     fn get_initial_state(&self) -> StateId {
         self.0.initial()
+    }
+    fn __repr__(&self) -> String {
+        format!("{:#?}", self.0)
+    }
+
+    fn __str__(&self) -> String {
+        format!("{}", self.0)
+    }
+
+    fn __reduce__(&self) -> PyResult<(PyObject, (Vec<u8>,))> {
+        Python::with_gil(|py| {
+            let cls = PyModule::import_bound(py, "outlines_core.fsm.outlines_core_rs")?
+                .getattr("Index")?;
+            let binary_data: Vec<u8> = bincode::encode_to_vec(&self.0, config::standard())
+                .map_err(|e| {
+                    PyErr::new::<PyValueError, _>(format!("Serialization of Index failed: {}", e))
+                })?;
+            Ok((cls.getattr("from_binary")?.to_object(py), (binary_data,)))
+        })
+    }
+
+    #[staticmethod]
+    fn from_binary(binary_data: Vec<u8>) -> PyResult<Self> {
+        let (index, _): (Index, usize) =
+            bincode::decode_from_slice(&binary_data[..], config::standard()).map_err(|e| {
+                PyErr::new::<PyValueError, _>(format!("Deserialization of Index failed: {}", e))
+            })?;
+        Ok(PyIndex(index))
     }
 }
 

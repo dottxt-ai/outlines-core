@@ -123,6 +123,16 @@ impl Index {
     }
 }
 
+impl std::fmt::Display for Index {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "Index object with transitions:")?;
+        for (state_id, token_ids) in self.states_to_token_subsets.iter() {
+            writeln!(f, "{:?} -> {:#?}", state_id, token_ids)?;
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -21,69 +21,53 @@ URI: str
 
 class Guide:
     def __init__(self, index: Index):
-        """
-        Defines a guide object an index an initializes it in its start state.
-        """
+        """Defines a guide object an index an initializes it in its start state."""
     def get_start_tokens(self) -> List[int]:
-        """
-        Gets the list of allowed tokens from the start state.
-        """
+        """Gets the list of allowed tokens from the start state."""
         ...
     def read_next_token(self, token_id: int) -> List[int]:
-        """
-        Reads the next token according to the model and returns a list of allowable tokens.
-        """
+        """Reads the next token according to the model and returns a list of allowable tokens."""
         ...
     def is_finished(self) -> bool:
-        """
-        Checks if the automaton is in a final state.
-        """
-        ...
-
-class Vocabulary:
-    """
-    Vocabulary of an LLM.
-    """
-
-    @staticmethod
-    def from_dict(eos_token_id: int, map: Dict[str, List[int]]) -> "Vocabulary":
-        """
-        Creates a vocabulary from a map of tokens to token ids and eos token id.
-        """
-        ...
-    @staticmethod
-    def from_pretrained(model: str) -> "Vocabulary":
-        """
-        Creates the vocabulary of a pre-trained model.
-        """
+        """Checks if the automaton is in a final state."""
         ...
     def __repr__(self) -> str:
-        """
-        Gets the debug string representation of the vocabulary.
-        """
+        """Gets the debug string representation of the guide."""
         ...
     def __str__(self) -> str:
-        """
-        Gets the string representation of the vocabulary.
-        """
+        """Gets the string representation of the guide."""
+
+class Vocabulary:
+    def __init__(
+        self, eos_token_id: int, map: Dict[Union[str, bytes], List[int]]
+    ) -> "Vocabulary":
+        """Creates a vocabulary from a map of tokens to token ids and eos token id."""
         ...
-    def __eq__(self, other: object) -> bool:
-        """
-        Gets whether two vocabularies are the same.
-        """
+    @staticmethod
+    def from_pretrained(
+        model: str, revision: Optional[String], token: Optional[String]
+    ) -> "Vocabulary":
+        """Creates the vocabulary of a pre-trained model."""
         ...
     def get_eos_token_id(self) -> Optional[int]:
-        """
-        Gets the end of sentence token id.
-        """
+        """Gets the end of sentence token id."""
+        ...
+    def get(self, token: Union[str, bytes]) -> Optional[List[int]]:
+        """Gets the end of sentence token id."""
+        ...
+    def __repr__(self) -> str:
+        """Gets the debug string representation of the vocabulary."""
+        ...
+    def __str__(self) -> str:
+        """Gets the string representation of the vocabulary."""
+        ...
+    def __eq__(self, other: object) -> bool:
+        """Compares whether two vocabularies are the same."""
         ...
 
 class Index:
-    @staticmethod
-    def from_regex(regex: str, vocabulary: "Vocabulary") -> "Index":
-        """
-        Creates an index from a regex and vocabulary.
-        """
+    def __init__(self, regex: str, vocabulary: "Vocabulary") -> "Index":
+        """Creates an index from a regex and vocabulary."""
         ...
     def get_allowed_tokens(self, state: int) -> Optional[List[int]]:
         """Returns allowed tokens in this state."""
@@ -97,9 +81,14 @@ class Index:
     def final_states(self) -> List[int]:
         """Get all final states."""
         ...
-    def get_index_dict(self) -> Dict[int, Dict[int, int]]:
+    def get_transitions(self) -> Dict[int, Dict[int, int]]:
         """Returns the Index as a Python Dict object."""
         ...
     def get_initial_state(self) -> int:
         """Returns the ID of the initial state of the input FSM automata."""
         ...
+    def __repr__(self) -> str:
+        """Gets the debug string representation of the index."""
+        ...
+    def __str__(self) -> str:
+        """Gets the string representation of the index."""

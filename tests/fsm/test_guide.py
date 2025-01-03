@@ -73,6 +73,7 @@ def test_str_and_bytes_produce_the_same():
     index2 = Index(regex, vocabulary2)
     guide1 = Guide(index1)
     guide2 = Guide(index2)
+    assert False
 
     assert guide1.read_next_token(3) == guide2.read_next_token(3)
     # `a` and `b` have similar transitions to `z`

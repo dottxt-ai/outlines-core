@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple, Union
 
 def build_regex_from_schema(
     json: str, whitespace_pattern: Optional[str] = None
@@ -38,14 +38,12 @@ class Guide:
         """Gets the string representation of the guide."""
 
 class Vocabulary:
-    def __init__(
-        self, eos_token_id: int, map: Dict[Union[str, bytes], List[int]]
-    ) -> "Vocabulary":
+    def __init__(self, eos_token_id: int, map: Dict[Union[str, bytes], List[int]]):
         """Creates a vocabulary from a map of tokens to token ids and eos token id."""
         ...
     @staticmethod
     def from_pretrained(
-        model: str, revision: Optional[String], token: Optional[String]
+        model: str, revision: Optional[str], token: Optional[str]
     ) -> "Vocabulary":
         """Creates the vocabulary of a pre-trained model."""
         ...
@@ -66,7 +64,7 @@ class Vocabulary:
         ...
 
 class Index:
-    def __init__(self, regex: str, vocabulary: "Vocabulary") -> "Index":
+    def __init__(self, regex: str, vocabulary: "Vocabulary"):
         """Creates an index from a regex and vocabulary."""
         ...
     def get_allowed_tokens(self, state: int) -> Optional[List[int]]:

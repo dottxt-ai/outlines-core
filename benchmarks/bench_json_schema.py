@@ -1,7 +1,5 @@
-from outlines_core.fsm.guide import RegexGuide
+from outlines_core.fsm import Index, Vocabulary
 from outlines_core.fsm.json_schema import build_regex_from_schema
-
-from .common import setup_tokenizer  # noqa: E402
 
 simple_schema = """{
         "$defs": {
@@ -66,7 +64,7 @@ class JsonSchemaBenchmark:
     params = schemas.keys()
 
     def setup(self, schema_name):
-        self.tokenizer = setup_tokenizer()
+        self.vocabulary = Vocabulary.from_pretrained("gpt2")
         self.schema = schemas[schema_name]
 
     def time_json_schema_to_regex(self, schema_name):
@@ -74,4 +72,4 @@ class JsonSchemaBenchmark:
 
     def time_json_schema_to_fsm(self, schema_name):
         regex = build_regex_from_schema(self.schema)
-        RegexGuide.from_regex(regex, self.tokenizer)
+        Index(regex, self.vocabulary)

@@ -1,9 +1,7 @@
 from concurrent.futures import ThreadPoolExecutor
 
 import psutil
-from outlines_core.fsm.guide import RegexGuide
-
-from .common import setup_tokenizer
+from outlines_core.fsm import Index, Vocabulary
 
 regex_samples = {
     "email": r"[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?",
@@ -18,15 +16,15 @@ regex_samples = {
 }
 
 
-class RegexGuideBenchmark:
+class RegexIndexBenchmark:
     params = regex_samples.keys()
 
     def setup(self, pattern_name):
-        self.tokenizer = setup_tokenizer()
+        self.vocabulary = Vocabulary.from_pretrained("gpt2")
         self.pattern = regex_samples[pattern_name]
 
     def time_regex_to_guide(self, pattern_name):
-        RegexGuide.from_regex(self.pattern, self.tokenizer)
+        Index(self.pattern, self.vocabulary)
 
     def time_regex_to_guide_parallel(self, pattern_name):
         # Default GIL switch interval is 5ms (0.005), which isn't helpful for cpu heavy tasks,
@@ -37,6 +35,10 @@ class RegexGuideBenchmark:
             list(executor.map(self._from_regex, [pattern_name] * core_count))
 
     def time_regex_to_guide_parallel_with_custom_switch_interval(self, pattern_name):
+        # Note: after moving to full rust implementation for index and guide creation, this experiment
+        # is no longer shows the drastic difference as it once showed when python was heavily involved,
+        # due to on average speedup ~100 times.
+
         # This test is to show, that if GIL's switch interval is set to be longer, then the parallel
         # test's runtime on physical cores will be much closer to the one-threaded case.
         import sys
@@ -48,15 +50,15 @@ class RegexGuideBenchmark:
             list(executor.map(self._from_regex, [pattern_name] * core_count))
 
     def _from_regex(self, pattern_name):
-        RegexGuide.from_regex(self.pattern, self.tokenizer)
+        Index(self.pattern, self.vocabulary)
 
 
-class MemoryRegexGuideBenchmark:
+class MemoryRegexIndexBenchmark:
     params = ["simple_phone", "complex_span_constrained_relation_extraction"]
 
     def setup(self, pattern_name):
-        self.tokenizer = setup_tokenizer()
+        self.vocabulary = Vocabulary.from_pretrained("gpt2")
         self.pattern = regex_samples[pattern_name]
 
     def peakmem_regex_to_guide(self, pattern_name):
-        RegexGuide.from_regex(self.pattern, self.tokenizer)
+        Index(self.pattern, self.vocabulary)

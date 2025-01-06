@@ -24,7 +24,6 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = [
-   "interegular",
    "jsonschema",
 ]
 dynamic = ["version"]
@@ -39,15 +38,8 @@ test = [
     "pytest-mock",
     "coverage[toml]>=5.1",
     "diff-cover",
-    "accelerate",
-    "beartype<0.16.0",
-    "huggingface_hub",
-    "torch",
     "numpy",
     "scipy",
-    "transformers",
-    "datasets",
-    "pillow",
     "asv",
     "psutil",
     "setuptools-rust",
@@ -95,7 +87,6 @@ module = [
     "jsonschema.*",
     "pydantic.*",
     "pytest",
-    "interegular.*",
     "setuptools.*",
     "setuptools_rust.*",
 ]

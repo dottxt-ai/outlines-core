@@ -2,7 +2,6 @@ import json
 import re
 from typing import Literal, Union
 
-import interegular
 import pytest
 from outlines_core.fsm.json_schema import build_regex_from_schema, to_regex
 from pydantic import BaseModel, Field
@@ -54,9 +53,6 @@ def test_one_of_doesnt_produce_illegal_lookaround():
 
     json_schema = json.dumps(Model.model_json_schema())
     pattern = build_regex_from_schema(json_schema, whitespace_pattern=None)
-
-    # check if the pattern uses lookarounds incompatible with interegular.Pattern.to_fsm()
-    interegular.parse_pattern(pattern).to_fsm()
 
 
 def test_match_object():

@@ -342,11 +342,11 @@ def make_deterministic_fsm(fsm: FSM) -> Tuple[BetterFSM, Dict[int, int]]:
 
 re_llama_byte_token = re.compile(r"^<0x[0-9A-F]{2}>$")
 
-# The "▁*" prefix is required to handle Gemma and GPT-SW3 tokenizers.
-# The "\.*" suffix is required to handle the NorwAI tokenizer.
-# The "\.*" prefix is required to handle the Salamandra tokenizer.
-# The "s*$" suffix is required to handle the OpenCoder tokenizer.
-re_replacement_seq = re.compile(r"^▁*\.*�+\.*s*$")
+# The ".?" prefix and suffix is to handle special cases in some model vocabularies. This
+# includes Gemma models (which use "▁�" as a token), NorwAI models (which use ".�" as a
+# token), Salamandra models (which use ".�" and "�?" as tokens) and OpenCoder models
+# (which use "�s" as a token).
+re_replacement_seq = re.compile(r"^.?�+.?$")
 
 
 # Copied from transformers.models.gpt2.tokenization_gpt2.bytes_to_unicode

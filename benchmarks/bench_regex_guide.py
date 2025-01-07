@@ -1,7 +1,8 @@
+import os
 from concurrent.futures import ThreadPoolExecutor
 
 import psutil
-from outlines_core.fsm import Index, Vocabulary
+from outlines_core.fsm import Guide, Index, Vocabulary
 
 regex_samples = {
     "email": r"[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?",
@@ -60,5 +61,25 @@ class MemoryRegexIndexBenchmark:
         self.vocabulary = Vocabulary.from_pretrained("gpt2")
         self.pattern = regex_samples[pattern_name]
 
-    def peakmem_regex_to_guide(self, pattern_name):
+    def peakmem_regex_to_index(self, pattern_name):
         Index(self.pattern, self.vocabulary)
+
+
+class MemoryStabilityBenchmark:
+    params = [1, 10_000]
+
+    def setup(self, num):
+        self.vocabulary = Vocabulary.from_pretrained("gpt2")
+        self.index = Index(".*", self.vocabulary)
+        self.process = psutil.Process(os.getpid())
+
+    def _memory_usage(self):
+        return self.process.memory_info().rss / 1024**2
+
+    def peakmem_guides_per_index(self, num_guides):
+        initial = self._memory_usage()
+        objects = [Guide(self.index) for i in range(num_guides)]
+        final = self._memory_usage()
+
+        assert len(objects) == num_guides
+        assert final - initial < 5

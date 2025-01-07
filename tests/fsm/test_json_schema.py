@@ -52,7 +52,7 @@ def test_one_of_doesnt_produce_illegal_lookaround():
         n: int
 
     json_schema = json.dumps(Model.model_json_schema())
-    pattern = build_regex_from_schema(json_schema, whitespace_pattern=None)
+    build_regex_from_schema(json_schema, whitespace_pattern=None)
 
 
 def test_match_object():

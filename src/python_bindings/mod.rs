@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::index::Index;
 use crate::json_schema;
 use crate::prelude::*;
@@ -28,7 +30,7 @@ pub struct PyGuide {
 #[pymethods]
 impl PyGuide {
     #[new]
-    fn new(index: PyIndex) -> Self {
+    fn __new__(index: PyIndex) -> Self {
         PyGuide {
             state: index.get_initial_state(),
             index,
@@ -102,15 +104,15 @@ impl PyGuide {
 
 #[pyclass(name = "Index", module = "outlines_core.fsm.outlines_core_rs")]
 #[derive(Clone, Debug, Encode, Decode)]
-pub struct PyIndex(Index);
+pub struct PyIndex(Arc<Index>);
 
 #[pymethods]
 impl PyIndex {
     #[new]
-    fn new(py: Python<'_>, regex: &str, vocabulary: &PyVocabulary) -> PyResult<Self> {
+    fn __new__(py: Python<'_>, regex: &str, vocabulary: &PyVocabulary) -> PyResult<Self> {
         py.allow_threads(|| {
             Index::new(regex, &vocabulary.0)
-                .map(PyIndex)
+                .map(|x| PyIndex(Arc::new(x)))
                 .map_err(Into::into)
         })
     }
@@ -164,7 +166,7 @@ impl PyIndex {
             bincode::decode_from_slice(&binary_data[..], config::standard()).map_err(|e| {
                 PyErr::new::<PyValueError, _>(format!("Deserialization of Index failed: {}", e))
             })?;
-        Ok(PyIndex(index))
+        Ok(PyIndex(Arc::new(index)))
     }
 }
 
@@ -193,7 +195,7 @@ pub struct PyVocabulary(Vocabulary);
 #[pymethods]
 impl PyVocabulary {
     #[new]
-    fn new(py: Python<'_>, eos_token_id: TokenId, map: Py<PyAny>) -> PyResult<PyVocabulary> {
+    fn __new__(py: Python<'_>, eos_token_id: TokenId, map: Py<PyAny>) -> PyResult<PyVocabulary> {
         if let Ok(dict) = map.extract::<HashMap<String, Vec<TokenId>>>(py) {
             return Ok(PyVocabulary(Vocabulary::from((eos_token_id, dict))));
         }

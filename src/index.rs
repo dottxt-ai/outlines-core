@@ -8,7 +8,7 @@ use regex_automata::util::primitives::StateID as AutomataStateId;
 use regex_automata::Anchored;
 use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, PartialEq, Encode, Decode)]
 pub struct Index {
     initial: StateId,
     finals: HashSet<StateId>,

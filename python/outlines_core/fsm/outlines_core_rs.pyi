@@ -36,6 +36,9 @@ class Guide:
         ...
     def __str__(self) -> str:
         """Gets the string representation of the guide."""
+    def __eq__(self, other: object) -> bool:
+        """Compares whether two guides are the same."""
+        ...
 
 class Vocabulary:
     def __init__(self, eos_token_id: int, map: Dict[Union[str, bytes], List[int]]):
@@ -46,6 +49,9 @@ class Vocabulary:
         model: str, revision: Optional[str], token: Optional[str]
     ) -> "Vocabulary":
         """Creates the vocabulary of a pre-trained model."""
+        ...
+    def insert(self, token: Union[str, bytes], token_id: int):
+        """Inserts new token with token_id or extends list of token_ids if token already present."""
         ...
     def get_eos_token_id(self) -> Optional[int]:
         """Gets the end of sentence token id."""
@@ -61,6 +67,9 @@ class Vocabulary:
         ...
     def __eq__(self, other: object) -> bool:
         """Compares whether two vocabularies are the same."""
+        ...
+    def __deepcopy__(self, memo: dict) -> "Vocabulary":
+        """Makes a deep copy of the Vocabulary."""
         ...
 
 class Index:
@@ -90,3 +99,9 @@ class Index:
         ...
     def __str__(self) -> str:
         """Gets the string representation of the index."""
+    def __eq__(self, other: object) -> bool:
+        """Compares whether two indexes are the same."""
+        ...
+    def __deepcopy__(self, memo: dict) -> "Index":
+        """Makes a deep copy of the Index."""
+        ...

@@ -21,7 +21,7 @@ macro_rules! type_name {
 }
 
 #[pyclass(name = "Guide", module = "outlines_core.fsm.outlines_core_rs")]
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, PartialEq, Encode, Decode)]
 pub struct PyGuide {
     state: StateId,
     index: PyIndex,
@@ -80,6 +80,10 @@ impl PyGuide {
         )
     }
 
+    fn __eq__(&self, other: &PyGuide) -> bool {
+        self == other
+    }
+
     fn __reduce__(&self) -> PyResult<(PyObject, (Vec<u8>,))> {
         Python::with_gil(|py| {
             let cls = PyModule::import_bound(py, "outlines_core.fsm.outlines_core_rs")?
@@ -103,7 +107,7 @@ impl PyGuide {
 }
 
 #[pyclass(name = "Index", module = "outlines_core.fsm.outlines_core_rs")]
-#[derive(Clone, Debug, Encode, Decode)]
+#[derive(Clone, Debug, PartialEq, Encode, Decode)]
 pub struct PyIndex(Arc<Index>);
 
 #[pymethods]
@@ -146,6 +150,14 @@ impl PyIndex {
 
     fn __str__(&self) -> String {
         format!("{}", self.0)
+    }
+
+    fn __eq__(&self, other: &PyIndex) -> bool {
+        *self.0 == *other.0
+    }
+
+    fn __deepcopy__(&self, _py: Python<'_>, _memo: Py<PyDict>) -> Self {
+        PyIndex(Arc::new((*self.0).clone()))
     }
 
     fn __reduce__(&self) -> PyResult<(PyObject, (Vec<u8>,))> {
@@ -234,6 +246,21 @@ impl PyVocabulary {
         Ok(PyVocabulary(v))
     }
 
+    fn insert(&mut self, py: Python<'_>, token: Py<PyAny>, token_id: TokenId) -> PyResult<()> {
+        if let Ok(t) = token.extract::<String>(py) {
+            self.0.insert(t, token_id);
+            return Ok(());
+        }
+        if let Ok(t) = token.extract::<Token>(py) {
+            self.0.insert(t, token_id);
+            return Ok(());
+        }
+        Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
+            "Expected a token of type str or bytes, got {:?}",
+            type_name!(token)
+        )))
+    }
+
     fn get_eos_token_id(&self) -> TokenId {
         self.0.eos_token_id()
     }
@@ -265,6 +292,10 @@ impl PyVocabulary {
 
     fn __len__(&self) -> usize {
         self.0.tokens_to_ids().len()
+    }
+
+    fn __deepcopy__(&self, _py: Python<'_>, _memo: Py<PyDict>) -> Self {
+        PyVocabulary(self.0.clone())
     }
 
     fn __reduce__(&self) -> PyResult<(PyObject, (Vec<u8>,))> {

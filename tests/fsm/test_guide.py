@@ -1,7 +1,20 @@
+import copy
 import pickle
+from typing import Dict, List, Union
 
 import pytest
 from outlines_core.fsm import Guide, Index, Vocabulary
+
+
+@pytest.fixture(scope="session")
+def index() -> Index:
+    eos_token_id = 3
+    # types here only to please mypy checks
+    tokens: Dict[Union[str, bytes], List[int]] = {"1": [1], "2": [2]}
+    regex = r"[1-9]"
+
+    vocabulary = Vocabulary(eos_token_id, tokens)
+    return Index(regex, vocabulary)
 
 
 def test_stop_at_eos():
@@ -82,15 +95,8 @@ def test_str_and_bytes_produce_the_same():
     assert guide2.is_finished()
 
 
-def test_pickling():
-    eos_token_id = 3
-    tokens = {"1": [1], "2": [2]}
-    regex = r"[1-9]"
-
-    vocabulary = Vocabulary(eos_token_id, tokens)
-    index = Index(regex, vocabulary)
+def test_pickling(index):
     guide = Guide(index)
-
     serialized = pickle.dumps(guide)
     deserialized = pickle.loads(serialized)
     assert sorted(deserialized.get_start_tokens()) == sorted(guide.get_start_tokens())
@@ -119,3 +125,19 @@ def test_pickling_from_pretrained_with_revision(model, revision):
     serialized = pickle.dumps(guide)
     deserialized = pickle.loads(serialized)
     assert sorted(deserialized.get_start_tokens()) == sorted(guide.get_start_tokens())
+
+
+def test_equality(index):
+    guide1 = Guide(index)
+    guide2 = Guide(index)
+    assert guide1 == guide2
+
+    # confirm that equality is about inner index, not reference difference
+    index2 = copy.deepcopy(index)
+    guide3 = Guide(index2)
+    assert guide3 == guide2 == guide1
+
+    # progress one of the guides, confirm different state == different guide
+    guide1.read_next_token(guide1.get_start_tokens()[-1])
+    assert guide1 != guide2
+    assert guide3 == guide2

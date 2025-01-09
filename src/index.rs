@@ -10,14 +10,14 @@ use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 
 #[derive(Clone, Debug, PartialEq, Encode, Decode)]
 pub struct Index {
-    initial: StateId,
-    finals: HashSet<StateId>,
-    states_to_token_subsets: HashMap<StateId, HashMap<TokenId, StateId>>,
+    initial_state: StateId,
+    final_states: HashSet<StateId>,
+    transitions: HashMap<StateId, HashMap<TokenId, StateId>>,
     eos_token_id: TokenId,
 }
 
 impl Index {
-    pub(crate) fn new(regex: &str, vocabulary: &Vocabulary) -> Result<Self> {
+    pub fn new(regex: &str, vocabulary: &Vocabulary) -> Result<Self> {
         let eos_token_id = vocabulary.eos_token_id();
         let dfa = DFA::new(regex).map_err(Box::new)?;
         let start_state = match dfa.universal_start_state(Anchored::Yes) {
@@ -83,9 +83,9 @@ impl Index {
 
         if is_valid {
             Ok(Self {
-                initial: start_state.as_u32(),
-                finals: final_states,
-                states_to_token_subsets: transitions,
+                initial_state: start_state.as_u32(),
+                final_states,
+                transitions,
                 eos_token_id,
             })
         } else {
@@ -93,40 +93,40 @@ impl Index {
         }
     }
 
-    pub(crate) fn allowed_tokens(&self, state: StateId) -> Option<Vec<TokenId>> {
-        self.states_to_token_subsets
+    pub fn allowed_tokens(&self, state: StateId) -> Option<Vec<TokenId>> {
+        self.transitions
             .get(&state)
             .map_or_else(|| None, |res| Some(res.keys().cloned().collect()))
     }
 
-    pub(crate) fn next_state(&self, state: StateId, token_id: TokenId) -> Option<StateId> {
+    pub fn next_state(&self, state: StateId, token_id: TokenId) -> Option<StateId> {
         if token_id == self.eos_token_id {
             return None;
         }
-        Some(*self.states_to_token_subsets.get(&state)?.get(&token_id)?)
+        Some(*self.transitions.get(&state)?.get(&token_id)?)
     }
 
-    pub(crate) fn initial(&self) -> StateId {
-        self.initial
+    pub fn initial_state(&self) -> StateId {
+        self.initial_state
     }
 
-    pub(crate) fn is_final(&self, state: StateId) -> bool {
-        self.finals.contains(&state)
+    pub fn is_final(&self, state: StateId) -> bool {
+        self.final_states.contains(&state)
     }
 
-    pub(crate) fn final_states(&self) -> &HashSet<StateId> {
-        &self.finals
+    pub fn final_states(&self) -> &HashSet<StateId> {
+        &self.final_states
     }
 
-    pub(crate) fn transitions(&self) -> &HashMap<StateId, HashMap<TokenId, StateId>> {
-        &self.states_to_token_subsets
+    pub fn transitions(&self) -> &HashMap<StateId, HashMap<TokenId, StateId>> {
+        &self.transitions
     }
 }
 
 impl std::fmt::Display for Index {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "Index object with transitions:")?;
-        for (state_id, token_ids) in self.states_to_token_subsets.iter() {
+        for (state_id, token_ids) in self.transitions.iter() {
             writeln!(f, "{:?} -> {:#?}", state_id, token_ids)?;
         }
         Ok(())
@@ -148,7 +148,7 @@ mod tests {
         }
 
         let index = Index::new(regex, &vocabulary).expect("Index failed");
-        assert_eq!(index.initial(), 40);
+        assert_eq!(index.initial_state(), 40);
         assert_eq!(index.final_states(), &HashSet::from_iter([24, 48, 56]));
 
         let expected = HashMap::from_iter([
@@ -172,7 +172,7 @@ mod tests {
 
         let index = Index::new(regex, &vocabulary).expect("Index failed");
         let allowed = index
-            .allowed_tokens(index.initial())
+            .allowed_tokens(index.initial_state())
             .expect("No allowed tokens");
         assert!(allowed.contains(&101));
     }

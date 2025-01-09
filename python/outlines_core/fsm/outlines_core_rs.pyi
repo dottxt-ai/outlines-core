@@ -68,6 +68,9 @@ class Vocabulary:
     def __eq__(self, other: object) -> bool:
         """Compares whether two vocabularies are the same."""
         ...
+    def __len__(self) -> int:
+        """Returns length of Vocabulary's tokens, excluding EOS token."""
+        ...
     def __deepcopy__(self, memo: dict) -> "Vocabulary":
         """Makes a deep copy of the Vocabulary."""
         ...
@@ -85,7 +88,7 @@ class Index:
     def is_final_state(self, state: int) -> bool:
         """Determines whether the current state is a final state."""
         ...
-    def final_states(self) -> List[int]:
+    def get_final_states(self) -> List[int]:
         """Get all final states."""
         ...
     def get_transitions(self) -> Dict[int, Dict[int, int]]:

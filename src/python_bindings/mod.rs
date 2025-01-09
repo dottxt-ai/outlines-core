@@ -133,7 +133,7 @@ impl PyIndex {
         self.0.is_final(state)
     }
 
-    fn final_states(&self) -> HashSet<StateId> {
+    fn get_final_states(&self) -> HashSet<StateId> {
         self.0.final_states().clone()
     }
 
@@ -142,7 +142,7 @@ impl PyIndex {
     }
 
     fn get_initial_state(&self) -> StateId {
-        self.0.initial()
+        self.0.initial_state()
     }
     fn __repr__(&self) -> String {
         format!("{:#?}", self.0)

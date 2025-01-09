@@ -77,6 +77,13 @@ def test_insert_bad_type(vocabulary):
         vocabulary.insert(1, 6)
 
 
+def test_insert_eos_token(vocabulary):
+    with pytest.raises(
+        ValueError, match="EOS token should not be inserted into Vocabulary"
+    ):
+        vocabulary.insert("eos-token", 3)
+
+
 def test_from_pretrained():
     vocabulary = Vocabulary.from_pretrained("gpt2")
     assert vocabulary.get_eos_token_id() == 50256

@@ -142,7 +142,9 @@ mod tests {
         let regex = "0|[1-9][0-9]*";
         let mut vocabulary = Vocabulary::new(4);
         for (token, token_id) in [("blah", 0), ("1a", 1), ("2", 2), ("0", 3)] {
-            vocabulary.insert(token, token_id as u32);
+            vocabulary
+                .try_insert(token, token_id as u32)
+                .expect("Insert failed");
         }
 
         let index = Index::new(regex, &vocabulary).expect("Index failed");
@@ -163,7 +165,9 @@ mod tests {
         let regex = "`\\n(\\.\\n)?`\\n";
         let mut vocabulary = Vocabulary::new(104);
         for (token, token_id) in [("\n", 103), (".", 102), ("`", 101)] {
-            vocabulary.insert(token, token_id as u32);
+            vocabulary
+                .try_insert(token, token_id as u32)
+                .expect("Insert failed");
         }
 
         let index = Index::new(regex, &vocabulary).expect("Index failed");
@@ -179,14 +183,18 @@ mod tests {
         let mut vocabulary = Vocabulary::new(8);
         for (token, token_id) in [(" 😍", 5), ("blah", 0), ("😇", 2), ("😈a", 1), ("😍", 3)]
         {
-            vocabulary.insert(token, token_id as u32);
+            vocabulary
+                .try_insert(token, token_id as u32)
+                .expect("Insert failed");
         }
         for (token, token_id) in [
             (vec![32, 240, 159, 152], 7),
             (vec![32, 240, 159, 152, 141], 6),
             (vec![240, 159, 152, 141], 4),
         ] {
-            vocabulary.insert(token, token_id as u32);
+            vocabulary
+                .try_insert(token, token_id as u32)
+                .expect("Insert failed");
         }
 
         let index = Index::new(regex, &vocabulary).expect("Index failed");

@@ -102,7 +102,7 @@ impl Default for Mods {
 
 impl Mods {
     /// Apply default modifications to each token.
-    fn apply_default(&self, token: String) -> String {
+    fn apply_default(&self, token: &str) -> String {
         let to = Self::default().spacechar.to_string();
         token.replace(self.spacechar, &to)
     }
@@ -190,7 +190,7 @@ impl TokenProcessor {
     }
 
     /// Operates on each token based on the level of `TokenProcessor`.
-    pub(crate) fn process(&self, token: String) -> Result<Vec<u8>> {
+    pub(crate) fn process(&self, token: &str) -> Result<Vec<u8>> {
         match &self.level {
             TokenProcessorLevel::Byte => token
                 .chars()
@@ -275,7 +275,7 @@ mod tests {
             ('þ', 0xFE),
             ('ÿ', 0xFF),
         ] {
-            let processed = processor.process(ch.to_string()).expect("Not processed");
+            let processed = processor.process(&ch.to_string()).expect("Not processed");
             assert_eq!(processed, [byte]);
         }
     }
@@ -304,7 +304,7 @@ mod tests {
                 vec![0x20, 0x20, 0x20],
             ),
         ] {
-            let processed = processor.process(input.to_string()).expect("Not processed");
+            let processed = processor.process(input).expect("Not processed");
             assert_eq!(processed, expected);
         }
     }
@@ -328,7 +328,7 @@ mod tests {
         let processor = TokenProcessor::new(&tokenizer).expect("Processor failed");
 
         for token in ["𝒜𝒷𝒸𝒟𝓔", "🦄🌈🌍🔥🎉", "京东购物"] {
-            let result = processor.process(token.to_string());
+            let result = processor.process(token);
             match result {
                 Err(Error::ByteProcessorFailed) => {}
                 _ => unreachable!(),
@@ -342,7 +342,7 @@ mod tests {
         let tokenizer = Tokenizer::from_pretrained(model, None).expect("Tokenizer failed");
         let processor = TokenProcessor::new(&tokenizer).expect("Processor failed");
 
-        let result = processor.process("<0x6y>".to_string());
+        let result = processor.process("<0x6y>");
         match result {
             Err(Error::ByteFallbackProcessorFailed) => {}
             _ => unreachable!(),

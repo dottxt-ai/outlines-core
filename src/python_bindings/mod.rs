@@ -209,10 +209,10 @@ impl PyVocabulary {
     #[new]
     fn __new__(py: Python<'_>, eos_token_id: TokenId, map: Py<PyAny>) -> PyResult<PyVocabulary> {
         if let Ok(dict) = map.extract::<HashMap<String, Vec<TokenId>>>(py) {
-            return Ok(PyVocabulary(Vocabulary::from((eos_token_id, dict))));
+            return Ok(PyVocabulary(Vocabulary::try_from((eos_token_id, dict))?));
         }
         if let Ok(dict) = map.extract::<HashMap<Vec<u8>, Vec<TokenId>>>(py) {
-            return Ok(PyVocabulary(Vocabulary::from((eos_token_id, dict))));
+            return Ok(PyVocabulary(Vocabulary::try_from((eos_token_id, dict))?));
         }
 
         let message = "Expected a dict with keys of type str or bytes and values of type list[int]";
@@ -248,12 +248,10 @@ impl PyVocabulary {
 
     fn insert(&mut self, py: Python<'_>, token: Py<PyAny>, token_id: TokenId) -> PyResult<()> {
         if let Ok(t) = token.extract::<String>(py) {
-            self.0.insert(t, token_id);
-            return Ok(());
+            return Ok(self.0.try_insert(t, token_id)?);
         }
         if let Ok(t) = token.extract::<Token>(py) {
-            self.0.insert(t, token_id);
-            return Ok(());
+            return Ok(self.0.try_insert(t, token_id)?);
         }
         Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
             "Expected a token of type str or bytes, got {:?}",

@@ -24,12 +24,13 @@ mod processor;
 /// let vocabulary = Vocabulary::from_pretrained("openai-community/gpt2", None);
 /// ```
 ///
-/// ### Create an empty vocabulary.
+/// ### Create an empty vocabulary and manually insert tokens.
 /// ```rust
 /// # use outlines_core::prelude::*;
 /// #
-/// let mut vocabulary = Vocabulary::new(1);
-/// vocabulary.insert("token", 0);
+/// let eos_token_id = 1;
+/// let mut vocabulary = Vocabulary::new(eos_token_id);
+/// vocabulary.try_insert("token", 0).expect("New token inserted");
 /// ```
 #[derive(Clone, Debug, Default, PartialEq, Encode, Decode)]
 pub struct Vocabulary {
@@ -47,9 +48,13 @@ impl Vocabulary {
     }
 
     /// Inserts a token to the vocabulary with the specified identifier.
-    pub fn insert(&mut self, token: impl Into<Token>, id: TokenId) {
+    pub fn try_insert(&mut self, token: impl Into<Token>, id: TokenId) -> Result<(), Error> {
+        if id == self.eos_token_id {
+            return Err(Error::EOSTokenDisallowed);
+        }
         let token = token.into();
         self.tokens.entry(token).or_default().push(id);
+        Ok(())
     }
 
     /// Creates the vocabulary of pre-trained model from Hugging Face Hub.
@@ -81,8 +86,8 @@ impl Vocabulary {
         // Start building the vocabulary from eos_token_id and added tokens.
         let mut vocabulary = Vocabulary::new(eos_token_id);
         for (id, added_token) in tokenizer.get_added_tokens_decoder().iter() {
-            if !added_token.special {
-                vocabulary.insert(added_token.content.clone(), *id);
+            if !added_token.special && id != &eos_token_id {
+                vocabulary.try_insert(added_token.content.clone(), *id)?
             }
         }
 
@@ -94,8 +99,10 @@ impl Vocabulary {
             });
         };
         for (token, token_id) in tokenizer.get_vocab(false) {
-            let processed_token = processor.process(token)?;
-            vocabulary.insert(processed_token, token_id);
+            if token_id != eos_token_id {
+                let processed_token = processor.process(&token)?;
+                vocabulary.try_insert(processed_token, token_id)?;
+            }
         }
 
         Ok(vocabulary)
@@ -169,26 +176,39 @@ impl std::fmt::Display for Vocabulary {
     }
 }
 
-impl From<(TokenId, HashMap<Token, Vec<TokenId>>)> for Vocabulary {
-    fn from(values: (TokenId, HashMap<Token, Vec<TokenId>>)) -> Vocabulary {
+impl TryFrom<(TokenId, HashMap<Token, Vec<TokenId>>)> for Vocabulary {
+    type Error = Error;
+
+    fn try_from(values: (TokenId, HashMap<Token, Vec<TokenId>>)) -> Result<Self, Self::Error> {
         let (eos_token_id, tokens) = values;
-        Vocabulary {
+        if tokens.iter().any(|(_, ids)| ids.contains(&eos_token_id)) {
+            return Err(Error::EOSTokenDisallowed);
+        }
+        Ok(Vocabulary {
             eos_token_id,
             tokens,
-        }
+        })
     }
 }
 
-impl From<(TokenId, HashMap<String, Vec<TokenId>>)> for Vocabulary {
-    fn from(values: (TokenId, HashMap<String, Vec<TokenId>>)) -> Vocabulary {
+impl TryFrom<(TokenId, HashMap<String, Vec<TokenId>>)> for Vocabulary {
+    type Error = Error;
+
+    fn try_from(values: (TokenId, HashMap<String, Vec<TokenId>>)) -> Result<Self, Self::Error> {
         let (eos_token_id, tokens) = values;
-        Vocabulary {
+        Ok(Vocabulary {
             eos_token_id,
             tokens: tokens
                 .into_iter()
-                .map(|(k, v)| (k.as_bytes().to_vec(), v))
-                .collect::<HashMap<Token, Vec<TokenId>>>(),
-        }
+                .map(|(k, v)| {
+                    if v.contains(&eos_token_id) {
+                        Err(Error::EOSTokenDisallowed)
+                    } else {
+                        Ok((k.as_bytes().to_vec(), v))
+                    }
+                })
+                .collect::<Result<HashMap<Token, Vec<TokenId>>, _>>()?,
+        })
     }
 }
 
@@ -202,32 +222,41 @@ mod tests {
         let eos_token_id = 3;
         let mut vocabulary = Vocabulary::new(eos_token_id);
 
+        match vocabulary.try_insert("eos-token", eos_token_id) {
+            Err(Error::EOSTokenDisallowed) => {}
+            _ => unreachable!(),
+        }
+
         // New empty vocabulary.
         assert_eq!(vocabulary.eos_token_id, eos_token_id);
         assert!(vocabulary.tokens.is_empty());
 
         for (token, id) in [("zero", 0), ("one", 1), ("two", 2)] {
-            vocabulary.insert(token, id);
+            vocabulary.try_insert(token, id).expect("Insert failed");
             assert_eq!(vocabulary.token_to_ids(token), Some(&vec![id]));
         }
         assert_eq!(vocabulary.tokens.len(), 3);
         assert_eq!(vocabulary.tokens_to_ids().len(), 3);
 
         // Confirm different types.
-        vocabulary.insert(b"four", 4);
+        vocabulary.try_insert(b"four", 4).expect("Insert failed");
         assert_eq!(vocabulary.token_to_ids("four"), Some(&vec![4]));
 
-        vocabulary.insert(b"five".to_vec(), 5);
+        vocabulary
+            .try_insert(b"five".to_vec(), 5)
+            .expect("Insert failed");
         assert_eq!(vocabulary.token_to_ids("five"), Some(&vec![5]));
 
-        vocabulary.insert("six".to_string(), 6);
+        vocabulary
+            .try_insert("six".to_string(), 6)
+            .expect("Insert failed");
         assert_eq!(vocabulary.token_to_ids("six"), Some(&vec![6]));
     }
 
     #[test]
     fn new_empty_vocabulary_from_hashmap() {
         let map: HashMap<Token, Vec<TokenId>> = HashMap::default();
-        let vocabulary = Vocabulary::from((1_u32, map));
+        let vocabulary = Vocabulary::try_from((1_u32, map)).expect("Vocabulary failed");
         assert_eq!(vocabulary.eos_token_id, 1);
         assert!(vocabulary.tokens.is_empty());
     }

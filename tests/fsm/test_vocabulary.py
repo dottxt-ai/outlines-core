@@ -12,12 +12,8 @@ def vocabulary():
     return Vocabulary(eos_token_id, tokens)
 
 
-def test_basic_vocabulary_interface():
-    eos_token_id = 3
-    tokens = {"1": [1], "a": [2]}
-    vocabulary = Vocabulary(eos_token_id, tokens)
-
-    assert vocabulary.get_eos_token_id() == eos_token_id
+def test_basic_vocabulary_interface(vocabulary):
+    assert vocabulary.get_eos_token_id() == 3
     assert vocabulary.get("1") == vocabulary.get(b"1") == [1]
     assert len(vocabulary) == 2
 
@@ -28,6 +24,17 @@ def test_basic_vocabulary_interface():
     vocabulary.insert(b"b", 5)
     assert vocabulary.get("b") == vocabulary.get(b"b") == [4, 5]
     assert len(vocabulary) == 3
+
+    vocabulary.remove("b")
+    assert vocabulary.get("b") is None
+
+    # second remove doesn't fail too
+    vocabulary.remove("b")
+    assert vocabulary.get("b") is None
+
+    assert vocabulary.get("a") == [2]
+    vocabulary.remove(b"a")
+    assert vocabulary.get("a") is None
 
 
 def test_string_and_bytes_as_tokens():

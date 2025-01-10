@@ -53,6 +53,9 @@ class Vocabulary:
     def insert(self, token: Union[str, bytes], token_id: int):
         """Inserts new token with token_id or extends list of token_ids if token already present."""
         ...
+    def remove(self, token: Union[str, bytes]):
+        """Removes a token from vocabulary."""
+        ...
     def get_eos_token_id(self) -> Optional[int]:
         """Gets the end of sentence token id."""
         ...

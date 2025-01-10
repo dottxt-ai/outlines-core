@@ -57,6 +57,12 @@ impl Vocabulary {
         Ok(())
     }
 
+    /// Removes a token from the vocabulary.
+    pub fn remove(&mut self, token: impl Into<Token>) {
+        let token = token.into();
+        self.tokens.remove(&token);
+    }
+
     /// Creates the vocabulary of pre-trained model from Hugging Face Hub.
     pub fn from_pretrained(
         model: &str,
@@ -251,6 +257,15 @@ mod tests {
             .try_insert("six".to_string(), 6)
             .expect("Insert failed");
         assert_eq!(vocabulary.token_to_ids("six"), Some(&vec![6]));
+
+        vocabulary.remove(b"four");
+        assert_eq!(vocabulary.token_to_ids("four"), None);
+
+        vocabulary.remove(b"five".to_vec());
+        assert_eq!(vocabulary.token_to_ids("five"), None);
+
+        vocabulary.remove("six".to_string());
+        assert_eq!(vocabulary.token_to_ids("six"), None);
     }
 
     #[test]

@@ -38,7 +38,7 @@ class RegexIndexBenchmark:
     def time_regex_to_guide_parallel_with_custom_switch_interval(self, pattern_name):
         # Note: after moving to full rust implementation for index and guide creation, this experiment
         # is no longer shows the drastic difference as it once showed when python was heavily involved,
-        # due to on average speedup ~100 times.
+        # due to speedup up to ~100 times.
 
         # This test is to show, that if GIL's switch interval is set to be longer, then the parallel
         # test's runtime on physical cores will be much closer to the one-threaded case.

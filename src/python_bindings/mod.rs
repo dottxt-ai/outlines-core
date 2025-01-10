@@ -259,6 +259,21 @@ impl PyVocabulary {
         )))
     }
 
+    fn remove(&mut self, py: Python<'_>, token: Py<PyAny>) -> PyResult<()> {
+        if let Ok(t) = token.extract::<String>(py) {
+            self.0.remove(t);
+            return Ok(());
+        }
+        if let Ok(t) = token.extract::<Token>(py) {
+            self.0.remove(t);
+            return Ok(());
+        }
+        Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
+            "Expected a token of type str or bytes, got {:?}",
+            type_name!(token)
+        )))
+    }
+
     fn get_eos_token_id(&self) -> TokenId {
         self.0.eos_token_id()
     }

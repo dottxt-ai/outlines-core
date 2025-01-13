@@ -10,13 +10,61 @@ use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 
 #[derive(Clone, Debug, PartialEq, Encode, Decode)]
 pub struct Index {
+    /// The ID of the initial state in the automaton, processing begins from this state.
     initial_state: StateId,
+    /// A collection of states considered as terminal states.
     final_states: HashSet<StateId>,
+    /// A mapping of state transitions, defined by tokens ids and their corresponding state changes:
+    ///   - The outer map's keys are the state IDs.
+    ///   - The inner map's keys are token IDs.
+    ///   - The inner map's values are state IDs, indicating transitions to the next state.
     transitions: HashMap<StateId, HashMap<TokenId, StateId>>,
+    /// The token ID reserved for the "end-of-sequence" token.
     eos_token_id: TokenId,
 }
 
+/// The `Index` structure is designed to efficiently map tokens from a given vocabulary
+/// to state transitions within a finite-state automaton.
+///
+/// ## Usage:
+/// The `Index` is typically constructed by combining a vocabulary and regular expressions.
+/// Once built, it can be used to efficiently evaluate token sequences or to validate input data.
+///
+/// ## Example:
+/// ```rust
+/// use outlines_core::prelude::*;
+///
+/// # fn run() -> Result<(), outlines_core::Error> {
+/// let regex = "0|[1-9][0-9]*";
+/// let vocabulary = Vocabulary::from_pretrained("openai-community/gpt2", None)?;
+/// let index = Index::new(regex, &vocabulary)?;
+///
+/// let initial_state = index.initial_state();
+/// println!("Initial state is {}", initial_state);
+/// println!("Is initial state a final state? {}", index.is_final_state(&initial_state));
+///
+/// let allowed_tokens = index.allowed_tokens(&initial_state).unwrap();
+/// println!("Allowed tokens at initial state are {:?}", allowed_tokens);
+///
+/// let token_id = allowed_tokens.first().unwrap();
+/// println!("Next state for the token_id {} is {:?}", token_id, index.next_state(&initial_state, token_id));
+///
+/// println!("Final states are {:?}", index.final_states());
+/// println!("Index has exactly {} transitions", index.transitions().len());
+/// # Ok(())
+/// # }
+///
+/// ```
+///
+/// ## Performance:
+/// - **Complexity**:
+///   The `Index` can accommodate large vocabularies and complex regular expressions.
+///   However, its size may grow significantly with the complexity of the input.
+/// - **Construction Cost**:
+///   Building the `Index` involves processing the vocabulary and regular expressions,
+///   which may require a considerable amount of time and computational resources.
 impl Index {
+    /// Builds an `Index` from regular expression and vocabulary tokens.
     pub fn new(regex: &str, vocabulary: &Vocabulary) -> Result<Self> {
         let eos_token_id = vocabulary.eos_token_id();
         let dfa = DFA::new(regex).map_err(Box::new)?;
@@ -93,31 +141,37 @@ impl Index {
         }
     }
 
-    pub fn allowed_tokens(&self, state: StateId) -> Option<Vec<TokenId>> {
+    /// Lists allowed tokens for a give state ID or `None` if it is not found in `Index`.
+    pub fn allowed_tokens(&self, state: &StateId) -> Option<Vec<TokenId>> {
         self.transitions
-            .get(&state)
+            .get(state)
             .map_or_else(|| None, |res| Some(res.keys().cloned().collect()))
     }
 
-    pub fn next_state(&self, state: StateId, token_id: TokenId) -> Option<StateId> {
-        if token_id == self.eos_token_id {
+    /// Returns transition state for a given state and token id or `None` otherwise.
+    pub fn next_state(&self, state: &StateId, token_id: &TokenId) -> Option<StateId> {
+        if token_id == &self.eos_token_id {
             return None;
         }
-        Some(*self.transitions.get(&state)?.get(&token_id)?)
+        Some(*self.transitions.get(state)?.get(token_id)?)
     }
 
+    /// Returns the ID of the initial state in the automaton.
     pub fn initial_state(&self) -> StateId {
         self.initial_state
     }
 
-    pub fn is_final(&self, state: StateId) -> bool {
-        self.final_states.contains(&state)
+    /// Checks if state is in final states set or not.
+    pub fn is_final_state(&self, state: &StateId) -> bool {
+        self.final_states.contains(state)
     }
 
+    /// Returns set of final states.
     pub fn final_states(&self) -> &HashSet<StateId> {
         &self.final_states
     }
 
+    /// Returns state transitions map of tokens ids and their corresponding transition states.
     pub fn transitions(&self) -> &HashMap<StateId, HashMap<TokenId, StateId>> {
         &self.transitions
     }
@@ -146,10 +200,11 @@ mod tests {
                 .try_insert(token, token_id as u32)
                 .expect("Insert failed");
         }
-
         let index = Index::new(regex, &vocabulary).expect("Index failed");
-        assert_eq!(index.initial_state(), 40);
+        let initial_state = index.initial_state();
+        assert_eq!(initial_state, 40);
         assert_eq!(index.final_states(), &HashSet::from_iter([24, 48, 56]));
+        assert!(!index.is_final_state(&initial_state));
 
         let expected = HashMap::from_iter([
             (24, HashMap::from_iter([(3, 24), (4, 24), (2, 24)])),
@@ -158,6 +213,12 @@ mod tests {
             (56, HashMap::from_iter([(3, 24), (4, 56), (2, 24)])),
         ]);
         assert_eq!(index.transitions(), &expected);
+
+        let allowed_tokens = index
+            .allowed_tokens(&initial_state)
+            .expect("No allowed tokens");
+        let token_id = allowed_tokens.first().expect("No first tokens");
+        assert_eq!(index.next_state(&initial_state, token_id), Some(48));
     }
 
     #[test]
@@ -172,7 +233,7 @@ mod tests {
 
         let index = Index::new(regex, &vocabulary).expect("Index failed");
         let allowed = index
-            .allowed_tokens(index.initial_state())
+            .allowed_tokens(&index.initial_state())
             .expect("No allowed tokens");
         assert!(allowed.contains(&101));
     }

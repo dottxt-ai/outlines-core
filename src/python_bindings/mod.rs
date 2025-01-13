@@ -122,15 +122,15 @@ impl PyIndex {
     }
 
     fn get_allowed_tokens(&self, state: StateId) -> Option<Vec<TokenId>> {
-        self.0.allowed_tokens(state)
+        self.0.allowed_tokens(&state)
     }
 
     fn get_next_state(&self, state: StateId, token_id: TokenId) -> Option<StateId> {
-        self.0.next_state(state, token_id)
+        self.0.next_state(&state, &token_id)
     }
 
     fn is_final_state(&self, state: StateId) -> bool {
-        self.0.is_final(state)
+        self.0.is_final_state(&state)
     }
 
     fn get_final_states(&self) -> HashSet<StateId> {

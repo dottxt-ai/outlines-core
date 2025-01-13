@@ -27,7 +27,7 @@ class RegexIndexBenchmark:
     def time_regex_to_guide(self, pattern_name):
         Index(self.pattern, self.vocabulary)
 
-    def time_regex_to_guide_parallel(self, pattern_name):
+    def time_regex_to_guide_threads(self, pattern_name):
         # Default GIL switch interval is 5ms (0.005), which isn't helpful for cpu heavy tasks,
         # this parallel case should be relatively close in runtime to one thread, but it is not,
         # because of the GIL.
@@ -35,10 +35,10 @@ class RegexIndexBenchmark:
         with ThreadPoolExecutor(max_workers=core_count) as executor:
             list(executor.map(self._from_regex, [pattern_name] * core_count))
 
-    def time_regex_to_guide_parallel_with_custom_switch_interval(self, pattern_name):
+    def time_regex_to_guide_threads_with_custom_switch_interval(self, pattern_name):
         # Note: after moving to full rust implementation for index and guide creation, this experiment
         # is no longer shows the drastic difference as it once showed when python was heavily involved,
-        # due to speedup up to ~100 times.
+        # due to average speedup ~10 times.
 
         # This test is to show, that if GIL's switch interval is set to be longer, then the parallel
         # test's runtime on physical cores will be much closer to the one-threaded case.

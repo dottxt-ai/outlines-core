@@ -2,7 +2,7 @@ use bincode::{Decode, Encode};
 use rustc_hash::FxHashMap as HashMap;
 
 use tokenizers::normalizers::Sequence;
-use tokenizers::{FromPretrainedParameters, NormalizerWrapper, Tokenizer};
+use tokenizers::{NormalizerWrapper, Tokenizer};
 
 use crate::prelude::*;
 use crate::{Error, Result};
@@ -19,18 +19,37 @@ mod processor;
 ///
 /// ### Create a vocabulary from a pretrained model.
 /// ```rust
-/// # use outlines_core::prelude::*;
-/// #
+/// use outlines_core::prelude::*;
+///
 /// let vocabulary = Vocabulary::from_pretrained("openai-community/gpt2", None);
 /// ```
 ///
-/// ### Create an empty vocabulary and manually insert tokens.
+/// ### Create a vocabulary from a pretrained model with some additional parameters.
+/// ``` rust
+/// use outlines_core::prelude::*;
+///
+/// let params = FromPretrainedParameters {
+///     revision: "607a30d783dfa663caf39e06633721c8d4cfcd7e".to_string(),
+///     ..Default::default()
+/// };
+/// let vocabulary = Vocabulary::from_pretrained("openai-community/gpt2", Some(params));
+///
+/// ```
+///
+/// ### Create an empty vocabulary and manually insert some tokens.
 /// ```rust
-/// # use outlines_core::prelude::*;
-/// #
+/// use outlines_core::prelude::*;
+///
 /// let eos_token_id = 1;
 /// let mut vocabulary = Vocabulary::new(eos_token_id);
+///
 /// vocabulary.try_insert("token", 0).expect("New token inserted");
+/// assert_eq!(vocabulary.token_to_ids("token"), Some(&vec![0]));
+/// assert_eq!(vocabulary.tokens_to_ids().len(), 1);
+/// assert_eq!(vocabulary.eos_token_id(), eos_token_id);
+///
+/// vocabulary.remove("token");
+/// assert_eq!(vocabulary.token_to_ids("token"), None);
 /// ```
 #[derive(Clone, Debug, Default, PartialEq, Encode, Decode)]
 pub struct Vocabulary {
@@ -57,7 +76,7 @@ impl Vocabulary {
         Ok(())
     }
 
-    /// Removes a token from the vocabulary.
+    /// Removes given token from the vocabulary.
     pub fn remove(&mut self, token: impl Into<Token>) {
         let token = token.into();
         self.tokens.remove(&token);
@@ -119,7 +138,7 @@ impl Vocabulary {
         &self.tokens
     }
 
-    /// Per provided token returns vector of `TokenId`s if available in the vocabulary.
+    /// Returns all token ids per provided token if available in the vocabulary.
     pub fn token_to_ids(&self, token: impl AsRef<[u8]>) -> Option<&Vec<TokenId>> {
         self.tokens.get(token.as_ref())
     }

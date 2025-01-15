@@ -5,8 +5,6 @@ pub type Result<T, E = crate::Error> = std::result::Result<T, E>;
 #[derive(Error, Debug)]
 pub enum Error {
     // Index Errors
-    #[error("The vocabulary does not allow to build an index that matches the input")]
-    InsufficientVocabulary,
     #[error("Failed to build DFA {0}")]
     IndexDfaError(#[from] Box<regex_automata::dfa::dense::BuildError>),
     #[error("Index failed since anchored universal start state doesn't exist")]

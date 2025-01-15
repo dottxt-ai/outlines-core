@@ -90,21 +90,22 @@ pub(crate) enum TokenProcessorLevel {
 /// Modifications to be applied by `TokenProcessor`of `ByteFallback` level.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct Mods {
-    spacechar: char,
+    spacechar: String,
 }
 
 impl Default for Mods {
     /// Default string modification to be applied by `TokenProcessor` of `ByteFallback` level.
     fn default() -> Self {
-        Self { spacechar: ' ' }
+        Self {
+            spacechar: ' '.to_string(),
+        }
     }
 }
 
 impl Mods {
     /// Apply default modifications to each token.
     fn apply_default(&self, token: &str) -> String {
-        let to = Self::default().spacechar.to_string();
-        token.replace(self.spacechar, &to)
+        token.replace(&self.spacechar, &Self::default().spacechar)
     }
 }
 
@@ -116,7 +117,7 @@ struct ReplaceDecoder {
 }
 
 impl ReplaceDecoder {
-    fn space_replacement(&self) -> Option<char> {
+    fn space_replacement(&self) -> Option<String> {
         if self.content != " " {
             return None;
         }
@@ -126,7 +127,7 @@ impl ReplaceDecoder {
                 let char = chars.next();
                 if let Some(replacement) = char {
                     if chars.next().is_none() {
-                        return Some(replacement);
+                        return Some(replacement.to_string());
                     }
                 }
                 None
@@ -157,7 +158,7 @@ impl TokenProcessor {
                 }),
                 DecoderWrapper::Sequence(decoding_sequence) => {
                     let mut is_byte_fallback = false;
-                    let mut spacechar = ' ';
+                    let mut spacechar = ' '.to_string();
 
                     for decoder in decoding_sequence.get_decoders() {
                         match decoder {
@@ -285,8 +286,10 @@ mod tests {
         let model = "hf-internal-testing/llama-tokenizer";
         let tokenizer = Tokenizer::from_pretrained(model, None).expect("Tokenizer failed");
         let processor = TokenProcessor::new(&tokenizer).expect("Processor failed");
-        let spacechar = '▁';
-        let mods = Mods { spacechar };
+        let spacechar = '▁'.to_string();
+        let mods = Mods {
+            spacechar: spacechar.clone(),
+        };
 
         assert_eq!(processor.level, TokenProcessorLevel::ByteFallback(mods));
 
@@ -294,7 +297,7 @@ mod tests {
             ("abc", vec![0x61, 0x62, 0x63]),
             ("<0x61>", vec![0x61]),
             ("<0x61>a", vec![0x3C, 0x30, 0x78, 0x36, 0x31, 0x3E, 0x61]),
-            (&spacechar.to_string(), vec![0x20]),
+            (&spacechar, vec![0x20]),
             (
                 &format!("{}{}abc", spacechar, spacechar),
                 vec![0x20, 0x20, 0x61, 0x62, 0x63],

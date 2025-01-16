@@ -44,12 +44,12 @@ mod processor;
 /// let mut vocabulary = Vocabulary::new(eos_token_id);
 ///
 /// vocabulary.try_insert("token", 0).expect("New token inserted");
-/// assert_eq!(vocabulary.token_to_ids("token"), Some(&vec![0]));
-/// assert_eq!(vocabulary.tokens_to_ids().len(), 1);
+/// assert_eq!(vocabulary.token_ids("token"), Some(&vec![0]));
+/// assert_eq!(vocabulary.tokens().len(), 1);
 /// assert_eq!(vocabulary.eos_token_id(), eos_token_id);
 ///
 /// vocabulary.remove("token");
-/// assert_eq!(vocabulary.token_to_ids("token"), None);
+/// assert_eq!(vocabulary.token_ids("token"), None);
 /// ```
 #[derive(Clone, Debug, Default, PartialEq, Encode, Decode)]
 pub struct Vocabulary {
@@ -134,12 +134,12 @@ impl Vocabulary {
     }
 
     /// Returns all tokens with their token ids in vocabulary
-    pub fn tokens_to_ids(&self) -> &HashMap<Token, Vec<TokenId>> {
+    pub fn tokens(&self) -> &HashMap<Token, Vec<TokenId>> {
         &self.tokens
     }
 
     /// Returns all token ids per provided token if available in the vocabulary.
-    pub fn token_to_ids(&self, token: impl AsRef<[u8]>) -> Option<&Vec<TokenId>> {
+    pub fn token_ids(&self, token: impl AsRef<[u8]>) -> Option<&Vec<TokenId>> {
         self.tokens.get(token.as_ref())
     }
 
@@ -258,33 +258,33 @@ mod tests {
 
         for (token, id) in [("zero", 0), ("one", 1), ("two", 2)] {
             vocabulary.try_insert(token, id).expect("Insert failed");
-            assert_eq!(vocabulary.token_to_ids(token), Some(&vec![id]));
+            assert_eq!(vocabulary.token_ids(token), Some(&vec![id]));
         }
         assert_eq!(vocabulary.tokens.len(), 3);
-        assert_eq!(vocabulary.tokens_to_ids().len(), 3);
+        assert_eq!(vocabulary.tokens().len(), 3);
 
         // Confirm different types.
         vocabulary.try_insert(b"four", 4).expect("Insert failed");
-        assert_eq!(vocabulary.token_to_ids("four"), Some(&vec![4]));
+        assert_eq!(vocabulary.token_ids("four"), Some(&vec![4]));
 
         vocabulary
             .try_insert(b"five".to_vec(), 5)
             .expect("Insert failed");
-        assert_eq!(vocabulary.token_to_ids("five"), Some(&vec![5]));
+        assert_eq!(vocabulary.token_ids("five"), Some(&vec![5]));
 
         vocabulary
             .try_insert("six".to_string(), 6)
             .expect("Insert failed");
-        assert_eq!(vocabulary.token_to_ids("six"), Some(&vec![6]));
+        assert_eq!(vocabulary.token_ids("six"), Some(&vec![6]));
 
         vocabulary.remove(b"four");
-        assert_eq!(vocabulary.token_to_ids("four"), None);
+        assert_eq!(vocabulary.token_ids("four"), None);
 
         vocabulary.remove(b"five".to_vec());
-        assert_eq!(vocabulary.token_to_ids("five"), None);
+        assert_eq!(vocabulary.token_ids("five"), None);
 
         vocabulary.remove("six".to_string());
-        assert_eq!(vocabulary.token_to_ids("six"), None);
+        assert_eq!(vocabulary.token_ids("six"), None);
     }
 
     #[test]
@@ -338,11 +338,11 @@ mod tests {
 
         let token = "Ġal";
         let btoken = token.as_bytes().to_vec();
-        assert!(vocabulary.token_to_ids(&btoken).is_none());
+        assert!(vocabulary.token_ids(&btoken).is_none());
         assert!(tokenizer.token_to_id(token).is_some());
 
         for (v_token, t_token_expected) in [("abc", "abc"), (" O", "ĠO")] {
-            let v_ids = vocabulary.token_to_ids(v_token.as_bytes());
+            let v_ids = vocabulary.token_ids(v_token.as_bytes());
             assert!(v_ids.is_some());
             for v_id in v_ids.unwrap() {
                 let t_token = tokenizer
@@ -378,7 +378,7 @@ mod tests {
             (vec![0x20], &["▁", "<0x20>"]),
         ];
         for (v_token, t_tokens_expected) in tests {
-            let v_ids = vocabulary.token_to_ids(v_token);
+            let v_ids = vocabulary.token_ids(v_token);
             assert!(v_ids.is_some());
 
             let t_tokens = v_ids

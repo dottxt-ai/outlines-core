@@ -113,7 +113,7 @@ impl Index {
                 final_states.insert(current_state.as_u32());
             }
 
-            'token_loop: for (token, ids) in vocabulary.tokens_to_ids().iter() {
+            'token_loop: for (token, ids) in vocabulary.tokens().iter() {
                 if ids.contains(&eos_token_id) {
                     continue;
                 }

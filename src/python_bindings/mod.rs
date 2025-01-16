@@ -283,10 +283,10 @@ impl PyVocabulary {
 
     fn get(&self, py: Python<'_>, token: Py<PyAny>) -> PyResult<Option<Vec<TokenId>>> {
         if let Ok(t) = token.extract::<String>(py) {
-            return Ok(self.0.token_to_ids(t.into_bytes()).cloned());
+            return Ok(self.0.token_ids(t.into_bytes()).cloned());
         }
         if let Ok(t) = token.extract::<Token>(py) {
-            return Ok(self.0.token_to_ids(&t).cloned());
+            return Ok(self.0.token_ids(&t).cloned());
         }
         Err(PyErr::new::<pyo3::exceptions::PyTypeError, _>(format!(
             "Expected a token of type str or bytes, got {:?}",
@@ -307,7 +307,7 @@ impl PyVocabulary {
     }
 
     fn __len__(&self) -> usize {
-        self.0.tokens_to_ids().len()
+        self.0.tokens().len()
     }
 
     fn __deepcopy__(&self, _py: Python<'_>, _memo: Py<PyDict>) -> Self {

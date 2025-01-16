@@ -1073,6 +1073,59 @@ mod tests {
     }
 
     #[test]
+    fn with_whitespace_patterns() {
+        let schema = r#"{
+            "title": "Foo",
+            "type": "object",
+            "properties": {"date": {"type": "string", "format": "date"}}
+        }"#;
+        let json: Value = serde_json::from_str(schema).expect("Can't parse json");
+
+        for (whitespace_pattern, expected_regex, a_match) in [
+            // Default
+            (
+                None,
+                format!(
+                    r#"\{{({WHITESPACE}"date"{WHITESPACE}:{WHITESPACE}{DATE})?{WHITESPACE}\}}"#
+                ),
+                vec![
+                    r#"{"date": "2018-11-13"}"#,
+                    r#"{ "date": "2018-11-13"}"#,
+                    r#"{"date": "2018-11-13" }"#,
+                ],
+            ),
+            (
+                Some(r#"[\n ]*"#),
+                format!(
+                    r#"\{{({ws}"date"{ws}:{ws}{DATE})?{ws}\}}"#,
+                    ws = r#"[\n ]*"#
+                ),
+                vec![
+                    r#"{
+                        "date":  "2018-11-13"
+                    }"#,
+                    r#"{ "date":
+
+                    "2018-11-13"     }"#,
+                ],
+            ),
+            (
+                Some("SPACE"),
+                format!(r#"\{{({ws}"date"{ws}:{ws}{DATE})?{ws}\}}"#, ws = "SPACE"),
+                vec![r#"{SPACE"date"SPACE:SPACE"2018-11-13"SPACE}"#],
+            ),
+        ] {
+            let regex = to_regex(&json, whitespace_pattern).expect("To regex failed");
+            assert_eq!(regex, expected_regex);
+
+            let re = Regex::new(&regex).expect("Regex failed");
+            for m in a_match {
+                should_match(&re, m);
+            }
+        }
+    }
+
+    #[test]
     fn direct_recursion_in_array_and_default_behaviour() {
         let json = r##"
         {

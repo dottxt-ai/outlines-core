@@ -21,12 +21,15 @@ URI: str
 
 class Guide:
     def __init__(self, index: Index):
-        """Defines a guide object an index an initializes it in its start state."""
-    def get_start_tokens(self) -> List[int]:
-        """Gets the list of allowed tokens from the start state."""
+        """Creates a Guide object based on Index or statefull Index."""
+    def get_state(self) -> int:
+        """Retrieves current state id of the Guide."""
         ...
-    def read_next_token(self, token_id: int) -> List[int]:
-        """Reads the next token according to the model and returns a list of allowable tokens."""
+    def get_tokens(self) -> List[int]:
+        """Gets the list of allowed tokens for the current state."""
+        ...
+    def advance(self, token_id: int) -> List[int]:
+        """Guide moves to the next state provided by the token id and returns a list of allowed tokens."""
         ...
     def is_finished(self) -> bool:
         """Checks if the automaton is in a final state."""

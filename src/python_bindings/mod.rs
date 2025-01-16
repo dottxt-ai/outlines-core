@@ -37,23 +37,26 @@ impl PyGuide {
         }
     }
 
-    fn get_start_tokens(&self) -> PyResult<Vec<TokenId>> {
-        self.index
-            .get_allowed_tokens(self.index.get_initial_state())
-            .ok_or(PyErr::new::<PyValueError, _>(
-                "Initial state is not in allowed tokens",
-            ))
+    fn get_state(&self) -> StateId {
+        self.state
     }
 
-    fn read_next_token(&mut self, token_id: TokenId) -> PyResult<Vec<TokenId>> {
+    fn get_tokens(&self) -> PyResult<Vec<TokenId>> {
+        self.index
+            .get_allowed_tokens(self.state)
+            // Since Guide advances only through the states offered by the Index, it means
+            // None here shouldn't happen and it's an issue at Index creation step
+            .ok_or(PyErr::new::<PyValueError, _>(format!(
+                "No allowed tokens available for the state {}",
+                self.state
+            )))
+    }
+
+    fn advance(&mut self, token_id: TokenId) -> PyResult<Vec<TokenId>> {
         match self.index.get_next_state(self.state, token_id) {
             Some(new_state) => {
                 self.state = new_state;
-                self.index
-                    .get_allowed_tokens(new_state)
-                    .ok_or(PyErr::new::<PyValueError, _>(format!(
-                        "No token ids found for the next state: {new_state}"
-                    )))
+                self.get_tokens()
             }
             None => Err(PyErr::new::<PyValueError, _>(format!(
                 "No next state found for the current state: {} with token ID: {token_id}",

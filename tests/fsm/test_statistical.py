@@ -35,13 +35,13 @@ def test_generate_length():
 
         n_tokens = len(vocabulary) + 1  # include eos token in count
         tokens = None
-        allowed = guide.get_start_tokens()
+        allowed = guide.get_tokens()
         while True:
             mask: List[int] = [1 if s in allowed else 0 for s in range(1, n_tokens + 1)]
             tokens = model(tokens, mask=mask)
             if tokens[-1] == 3:
                 break
-            allowed = guide.read_next_token(tokens[-1])
+            allowed = guide.advance(tokens[-1])
         return tokens
 
     def prob_non_markov(tokens: List[int]) -> np.array:

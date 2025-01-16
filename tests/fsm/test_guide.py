@@ -17,7 +17,7 @@ def index() -> Index:
     return Index(regex, vocabulary)
 
 
-def test_stop_at_eos():
+def test_interface():
     eos_token_id = 3
     tokens = {"1": [1], "a": [2]}
     regex = r"[1-9]"
@@ -26,15 +26,22 @@ def test_stop_at_eos():
     index = Index(regex, vocabulary)
     guide = Guide(index)
 
-    assert guide.get_start_tokens() == [1]
-    assert guide.read_next_token(1) == [vocabulary.get_eos_token_id()]
+    assert guide.get_state() == index.get_initial_state() == 12
+    assert guide.get_tokens() == [1]
+
+    assert guide.advance(1) == [vocabulary.get_eos_token_id()]
     assert guide.is_finished()
+    assert guide.get_state() == 20
+    assert guide.get_tokens() == [eos_token_id]
 
     with pytest.raises(
         ValueError,
         match="No next state found for the current state",
     ):
-        assert guide.read_next_token(4) == []
+        # No advancement is possible for state with allowed tokens == eos
+        assert guide.advance(eos_token_id)
+        # As well as with any other random token id
+        assert guide.advance(4)
 
 
 def test_regex_final_state_walk():
@@ -47,11 +54,11 @@ def test_regex_final_state_walk():
     index = Index(regex, vocabulary)
     guide = Guide(index)
 
-    assert guide.get_start_tokens() == [101]
-    assert guide.read_next_token(101) == [103]
-    assert sorted(guide.read_next_token(103)) == [101, 102]
-    assert guide.read_next_token(101) == [103]
-    assert guide.read_next_token(103) == [vocabulary.get_eos_token_id()]
+    assert guide.get_tokens() == [101]
+    assert guide.advance(101) == [103]
+    assert sorted(guide.advance(103)) == [101, 102]
+    assert guide.advance(101) == [103]
+    assert guide.advance(103) == [vocabulary.get_eos_token_id()]
     assert guide.is_finished()
 
 
@@ -66,10 +73,10 @@ def test_token_trans_keys_identical():
     guide1 = Guide(index)
     guide2 = Guide(index)
 
-    assert guide1.read_next_token(3) == guide2.read_next_token(3)
+    assert guide1.advance(3) == guide2.advance(3)
     # `a` and `b` have similar transitions to `z`
-    assert guide1.read_next_token(1) == guide2.read_next_token(2)
-    assert guide1.read_next_token(3) == guide2.read_next_token(3) == [eos_token_id]
+    assert guide1.advance(1) == guide2.advance(2)
+    assert guide1.advance(3) == guide2.advance(3) == [eos_token_id]
     assert guide1.is_finished()
     assert guide2.is_finished()
 
@@ -87,10 +94,10 @@ def test_str_and_bytes_produce_the_same():
     guide1 = Guide(index1)
     guide2 = Guide(index2)
 
-    assert guide1.read_next_token(3) == guide2.read_next_token(3)
+    assert guide1.advance(3) == guide2.advance(3)
     # `a` and `b` have similar transitions to `z`
-    assert guide1.read_next_token(1) == guide2.read_next_token(2)
-    assert guide1.read_next_token(3) == guide2.read_next_token(3) == [eos_token_id]
+    assert guide1.advance(1) == guide2.advance(2)
+    assert guide1.advance(3) == guide2.advance(3) == [eos_token_id]
     assert guide1.is_finished()
     assert guide2.is_finished()
 
@@ -99,7 +106,7 @@ def test_pickling(index):
     guide = Guide(index)
     serialized = pickle.dumps(guide)
     deserialized = pickle.loads(serialized)
-    assert sorted(deserialized.get_start_tokens()) == sorted(guide.get_start_tokens())
+    assert sorted(deserialized.get_tokens()) == sorted(guide.get_tokens())
 
 
 @pytest.mark.parametrize(
@@ -124,7 +131,7 @@ def test_pickling_from_pretrained_with_revision(model, revision):
     guide = Guide(index)
     serialized = pickle.dumps(guide)
     deserialized = pickle.loads(serialized)
-    assert sorted(deserialized.get_start_tokens()) == sorted(guide.get_start_tokens())
+    assert sorted(deserialized.get_tokens()) == sorted(guide.get_tokens())
 
 
 def test_equality(index):
@@ -138,6 +145,6 @@ def test_equality(index):
     assert guide3 == guide2 == guide1
 
     # progress one of the guides, confirm different state == different guide
-    guide1.read_next_token(guide1.get_start_tokens()[-1])
+    guide1.advance(guide1.get_tokens()[-1])
     assert guide1 != guide2
     assert guide3 == guide2

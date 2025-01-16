@@ -17,7 +17,7 @@ pub struct Index {
     /// A mapping of state transitions, defined by tokens ids and their corresponding state changes.
     ///
     /// ### Example
-    /// ```
+    /// ```ignore
     /// transitions = {
     ///    1: {10: 2, 15: 3},
     ///    2: {20: 4, 25: 3},
@@ -212,7 +212,8 @@ mod tests {
     #[test]
     fn index_from_regex() {
         let regex = "0|[1-9][0-9]*";
-        let mut vocabulary = Vocabulary::new(4);
+        let eos_token_id = 4;
+        let mut vocabulary = Vocabulary::new(eos_token_id);
         for (token, token_id) in [("blah", 0), ("1a", 1), ("2", 2), ("0", 3)] {
             vocabulary
                 .try_insert(token, token_id as u32)
@@ -236,7 +237,13 @@ mod tests {
             .allowed_tokens(&initial_state)
             .expect("No allowed tokens");
         let token_id = allowed_tokens.first().expect("No first tokens");
-        assert_eq!(index.next_state(&initial_state, token_id), Some(48));
+
+        let state = 48;
+        assert_eq!(index.next_state(&initial_state, token_id), Some(state));
+        assert!(index.is_final_state(&state));
+
+        assert_eq!(index.next_state(&state, &eos_token_id), None);
+        assert_eq!(index.next_state(&state, token_id), None);
     }
 
     #[test]

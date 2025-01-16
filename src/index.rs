@@ -159,6 +159,26 @@ impl Index {
         })
     }
 
+    /// Returns the ID of the initial state in the automaton.
+    pub fn initial_state(&self) -> StateId {
+        self.initial_state
+    }
+
+    /// Returns set of final states.
+    pub fn final_states(&self) -> &HashSet<StateId> {
+        &self.final_states
+    }
+
+    /// Returns state transitions map of tokens ids and their corresponding transition states.
+    pub fn transitions(&self) -> &HashMap<StateId, HashMap<TokenId, StateId>> {
+        &self.transitions
+    }
+
+    /// Checks if state is in final states set or not.
+    pub fn is_final_state(&self, state: &StateId) -> bool {
+        self.final_states.contains(state)
+    }
+
     /// Lists allowed tokens for a give state ID or `None` if it is not found in `Index`.
     pub fn allowed_tokens(&self, state: &StateId) -> Option<Vec<TokenId>> {
         self.transitions
@@ -172,26 +192,6 @@ impl Index {
             return None;
         }
         Some(*self.transitions.get(state)?.get(token_id)?)
-    }
-
-    /// Returns the ID of the initial state in the automaton.
-    pub fn initial_state(&self) -> StateId {
-        self.initial_state
-    }
-
-    /// Checks if state is in final states set or not.
-    pub fn is_final_state(&self, state: &StateId) -> bool {
-        self.final_states.contains(state)
-    }
-
-    /// Returns set of final states.
-    pub fn final_states(&self) -> &HashSet<StateId> {
-        &self.final_states
-    }
-
-    /// Returns state transitions map of tokens ids and their corresponding transition states.
-    pub fn transitions(&self) -> &HashMap<StateId, HashMap<TokenId, StateId>> {
-        &self.transitions
     }
 }
 

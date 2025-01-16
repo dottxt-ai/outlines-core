@@ -66,22 +66,6 @@ impl Vocabulary {
         }
     }
 
-    /// Inserts a token to the vocabulary with the specified identifier.
-    pub fn try_insert(&mut self, token: impl Into<Token>, id: TokenId) -> Result<(), Error> {
-        if id == self.eos_token_id {
-            return Err(Error::EOSTokenDisallowed);
-        }
-        let token = token.into();
-        self.tokens.entry(token).or_default().push(id);
-        Ok(())
-    }
-
-    /// Removes given token from the vocabulary.
-    pub fn remove(&mut self, token: impl Into<Token>) {
-        let token = token.into();
-        self.tokens.remove(&token);
-    }
-
     /// Creates the vocabulary of pre-trained model from Hugging Face Hub.
     pub fn from_pretrained(
         model: &str,
@@ -146,6 +130,22 @@ impl Vocabulary {
     /// Gets the identifier of the special end of the sentence token.
     pub fn eos_token_id(&self) -> TokenId {
         self.eos_token_id
+    }
+
+    /// Inserts a token to the vocabulary with the specified identifier.
+    pub fn try_insert(&mut self, token: impl Into<Token>, id: TokenId) -> Result<(), Error> {
+        if id == self.eos_token_id {
+            return Err(Error::EOSTokenDisallowed);
+        }
+        let token = token.into();
+        self.tokens.entry(token).or_default().push(id);
+        Ok(())
+    }
+
+    /// Removes given token from the vocabulary.
+    pub fn remove(&mut self, token: impl Into<Token>) {
+        let token = token.into();
+        self.tokens.remove(&token);
     }
 
     /// Filters out `Prepend` kind of tokenizer's normalizers.

@@ -277,10 +277,6 @@ impl PyVocabulary {
         )))
     }
 
-    fn get_eos_token_id(&self) -> TokenId {
-        self.0.eos_token_id()
-    }
-
     fn get(&self, py: Python<'_>, token: Py<PyAny>) -> PyResult<Option<Vec<TokenId>>> {
         if let Ok(t) = token.extract::<String>(py) {
             return Ok(self.0.token_ids(t.into_bytes()).cloned());
@@ -292,6 +288,10 @@ impl PyVocabulary {
             "Expected a token of type str or bytes, got {:?}",
             type_name!(token)
         )))
+    }
+
+    fn get_eos_token_id(&self) -> TokenId {
+        self.0.eos_token_id()
     }
 
     fn __repr__(&self) -> String {

@@ -22,7 +22,6 @@ rustc-hash = "2.1.0"
 regex-automata = "0.4.9"
 
 [features]
-default = ["python-bindings"]
 python-bindings = ["pyo3"]
 
 [lib]

@@ -93,19 +93,10 @@ pub(crate) struct Mods {
     spacechar: String,
 }
 
-impl Default for Mods {
-    /// Default string modification to be applied by `TokenProcessor` of `ByteFallback` level.
-    fn default() -> Self {
-        Self {
-            spacechar: ' '.to_string(),
-        }
-    }
-}
-
 impl Mods {
-    /// Apply default modifications to each token.
+    /// Default string modification to be applied by `TokenProcessor` of `ByteFallback` level.
     fn apply_default(&self, token: &str) -> String {
-        token.replace(&self.spacechar, &Self::default().spacechar)
+        token.replace(&self.spacechar, " ")
     }
 }
 

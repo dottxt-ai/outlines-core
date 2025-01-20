@@ -5,9 +5,7 @@ use serde_json::json;
 use serde_json::Value;
 
 use crate::json_schema::types;
-use crate::JsonSchemaParserError;
-
-type Result<T> = std::result::Result<T, JsonSchemaParserError>;
+use crate::{Error, Result};
 
 pub(crate) struct Parser<'a> {
     root: &'a Value,
@@ -61,9 +59,7 @@ impl<'a> Parser<'a> {
             Value::Object(obj) if obj.contains_key("const") => self.parse_const(obj),
             Value::Object(obj) if obj.contains_key("$ref") => self.parse_ref(obj),
             Value::Object(obj) if obj.contains_key("type") => self.parse_type(obj),
-            json => Err(JsonSchemaParserError::UnsupportedJsonSchema(Box::new(
-                json.clone(),
-            ))),
+            json => Err(Error::UnsupportedJsonSchema(Box::new(json.clone()))),
         }
     }
 
@@ -96,7 +92,7 @@ impl<'a> Parser<'a> {
         let properties = obj
             .get("properties")
             .and_then(Value::as_object)
-            .ok_or_else(|| JsonSchemaParserError::PropertiesNotFound)?;
+            .ok_or_else(|| Error::PropertiesNotFound)?;
 
         let required_properties = obj
             .get("required")
@@ -182,7 +178,7 @@ impl<'a> Parser<'a> {
 
                 Ok(format!(r"({})", combined_regex))
             }
-            _ => Err(JsonSchemaParserError::AllOfMustBeAnArray),
+            _ => Err(Error::AllOfMustBeAnArray),
         }
     }
 
@@ -196,7 +192,7 @@ impl<'a> Parser<'a> {
 
                 Ok(format!(r"({})", subregexes.join("|")))
             }
-            _ => Err(JsonSchemaParserError::AnyOfMustBeAnArray),
+            _ => Err(Error::AnyOfMustBeAnArray),
         }
     }
 
@@ -214,7 +210,7 @@ impl<'a> Parser<'a> {
 
                 Ok(format!(r"({})", xor_patterns.join("|")))
             }
-            _ => Err(JsonSchemaParserError::OneOfMustBeAnArray),
+            _ => Err(Error::OneOfMustBeAnArray),
         }
     }
 
@@ -231,7 +227,7 @@ impl<'a> Parser<'a> {
 
                 Ok(format!(r"\[{0}{tuple_inner}{0}\]", self.whitespace_pattern))
             }
-            _ => Err(JsonSchemaParserError::PrefixItemsMustBeAnArray),
+            _ => Err(Error::PrefixItemsMustBeAnArray),
         }
     }
 
@@ -245,16 +241,14 @@ impl<'a> Parser<'a> {
                             let json_string = serde_json::to_string(choice)?;
                             Ok(regex::escape(&json_string))
                         }
-                        _ => Err(JsonSchemaParserError::UnsupportedEnumDataType(Box::new(
-                            choice.clone(),
-                        ))),
+                        _ => Err(Error::UnsupportedEnumDataType(Box::new(choice.clone()))),
                     })
                     .collect();
 
                 let choices = choices?;
                 Ok(format!(r"({})", choices.join("|")))
             }
-            _ => Err(JsonSchemaParserError::EnumMustBeAnArray),
+            _ => Err(Error::EnumMustBeAnArray),
         }
     }
 
@@ -265,24 +259,22 @@ impl<'a> Parser<'a> {
                     let json_string = serde_json::to_string(const_value)?;
                     Ok(regex::escape(&json_string))
                 }
-                _ => Err(JsonSchemaParserError::UnsupportedConstDataType(Box::new(
+                _ => Err(Error::UnsupportedConstDataType(Box::new(
                     const_value.clone(),
                 ))),
             },
-            None => Err(JsonSchemaParserError::ConstKeyNotFound),
+            None => Err(Error::ConstKeyNotFound),
         }
     }
 
     fn parse_ref(&mut self, obj: &serde_json::Map<String, Value>) -> Result<String> {
         if self.recursion_depth > self.max_recursion_depth {
-            return Err(JsonSchemaParserError::RefRecursionLimitReached(
-                self.max_recursion_depth,
-            ));
+            return Err(Error::RefRecursionLimitReached(self.max_recursion_depth));
         }
         self.recursion_depth += 1;
         let ref_path = obj["$ref"]
             .as_str()
-            .ok_or_else(|| JsonSchemaParserError::RefMustBeAString)?;
+            .ok_or_else(|| Error::RefMustBeAString)?;
 
         let parts: Vec<&str> = ref_path.split('#').collect();
 
@@ -302,13 +294,9 @@ impl<'a> Parser<'a> {
                         return self.to_regex(referenced_schema);
                     }
                 }
-                Err(JsonSchemaParserError::ExternalReferencesNotSupported(
-                    Box::from(ref_path),
-                ))
+                Err(Error::ExternalReferencesNotSupported(Box::from(ref_path)))
             }
-            _ => Err(JsonSchemaParserError::InvalidReferenceFormat(Box::from(
-                ref_path,
-            ))),
+            _ => Err(Error::InvalidReferenceFormat(Box::from(ref_path))),
         };
         self.recursion_depth -= 1;
         result
@@ -317,7 +305,7 @@ impl<'a> Parser<'a> {
     fn parse_type(&mut self, obj: &serde_json::Map<String, Value>) -> Result<String> {
         let instance_type = obj["type"]
             .as_str()
-            .ok_or_else(|| JsonSchemaParserError::TypeMustBeAString)?;
+            .ok_or_else(|| Error::TypeMustBeAString)?;
         match instance_type {
             "string" => self.parse_string_type(obj),
             "number" => self.parse_number_type(obj),
@@ -326,9 +314,7 @@ impl<'a> Parser<'a> {
             "object" => self.parse_object_type(obj),
             "boolean" => self.parse_boolean_type(),
             "null" => self.parse_null_type(),
-            _ => Err(JsonSchemaParserError::UnsupportedType(Box::from(
-                instance_type,
-            ))),
+            _ => Err(Error::UnsupportedType(Box::from(instance_type))),
         }
     }
 
@@ -349,7 +335,7 @@ impl<'a> Parser<'a> {
 
             match (min_items, max_items) {
                 (Some(min), Some(max)) if min.as_f64() > max.as_f64() => {
-                    return Err(JsonSchemaParserError::MaxBoundError)
+                    return Err(Error::MaxBoundError)
                 }
                 _ => {}
             }
@@ -376,9 +362,7 @@ impl<'a> Parser<'a> {
         } else if let Some(format) = obj.get("format").and_then(Value::as_str) {
             match types::FormatType::from_str(format) {
                 Some(format_type) => Ok(format_type.to_regex().to_string()),
-                None => Err(JsonSchemaParserError::StringTypeUnsupportedFormat(
-                    Box::from(format),
-                )),
+                None => Err(Error::StringTypeUnsupportedFormat(Box::from(format))),
             }
         } else {
             Ok(types::JsonType::String.to_regex().to_string())
@@ -583,7 +567,7 @@ impl<'a> Parser<'a> {
         for &part in path_parts {
             current = current
                 .get(part)
-                .ok_or_else(|| JsonSchemaParserError::InvalidRefecencePath(Box::from(part)))?;
+                .ok_or_else(|| Error::InvalidRefecencePath(Box::from(part)))?;
         }
         Ok(current)
     }
@@ -598,7 +582,7 @@ impl<'a> Parser<'a> {
 
         if let (Some(min), Some(max)) = (min_bound, max_bound) {
             if max < min {
-                return Err(JsonSchemaParserError::MaxBoundError);
+                return Err(Error::MaxBoundError);
             }
         }
 

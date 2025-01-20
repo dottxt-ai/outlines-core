@@ -5,9 +5,7 @@ pub use types::*;
 
 use serde_json::Value;
 
-use crate::JsonSchemaParserError;
-
-type Result<T> = std::result::Result<T, JsonSchemaParserError>;
+use crate::Result;
 
 pub fn build_regex_from_schema(schema: &str, whitespace_pattern: Option<&str>) -> Result<String> {
     let json: Value = serde_json::from_str(schema)?;

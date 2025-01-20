@@ -26,11 +26,7 @@ pub enum Error {
     ByteProcessorFailed,
     #[error("Token processing failed for byte fallback level processor")]
     ByteFallbackProcessorFailed,
-}
-
-// TODO: Integrate JsonSchema errors and simplify
-#[derive(Error, Debug)]
-pub enum JsonSchemaParserError {
+    // Json Schema errors
     #[error("serde json error")]
     SerdeJsonError(#[from] serde_json::Error),
     #[error("Unsupported JSON Schema structure {0} \nMake sure it is valid to the JSON Schema specification and check if it's supported by Outlines.\nIf it should be supported, please open an issue.")]
@@ -73,7 +69,7 @@ pub enum JsonSchemaParserError {
     RefRecursionLimitReached(usize),
 }
 
-impl JsonSchemaParserError {
+impl Error {
     pub fn is_recursion_limit(&self) -> bool {
         matches!(self, Self::RefRecursionLimitReached(_))
     }

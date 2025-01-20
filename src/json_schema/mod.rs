@@ -9,17 +9,13 @@ use crate::JsonSchemaParserError;
 
 type Result<T> = std::result::Result<T, JsonSchemaParserError>;
 
-pub fn build_regex_from_schema(json: &str, whitespace_pattern: Option<&str>) -> Result<String> {
-    let json_value: Value = serde_json::from_str(json)?;
-    to_regex(&json_value, whitespace_pattern)
-}
-
-pub fn to_regex(json: &Value, whitespace_pattern: Option<&str>) -> Result<String> {
-    let mut parser = parsing::Parser::new(json);
+pub fn build_regex_from_schema(schema: &str, whitespace_pattern: Option<&str>) -> Result<String> {
+    let json: Value = serde_json::from_str(schema)?;
+    let mut parser = parsing::Parser::new(&json);
     if let Some(pattern) = whitespace_pattern {
         parser = parser.with_whitespace_pattern(pattern)
     }
-    parser.to_regex(json)
+    parser.to_regex(&json)
 }
 
 #[cfg(test)]
@@ -1003,8 +999,7 @@ mod tests {
                 ],
             ),
         ] {
-            let json: Value = serde_json::from_str(schema).expect("Can't parse json");
-            let result = to_regex(&json, None).expect("To regex failed");
+            let result = build_regex_from_schema(schema, None).expect("To regex failed");
             assert_eq!(result, regex, "JSON Schema {} didn't match", schema);
 
             let re = Regex::new(&result).expect("Regex failed");
@@ -1060,8 +1055,7 @@ mod tests {
                 ],
             ),
         ] {
-            let json: Value = serde_json::from_str(schema).expect("Can't parse json");
-            let regex = to_regex(&json, None).expect("To regex failed");
+            let regex = build_regex_from_schema(schema, None).expect("To regex failed");
             let re = Regex::new(&regex).expect("Regex failed");
             for m in a_match {
                 should_match(&re, m);
@@ -1079,7 +1073,6 @@ mod tests {
             "type": "object",
             "properties": {"date": {"type": "string", "format": "date"}}
         }"#;
-        let json: Value = serde_json::from_str(schema).expect("Can't parse json");
 
         for (whitespace_pattern, expected_regex, a_match) in [
             // Default
@@ -1115,7 +1108,8 @@ mod tests {
                 vec![r#"{SPACE"date"SPACE:SPACE"2018-11-13"SPACE}"#],
             ),
         ] {
-            let regex = to_regex(&json, whitespace_pattern).expect("To regex failed");
+            let regex =
+                build_regex_from_schema(schema, whitespace_pattern).expect("To regex failed");
             assert_eq!(regex, expected_regex);
 
             let re = Regex::new(&regex).expect("Regex failed");
@@ -1127,7 +1121,7 @@ mod tests {
 
     #[test]
     fn direct_recursion_in_array_and_default_behaviour() {
-        let json = r##"
+        let schema = r##"
         {
             "type": "object",
             "properties": {
@@ -1139,8 +1133,7 @@ mod tests {
             }
         }"##;
 
-        let json_value: Value = serde_json::from_str(json).expect("Can't parse json");
-        let regex = to_regex(&json_value, None);
+        let regex = build_regex_from_schema(schema, None);
         assert!(regex.is_ok(), "{:?}", regex);
 
         // Confirm the depth of 3 recursion levels by default, recursion level starts
@@ -1242,7 +1235,7 @@ mod tests {
 
     #[test]
     fn triple_recursion_doesnt_fail() {
-        let json = r##"
+        let schema = r##"
         {
             "definitions": {
                 "typeA": {
@@ -1273,8 +1266,7 @@ mod tests {
           "$ref": "#/definitions/typeA"
         }"##;
 
-        let json_value: Value = serde_json::from_str(json).expect("Can't parse json");
-        let regex = to_regex(&json_value, None);
+        let regex = build_regex_from_schema(schema, None);
         assert!(regex.is_ok(), "{:?}", regex);
     }
 }

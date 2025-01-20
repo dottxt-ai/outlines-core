@@ -13,5 +13,4 @@ from .outlines_core_rs import (  # noqa: F401
     UUID,
     WHITESPACE,
     build_regex_from_schema,
-    to_regex,
 )

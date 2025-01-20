@@ -1,6 +1,7 @@
 import json
 import re
 
+import pytest
 from outlines_core.fsm.json_schema import (  # noqa: F401
     BOOLEAN,
     DATE,
@@ -35,6 +36,14 @@ def test_build_regex_from_json_schema():
     regex = build_regex_from_schema(schema, r"[\n ]*")
     expected = """{     "foo"   :   4, \n\n\n   "bar": "baz    baz baz bar"\n\n}"""
     assert re.fullmatch(regex, expected)
+
+
+def test_invalid_json():
+    with pytest.raises(
+        TypeError,
+        match="Expected a valid JSON string.",
+    ):
+        build_regex_from_schema("{'name':")
 
 
 def test_types_presence():

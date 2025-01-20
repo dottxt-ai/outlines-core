@@ -329,7 +329,10 @@ pub fn build_regex_from_schema_py(
     json: String,
     whitespace_pattern: Option<&str>,
 ) -> PyResult<String> {
-    json_schema::build_regex_from_schema(&json, whitespace_pattern)
+    let json = serde_json::from_str(&json).map_err(|_| {
+        PyErr::new::<pyo3::exceptions::PyTypeError, _>("Expected a valid JSON string.")
+    })?;
+    json_schema::to_regex(&json, whitespace_pattern)
         .map_err(|e| PyValueError::new_err(e.to_string()))
 }
 

@@ -1,19 +1,23 @@
+use serde_json::Value;
+
 mod parsing;
-mod types;
+pub mod types;
 
 pub use types::*;
 
-use serde_json::Value;
-
 use crate::Result;
 
-pub fn build_regex_from_schema(schema: &str, whitespace_pattern: Option<&str>) -> Result<String> {
-    let json: Value = serde_json::from_str(schema)?;
-    let mut parser = parsing::Parser::new(&json);
+pub fn build_regex_from_schema(json: &str, whitespace_pattern: Option<&str>) -> Result<String> {
+    let json_value: Value = serde_json::from_str(json)?;
+    to_regex(&json_value, whitespace_pattern)
+}
+
+pub fn to_regex(json: &Value, whitespace_pattern: Option<&str>) -> Result<String> {
+    let mut parser = parsing::Parser::new(json);
     if let Some(pattern) = whitespace_pattern {
         parser = parser.with_whitespace_pattern(pattern)
     }
-    parser.to_regex(&json)
+    parser.to_regex(json)
 }
 
 #[cfg(test)]

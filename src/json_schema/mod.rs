@@ -1,9 +1,8 @@
 mod parsing;
 mod types;
 
-pub use types::*;
-
 use serde_json::Value;
+pub use types::*;
 
 use crate::JsonSchemaParserError;
 
@@ -24,8 +23,9 @@ pub fn to_regex(json: &Value, whitespace_pattern: Option<&str>) -> Result<String
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use regex::Regex;
+
+    use super::*;
 
     fn should_match(re: &Regex, value: &str) {
         // Asserts that value is fully matched.
@@ -918,8 +918,26 @@ mod tests {
                     "username@example..com",          // double dot in domain name
                     "username@.example..com",         // multiple errors in domain
                 ]
-            )
+            ),
 
+            // ==========================================================
+            //                      Multiple types
+            // ==========================================================
+            (
+                r#"{
+                    "title": "Foo",
+                    "type": ["string", "number", "boolean"]
+                }"#,
+                format!(r#"((?:"{STRING_INNER}*")|(?:{NUMBER})|(?:{BOOLEAN}))"#).as_str(),
+                vec!["12.3", "true", r#""a""#],
+                vec![
+                    "null",
+                    "",
+                    "12true",
+                    r#"1.3"a""#,
+                    r#"12.3true"a""#,
+                ],
+            )
         ] {
             let json: Value = serde_json::from_str(schema).expect("Can't parse json");
             let result = to_regex(&json, None).expect("To regex failed");

@@ -1,3 +1,6 @@
+//! Post-processing operations for the tokens before they being inserted into
+//! `Vocabulary`, strategies depend on the tokenizer's level.
+
 use std::collections::HashMap;
 
 use once_cell::sync::Lazy;
@@ -7,17 +10,22 @@ use tokenizers::{DecoderWrapper, Tokenizer};
 
 use crate::{Error, Result};
 
+/// Map to reverse certain UTF-8 characters back to bytes.
+///
 /// GPT2-like tokenizers have multibyte tokens that can have a mix of full and incomplete
 /// UTF-8 characters, for example, byte ` \xf0` can be one token. These tokenizers map each
 /// byte to a valid UTF-8 character, `TokenProcessor` of `ByteFallback` level will be used
 /// to map back these type of characters into bytes, based on `CHAR_MAP`.
 ///
-/// "ĠO" = [U+0120, U+004F] should be interpreted as [0x20, 0x4F] = " O"
-/// or
-/// "Ġal" = [U+0120, U+0061, U+006C] should be interpreted as [0x20, 0x61, 0x6C] = " al"
+/// For example these should be interpreted as:
 ///
-/// We'll use the following the mapping for this transition:
-/// ---
+/// ``` ignore
+/// "ĠO" = [U+0120, U+004F] => [0x20, 0x4F] = " O"
+/// "Ġal" = [U+0120, U+0061, U+006C] => [0x20, 0x61, 0x6C] = " al"
+/// ```
+/// We'll use the following the mapping for this translation:
+///
+/// ``` ignore
 /// 'Ā' == '\u{0100}' -> 0x00 == 0
 /// 'ā' == '\u{0101}' -> 0x01 == 1
 /// 'Ă' == '\u{0102}' -> 0x02 == 2
@@ -59,7 +67,7 @@ use crate::{Error, Result};
 /// 'ý' == '\u{00FD}' -> 0xFD == 253
 /// 'þ' == '\u{00FE}' -> 0xFE == 254
 /// 'ÿ' == '\u{00FF}' -> 0xFF == 255
-/// ---
+/// ```
 static CHAR_MAP: Lazy<HashMap<char, u8>> = Lazy::new(|| {
     let mut char_map = HashMap::with_capacity(256);
     let mut key = 0x100u32;
@@ -82,8 +90,8 @@ static CHAR_MAP: Lazy<HashMap<char, u8>> = Lazy::new(|| {
 pub(crate) enum TokenProcessorLevel {
     /// Matches byte level tokenizer (e.g., gpt2).
     Byte,
-    /// Matches byte fallback tokenizer (e.g., llama), which have <0x__> tokens for
-    /// all __ >= 0x80 to represent incomplete UTF-8 sequences.
+    /// Matches byte fallback tokenizer (e.g., llama), which have `<0x__>` tokens for
+    /// all `__` >= `0x80` to represent incomplete UTF-8 sequences.
     ByteFallback(Mods),
 }
 

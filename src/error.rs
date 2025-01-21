@@ -1,3 +1,5 @@
+//! The Errors that may occur within the crate.
+
 use thiserror::Error;
 
 pub type Result<T, E = crate::Error> = std::result::Result<T, E>;

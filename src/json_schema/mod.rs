@@ -1,3 +1,11 @@
+//! Provides interfaces to generate a regular expression based on a given JSON schema.
+//!
+//! An optional custom pattern could be passed as well to handle whitespace within the regex.
+//! If `None`, the default [WHITESPACE] pattern is used.
+//!
+//! Returns errors if the JSON schema content is invalid or some feature is not yet supported
+//! for regex generation.
+
 use serde_json::Value;
 
 mod parsing;
@@ -7,12 +15,78 @@ pub use types::*;
 
 use crate::Result;
 
-pub fn build_regex_from_schema(json: &str, whitespace_pattern: Option<&str>) -> Result<String> {
+/// Generates a regular expression string from given JSON schema string.
+///
+/// # Example
+///
+/// ```rust
+/// # use outlines_core::Error;
+/// use outlines_core::prelude::*;
+///
+/// # fn main() -> Result<(), Error> {
+///     // Define a JSON schema
+///     let schema = r#"{
+///         "type": "object",
+///         "properties": {
+///             "name": { "type": "string" },
+///             "age": { "type": "integer" }
+///         },
+///         "required": ["name", "age"]
+///     }"#;
+///
+///     // Generate regex from schema
+///     let regex = json_schema::regex_from_str(&schema, None)?;
+///     println!("Generated regex: {}", regex);
+///
+///     // Custom whitespace pattern could be passed as well
+///     let whitespace_pattern = Some(r#"[\n ]*"#);
+///     let regex = json_schema::regex_from_str(&schema, whitespace_pattern)?;
+///     println!("Generated regex with custom whitespace pattern: {}", regex);
+///
+/// #   Ok(())
+/// }
+/// ```
+pub fn regex_from_str(json: &str, whitespace_pattern: Option<&str>) -> Result<String> {
     let json_value: Value = serde_json::from_str(json)?;
-    to_regex(&json_value, whitespace_pattern)
+    regex_from_value(&json_value, whitespace_pattern)
 }
 
-pub fn to_regex(json: &Value, whitespace_pattern: Option<&str>) -> Result<String> {
+/// Generates a regular expression string from `serde_json::Value` type of JSON schema.
+///
+/// # Example
+///
+/// ```rust
+/// # use outlines_core::Error;
+/// use serde_json::Value;
+/// use outlines_core::prelude::*;
+///
+/// # fn main() -> Result<(), Error> {
+///     // Define a JSON schema
+///     let schema = r#"{
+///         "type": "object",
+///         "properties": {
+///             "name": { "type": "string" },
+///             "age": { "type": "integer" }
+///         },
+///         "required": ["name", "age"]
+///     }"#;
+///
+///     // If schema's `Value` was already parsed
+///     let schema_value: Value = serde_json::from_str(schema)?;
+///
+///     // It's possible to generate a regex from schema value
+///     let regex = json_schema::regex_from_value(&schema_value, None)?;
+///     println!("Generated regex: {}", regex);
+///
+///     // Custom whitespace pattern could be passed as well
+///     let whitespace_pattern = Some(r#"[\n ]*"#);
+///     let regex = json_schema::regex_from_value(&schema_value, whitespace_pattern)?;
+///     println!("Generated regex with custom whitespace pattern: {}", regex);
+///
+/// #   Ok(())
+/// }
+/// ```
+pub fn regex_from_value(json: &Value, whitespace_pattern: Option<&str>) -> Result<String> {
     let mut parser = parsing::Parser::new(json);
     if let Some(pattern) = whitespace_pattern {
         parser = parser.with_whitespace_pattern(pattern)
@@ -1001,7 +1075,7 @@ mod tests {
                 ],
             ),
         ] {
-            let result = build_regex_from_schema(schema, None).expect("To regex failed");
+            let result = regex_from_str(schema, None).expect("To regex failed");
             assert_eq!(result, regex, "JSON Schema {} didn't match", schema);
 
             let re = Regex::new(&result).expect("Regex failed");
@@ -1057,7 +1131,7 @@ mod tests {
                 ],
             ),
         ] {
-            let regex = build_regex_from_schema(schema, None).expect("To regex failed");
+            let regex = regex_from_str(schema, None).expect("To regex failed");
             let re = Regex::new(&regex).expect("Regex failed");
             for m in a_match {
                 should_match(&re, m);
@@ -1110,8 +1184,7 @@ mod tests {
                 vec![r#"{SPACE"date"SPACE:SPACE"2018-11-13"SPACE}"#],
             ),
         ] {
-            let regex =
-                build_regex_from_schema(schema, whitespace_pattern).expect("To regex failed");
+            let regex = regex_from_str(schema, whitespace_pattern).expect("To regex failed");
             assert_eq!(regex, expected_regex);
 
             let re = Regex::new(&regex).expect("Regex failed");
@@ -1135,7 +1208,7 @@ mod tests {
             }
         }"##;
 
-        let regex = build_regex_from_schema(schema, None);
+        let regex = regex_from_str(schema, None);
         assert!(regex.is_ok(), "{:?}", regex);
 
         // Confirm the depth of 3 recursion levels by default, recursion level starts
@@ -1268,7 +1341,7 @@ mod tests {
           "$ref": "#/definitions/typeA"
         }"##;
 
-        let regex = build_regex_from_schema(schema, None);
+        let regex = regex_from_str(schema, None);
         assert!(regex.is_ok(), "{:?}", regex);
     }
 }

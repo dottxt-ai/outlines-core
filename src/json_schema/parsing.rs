@@ -1,3 +1,5 @@
+//! Parser generates a regular expression described by a JSON schema.
+
 use std::num::NonZeroU64;
 
 use regex::escape;

@@ -1,3 +1,5 @@
+//! Provides tools and interfaces to integrate the crate's functionality with Python.
+
 use std::sync::Arc;
 
 use crate::index::Index;
@@ -332,7 +334,7 @@ pub fn build_regex_from_schema_py(
     let json = serde_json::from_str(&json).map_err(|_| {
         PyErr::new::<pyo3::exceptions::PyTypeError, _>("Expected a valid JSON string.")
     })?;
-    json_schema::to_regex(&json, whitespace_pattern)
+    json_schema::regex_from_value(&json, whitespace_pattern)
         .map_err(|e| PyValueError::new_err(e.to_string()))
 }
 

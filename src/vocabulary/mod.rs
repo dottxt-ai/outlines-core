@@ -1,3 +1,5 @@
+//! Creates `Vocabulary` from pretrained large language model.
+
 use bincode::{Decode, Encode};
 use rustc_hash::FxHashMap as HashMap;
 
@@ -13,7 +15,7 @@ use processor::TokenProcessor;
 mod locator;
 mod processor;
 
-/// Vocabulary of an LLM.
+/// Creates `Vocabulary` manually or from defined large language model.
 ///
 /// ## Examples
 ///
@@ -117,7 +119,7 @@ impl Vocabulary {
         Ok(vocabulary)
     }
 
-    /// Returns all tokens with their token ids in vocabulary
+    /// Returns all tokens with their token ids in vocabulary.
     pub fn tokens(&self) -> &HashMap<Token, Vec<TokenId>> {
         &self.tokens
     }
@@ -142,7 +144,7 @@ impl Vocabulary {
         Ok(())
     }
 
-    /// Removes given token from the vocabulary.
+    /// Removes a given token from the vocabulary.
     pub fn remove(&mut self, token: impl Into<Token>) {
         let token = token.into();
         self.tokens.remove(&token);

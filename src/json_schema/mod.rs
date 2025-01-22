@@ -1,10 +1,103 @@
 //! Provides interfaces to generate a regular expression based on a given JSON schema.
 //!
 //! An optional custom pattern could be passed as well to handle whitespace within the regex.
-//! If `None`, the default [WHITESPACE] pattern is used.
+//! If `None`, the default [`WHITESPACE`] pattern is used.
 //!
-//! Returns errors if the JSON schema content is invalid or some feature is not yet supported
+//! Returns errors if JSON schema's content is invalid or some feature is not yet supported
 //! for regex generation.
+//!
+//! ## Supported features
+//! 
+//! Note, that only some of the features of JSON schema are supported for regex generation.
+//! 
+//! ### Supported constraints
+//! 
+//! #### Common
+//!  - `type`
+//!     - Specifies the data type (string, number, integer, boolean, array, object, null).
+//!  - `enum`
+//!     - Lists the allowed values.
+//!  - `const`
+//!     - Specifies a single allowed value.
+//!  
+//! #### Object
+//! - `properties`
+//!     - Defines the expected properties of an object and their schemas.
+//! - `required`
+//!     - Lists the properties that must be present.
+//! - `additionalProperties`
+//!     - Specifies whether additional properties are allowed or defines their schema.
+//! - `minProperties`
+//!     - Minimum number of properties required.
+//! - `maxProperties`
+//!     - Maximum number of properties allowed.
+//!
+//! #### Array
+//! - `items`
+//!     - Defines the schema for array elements (single schema or a schema per index).
+//! - `prefixItems`
+//!     - Specifies schemas for the first few elements of an array (tuple validation).
+//! - `minItems`
+//!     - Minimum number of items required in the array.
+//! - `maxItems`
+//!     - Maximum number of items allowed in the array.
+//!
+//! #### String
+//! - `minLength`
+//!     - Minimum string length.
+//! - `maxLength`
+//!     - Maximum string length.
+//! - `pattern`
+//!     - Regular expression the string must match.
+//! - `format`
+//!     - Specifies a pre-defined format, these are supported [`FormatType`]
+//!
+//! #### Number 
+//! - `minDigitsInteger`
+//!     - Specifies minimum number of digits in the integer part of a numeric value.
+//! - `maxDigitsInteger`
+//!     - Specifies maximum number of digits in the integer part of a numeric value.
+//! - `minDigitsFraction`
+//!     - Constraints on minimum number of digits allowed in the fractional part of a numeric value.
+//! - `maxDigitsFraction`
+//!     - Constraints on maximum number of digits allowed in the fractional part of a numeric value.
+//! - `minDigitsExponent`
+//!     - Defines minimum number of digits in the exponent part of a scientific notation number.
+//! - `maxDigitsExponent`
+//!     - Defines maximum number of digits in the exponent part of a scientific notation number.
+//! 
+//! #### Integer
+//! - `minDigits`
+//!     - Defines the minimum number of digits.
+//! - `maxDigits`
+//!     - Defines the maximum number of digits.
+//!  
+//! #### Logical
+//! - `allOf`
+//!     - Combines multiple schemas; all must be valid.
+//! - `anyOf`
+//!     - Combines multiple schemas; at least one must be valid.
+//! - `oneOf`
+//!     - Combines multiple schemas; exactly one must be valid.
+//! 
+//! ### Recursion
+//! 
+//! Currently maximum recursion depth is cautiously defined at the level 3.
+//! 
+//! Note, that in general recursion in regular expressions is not the best approach due to inherent limitations
+//! and inefficiencies, especially when applied to complex patterns or large input.
+//! 
+//! But often, even simple referential JSON schemas will produce enormous regex size, since it increases 
+//! exponentially in recursive case, which likely to introduce performance issues by consuming large
+//! amounts of time, resources and memory.
+//! 
+//! ### References
+//! 
+//! Only local references are currently being supported.
+//! 
+//! ### Unconstrained objects
+//!
+//! An empty object means unconstrained, allowing any JSON type.
 
 use serde_json::Value;
 

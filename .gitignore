@@ -10,6 +10,7 @@ benchmarks/results
 
 # Remove doc build folders
 .cache/
+.cargo_check
 build/
 rust-coverage/
 target/

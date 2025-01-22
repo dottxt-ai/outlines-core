@@ -4,6 +4,7 @@ __pycache__
 .coverage
 .direnv
 .env
+.envrc
 .idea
 .pytest_cache
 .venv

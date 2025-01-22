@@ -7,11 +7,11 @@
 //! for regex generation.
 //!
 //! ## Supported features
-//! 
+//!
 //! Note, that only some of the features of JSON schema are supported for regex generation.
-//! 
+//!
 //! ### Supported constraints
-//! 
+//!
 //! #### Common
 //!  - `type`
 //!     - Specifies the data type (string, number, integer, boolean, array, object, null).
@@ -19,7 +19,7 @@
 //!     - Lists the allowed values.
 //!  - `const`
 //!     - Specifies a single allowed value.
-//!  
+//!
 //! #### Object
 //! - `properties`
 //!     - Defines the expected properties of an object and their schemas.
@@ -52,7 +52,7 @@
 //! - `format`
 //!     - Specifies a pre-defined format, these are supported [`FormatType`]
 //!
-//! #### Number 
+//! #### Number
 //! - `minDigitsInteger`
 //!     - Specifies minimum number of digits in the integer part of a numeric value.
 //! - `maxDigitsInteger`
@@ -65,13 +65,13 @@
 //!     - Defines minimum number of digits in the exponent part of a scientific notation number.
 //! - `maxDigitsExponent`
 //!     - Defines maximum number of digits in the exponent part of a scientific notation number.
-//! 
+//!
 //! #### Integer
 //! - `minDigits`
 //!     - Defines the minimum number of digits.
 //! - `maxDigits`
 //!     - Defines the maximum number of digits.
-//!  
+//!
 //! #### Logical
 //! - `allOf`
 //!     - Combines multiple schemas; all must be valid.
@@ -79,22 +79,22 @@
 //!     - Combines multiple schemas; at least one must be valid.
 //! - `oneOf`
 //!     - Combines multiple schemas; exactly one must be valid.
-//! 
+//!
 //! ### Recursion
-//! 
+//!
 //! Currently maximum recursion depth is cautiously defined at the level 3.
-//! 
+//!
 //! Note, that in general recursion in regular expressions is not the best approach due to inherent limitations
 //! and inefficiencies, especially when applied to complex patterns or large input.
-//! 
-//! But often, even simple referential JSON schemas will produce enormous regex size, since it increases 
+//!
+//! But often, even simple referential JSON schemas will produce enormous regex size, since it increases
 //! exponentially in recursive case, which likely to introduce performance issues by consuming large
 //! amounts of time, resources and memory.
-//! 
+//!
 //! ### References
-//! 
+//!
 //! Only local references are currently being supported.
-//! 
+//!
 //! ### Unconstrained objects
 //!
 //! An empty object means unconstrained, allowing any JSON type.

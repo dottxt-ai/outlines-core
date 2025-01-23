@@ -98,9 +98,11 @@ impl<'a> Parser<'a> {
             "String" => Ok(types::STRING.to_string()),
             "Boolean" => Ok(types::BOOLEAN.to_string()),
             "ID" => Ok(types::STRING.to_string()),
-            other => {
-                todo!();
-            }
+            "Date" => Ok(types::DATE.to_string()),
+            "Uri" => Ok(types::URI.to_string()),
+            "Uuid" => Ok(types::UUID.to_string()),
+            "Email" => Ok(types::EMAIL.to_string()),
+            _ => Ok(types::STRING.to_string()),
         }
     }
 
@@ -232,6 +234,13 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_enum(&self, node: &EnumType) -> Result<String> {
-        todo!()
+        let variants = node
+            .values
+            .iter()
+            .map(|(_name, def)| format!(r#""{}""#, def.value.as_str()))
+            .collect::<Vec<String>>()
+            .join("|");
+
+        Ok(format!(r"({variants})"))
     }
 }

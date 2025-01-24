@@ -3,7 +3,7 @@ import pickle
 from typing import Dict, List, Union
 
 import pytest
-from outlines_core.fsm import Guide, Index, Vocabulary
+from outlines_core import Guide, Index, Vocabulary
 
 
 @pytest.fixture(scope="session")

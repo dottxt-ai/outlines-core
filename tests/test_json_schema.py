@@ -2,7 +2,7 @@ import json
 import re
 
 import pytest
-from outlines_core.fsm.json_schema import build_regex_from_schema
+from outlines_core.json_schema import build_regex_from_schema
 from pydantic import BaseModel
 
 
@@ -32,7 +32,7 @@ def test_invalid_json():
 
 
 def test_types_presence_and_not_emptyness():
-    from outlines_core.fsm.json_schema import (
+    from outlines_core.json_schema import (
         BOOLEAN,
         DATE,
         DATE_TIME,

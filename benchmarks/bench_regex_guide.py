@@ -2,7 +2,7 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 
 import psutil
-from outlines_core.fsm import Guide, Index, Vocabulary
+from outlines_core import Guide, Index, Vocabulary
 
 regex_samples = {
     "email": r"[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?",

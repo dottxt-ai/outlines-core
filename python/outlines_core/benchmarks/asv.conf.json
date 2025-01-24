@@ -2,7 +2,7 @@
     "version": 1,
     "project": "outlines-core",
     "project_url": "https://dottxt-ai.github.io/outlines-core/",
-    "repo": "..",
+    "repo": "../../..",
     "branches": [
 	      "HEAD",
     ],

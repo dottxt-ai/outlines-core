@@ -91,9 +91,9 @@ endif
 # Run python benchmarks.
 pybench: check-clean-git
 ifeq ($(TARGET),)
-	asv run --config benchmarks/asv.conf.json
+	asv run --config python/outlines_core/benchmarks/asv.conf.json
 else
-	asv run --config benchmarks/asv.conf.json -b "$(TARGET)"
+	asv run --config python/outlines_core/benchmarks/asv.conf.json -b "$(TARGET)"
 endif
 
 # Build the documentation of the rust crate and open it.

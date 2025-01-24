@@ -21,7 +21,7 @@ macro_rules! type_name {
     };
 }
 
-#[pyclass(name = "Guide", module = "outlines_core.fsm.outlines_core_rs")]
+#[pyclass(name = "Guide", module = "outlines_core.outlines_core_rs")]
 #[derive(Clone, Debug, PartialEq, Encode, Decode)]
 pub struct PyGuide {
     state: StateId,
@@ -90,8 +90,8 @@ impl PyGuide {
 
     fn __reduce__(&self) -> PyResult<(PyObject, (Vec<u8>,))> {
         Python::with_gil(|py| {
-            let cls = PyModule::import_bound(py, "outlines_core.fsm.outlines_core_rs")?
-                .getattr("Guide")?;
+            let cls =
+                PyModule::import_bound(py, "outlines_core.outlines_core_rs")?.getattr("Guide")?;
             let binary_data: Vec<u8> =
                 bincode::encode_to_vec(self, config::standard()).map_err(|e| {
                     PyErr::new::<PyValueError, _>(format!("Serialization of Guide failed: {}", e))
@@ -110,7 +110,7 @@ impl PyGuide {
     }
 }
 
-#[pyclass(name = "Index", module = "outlines_core.fsm.outlines_core_rs")]
+#[pyclass(name = "Index", module = "outlines_core.outlines_core_rs")]
 #[derive(Clone, Debug, PartialEq, Encode, Decode)]
 pub struct PyIndex(Arc<Index>);
 
@@ -166,8 +166,8 @@ impl PyIndex {
 
     fn __reduce__(&self) -> PyResult<(PyObject, (Vec<u8>,))> {
         Python::with_gil(|py| {
-            let cls = PyModule::import_bound(py, "outlines_core.fsm.outlines_core_rs")?
-                .getattr("Index")?;
+            let cls =
+                PyModule::import_bound(py, "outlines_core.outlines_core_rs")?.getattr("Index")?;
             let binary_data: Vec<u8> = bincode::encode_to_vec(&self.0, config::standard())
                 .map_err(|e| {
                     PyErr::new::<PyValueError, _>(format!("Serialization of Index failed: {}", e))
@@ -186,7 +186,7 @@ impl PyIndex {
     }
 }
 
-#[pyclass(name = "Vocabulary", module = "outlines_core.fsm.outlines_core_rs")]
+#[pyclass(name = "Vocabulary", module = "outlines_core.outlines_core_rs")]
 #[derive(Clone, Debug, Encode, Decode)]
 pub struct PyVocabulary(Vocabulary);
 
@@ -299,7 +299,7 @@ impl PyVocabulary {
 
     fn __reduce__(&self) -> PyResult<(PyObject, (Vec<u8>,))> {
         Python::with_gil(|py| {
-            let cls = PyModule::import_bound(py, "outlines_core.fsm.outlines_core_rs")?
+            let cls = PyModule::import_bound(py, "outlines_core.outlines_core_rs")?
                 .getattr("Vocabulary")?;
             let binary_data: Vec<u8> =
                 bincode::encode_to_vec(self, config::standard()).map_err(|e| {

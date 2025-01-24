@@ -4,7 +4,7 @@ import pickle
 from typing import Dict, List, Union
 
 import pytest
-from outlines_core.fsm import Index, Vocabulary
+from outlines_core import Index, Vocabulary
 
 
 @pytest.fixture(scope="session")

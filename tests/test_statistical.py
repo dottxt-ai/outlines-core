@@ -1,7 +1,7 @@
 from typing import Callable, List, Optional
 
 import numpy as np
-from outlines_core.fsm import Guide, Index, Vocabulary
+from outlines_core import Guide, Index, Vocabulary
 from pytest import approx
 from scipy.stats import ks_2samp
 

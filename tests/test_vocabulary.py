@@ -2,7 +2,7 @@ import copy
 import pickle
 
 import pytest
-from outlines_core.fsm import Vocabulary
+from outlines_core import Vocabulary
 
 
 @pytest.fixture(scope="session")

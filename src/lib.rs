@@ -34,6 +34,8 @@
 //! ## Support
 //!
 //! `Outlines_core` is primarily used in structured text generation project [`outlines`](https://github.com/dottxt-ai/outlines),
+//! if you need support, consider reaching out to its maintainers, you can also open an issue or start a discussion
+//! on [github](https://github.com/dottxt-ai/outlines-core)
 //!
 //! ## Example
 //!
@@ -59,10 +61,10 @@
 //! println!("Generated regex: {}", regex);
 //!
 //! // Create `Vocabulary` from pretrained large language model (but manually is also possible)
-//! let vocabulary = Vocabulary::from_pretrained("openai-community/gpt2", None);
+//! let vocabulary = Vocabulary::from_pretrained("openai-community/gpt2", None)?;
 //!
 //! // Create new `Index` from regex and a given `Vocabulary`
-//! let index = Index::new(regex, &vocabulary)?;
+//! let index = Index::new(&regex, &vocabulary)?;
 //!
 //! let initial_state = index.initial_state();
 //! println!("Is initial state {} a final state? {}", initial_state, index.is_final_state(&initial_state));

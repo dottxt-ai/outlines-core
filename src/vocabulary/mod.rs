@@ -1,4 +1,4 @@
-//! Creates `Vocabulary` from pretrained large language model.
+//! Creates `Vocabulary` manually or from pretrained large language model.
 
 use bincode::{Decode, Encode};
 use rustc_hash::FxHashMap as HashMap;
@@ -15,7 +15,7 @@ use processor::TokenProcessor;
 mod locator;
 mod processor;
 
-/// Creates `Vocabulary` manually or from defined large language model.
+/// `Vocabulary` of large language model.
 ///
 /// ## Examples
 ///

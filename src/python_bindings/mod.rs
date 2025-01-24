@@ -326,15 +326,15 @@ impl PyVocabulary {
 }
 
 #[pyfunction(name = "build_regex_from_schema")]
-#[pyo3(signature = (json, whitespace_pattern=None))]
+#[pyo3(signature = (json_schema, whitespace_pattern=None))]
 pub fn build_regex_from_schema_py(
-    json: String,
+    json_schema: String,
     whitespace_pattern: Option<&str>,
 ) -> PyResult<String> {
-    let json = serde_json::from_str(&json).map_err(|_| {
+    let value = serde_json::from_str(&json_schema).map_err(|_| {
         PyErr::new::<pyo3::exceptions::PyTypeError, _>("Expected a valid JSON string.")
     })?;
-    json_schema::regex_from_value(&json, whitespace_pattern)
+    json_schema::regex_from_value(&value, whitespace_pattern)
         .map_err(|e| PyValueError::new_err(e.to_string()))
 }
 

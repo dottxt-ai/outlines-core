@@ -9,7 +9,11 @@ pub static NUMBER: &str = r#"((-)?(0|[1-9][0-9]*))(\.[0-9]+)?([eE][+-][0-9]+)?"#
 pub static BOOLEAN: &str = r#"(true|false)"#;
 pub static NULL: &str = r#"null"#;
 
-/// Default whitespace pattern used for generation a regular expression from JSON schema.
+/// Default whitespace pattern used for generating a regular expression from JSON schema.
+///
+/// It's being imposed since letting the model choose the number of white spaces and
+/// new lines led to pathological behaviors, especially for small models,
+/// see [example](https://github.com/dottxt-ai/outlines/issues/484)
 pub static WHITESPACE: &str = r#"[ ]?"#;
 
 /// Supported JSON types.

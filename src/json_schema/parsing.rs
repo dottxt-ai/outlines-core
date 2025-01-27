@@ -315,21 +315,40 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_type(&mut self, obj: &serde_json::Map<String, Value>) -> Result<String> {
-        let instance_types = if let Some(instance_type) = obj["type"].as_str() {
-            vec![instance_type]
-        } else if let Some(instance_types) = obj["type"].as_array() {
-            instance_types
-                .iter()
-                .map(|instance_type| match instance_type.as_str() {
-                    Some(instance_type) => Ok(instance_type),
-                    None => Err(JsonSchemaParserError::TypeMustBeAString),
-                })
-                .collect::<Result<Vec<&str>>>()?
-        } else {
-            return Err(JsonSchemaParserError::TypeMustBeAString);
-        };
+        match obj.get("type") {
+            Some(Value::String(instance_type)) => self.parse_type_string(instance_type, obj),
+            Some(Value::Array(instance_types)) => self.parse_type_array(instance_types, obj),
+            _ => Err(JsonSchemaParserError::TypeMustBeAStringOrArray),
+        }
+    }
 
-        let mut parse_instance_type = |instance_type: &str| match instance_type {
+    fn parse_type_array(
+        &mut self,
+        instance_types: &[serde_json::Value],
+        obj: &serde_json::Map<String, Value>,
+    ) -> Result<String> {
+        let xor_patterns = instance_types
+            .iter()
+            .map(|instance_type| match instance_type.as_str() {
+                Some(instance_type) => {
+                    let sub_regex = self.parse_type_string(instance_type, obj)?;
+
+                    Ok(format!(r"(?:{})", sub_regex))
+                }
+                None => Err(JsonSchemaParserError::TypeMustBeAStringOrArray),
+            })
+            .collect::<Result<Vec<String>>>()?
+            .join("|");
+
+        Ok(format!(r"({})", xor_patterns))
+    }
+
+    fn parse_type_string(
+        &mut self,
+        instance_type: &str,
+        obj: &serde_json::Map<String, Value>,
+    ) -> Result<String> {
+        match instance_type {
             "string" => self.parse_string_type(obj),
             "number" => self.parse_number_type(obj),
             "integer" => self.parse_integer_type(obj),
@@ -340,21 +359,6 @@ impl<'a> Parser<'a> {
             _ => Err(JsonSchemaParserError::UnsupportedType(Box::from(
                 instance_type,
             ))),
-        };
-
-        if instance_types.len() == 1 {
-            parse_instance_type(instance_types[0])
-        } else {
-            let xor_patterns = instance_types
-                .into_iter()
-                .map(|instance_type| {
-                    let sub_regex = parse_instance_type(instance_type)?;
-
-                    Ok(format!(r"(?:{})", sub_regex))
-                })
-                .collect::<Result<Vec<String>>>()?;
-
-            Ok(format!(r"({})", xor_patterns.join("|")))
         }
     }
 

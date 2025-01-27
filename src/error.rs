@@ -59,8 +59,8 @@ pub enum JsonSchemaParserError {
     ExternalReferencesNotSupported(Box<str>),
     #[error("Invalid reference format: {0}")]
     InvalidReferenceFormat(Box<str>),
-    #[error("'type' must be a string")]
-    TypeMustBeAString,
+    #[error("'type' must be a string or an array of string")]
+    TypeMustBeAStringOrArray,
     #[error("Unsupported type: {0}")]
     UnsupportedType(Box<str>),
     #[error("maxLength must be greater than or equal to minLength")]
@@ -82,7 +82,8 @@ impl JsonSchemaParserError {
 #[cfg(feature = "python-bindings")]
 impl From<Error> for pyo3::PyErr {
     fn from(e: Error) -> Self {
-        use pyo3::{exceptions::PyValueError, PyErr};
+        use pyo3::exceptions::PyValueError;
+        use pyo3::PyErr;
         PyErr::new::<PyValueError, _>(e.to_string())
     }
 }

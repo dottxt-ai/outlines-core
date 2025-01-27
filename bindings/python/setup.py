@@ -8,14 +8,14 @@ CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 rust_extensions = [
     RustExtension(
-        "outlines_core.outlines_core_rs",
+        "outlines_core",
         f"{CURRENT_DIR}/Cargo.toml",
         binding=Binding.PyO3,
-        features=["python-bindings"],
         rustc_flags=["--crate-type=cdylib"],
     ),
 ]
 
 setup(
     rust_extensions=rust_extensions,
+    package_dir={"": f"{CURRENT_DIR}/py_src/outlines_core"},
 )

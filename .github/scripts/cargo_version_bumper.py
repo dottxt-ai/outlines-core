@@ -1,4 +1,4 @@
-# From https://github.com/Intreecom/scyllapy/blob/05fdab32dd7468c26533de5fdfe9627fa3e38445/scripts/version_bumper.py
+# From https://github.com/Intreecom/scyllapy/blob/05fdab32dd7468c26533de5fdfe9627fa3e38445/scripts/version_bumper.py # Noqa E501
 
 import argparse
 import re

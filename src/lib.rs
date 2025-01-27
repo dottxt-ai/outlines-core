@@ -88,6 +88,3 @@ pub mod primitives;
 pub mod vocabulary;
 
 pub use error::{Error, Result};
-
-#[cfg(feature = "python-bindings")]
-mod python_bindings;

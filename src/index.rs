@@ -3,11 +3,9 @@
 use crate::prelude::*;
 use crate::vocabulary::Vocabulary;
 use crate::{Error, Result};
-use bincode::{Decode, Encode};
 use regex_automata::dfa::{dense::DFA, Automaton};
 use regex_automata::util::primitives::StateID as AutomataStateId;
 use regex_automata::Anchored;
-use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 
 /// `Index` efficiently maps vocabulary tokens to state transitions.
 #[derive(Clone, Debug, PartialEq, Encode, Decode)]

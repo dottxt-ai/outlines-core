@@ -76,11 +76,3 @@ impl Error {
         matches!(self, Self::RefRecursionLimitReached(_))
     }
 }
-
-#[cfg(feature = "python-bindings")]
-impl From<Error> for pyo3::PyErr {
-    fn from(e: Error) -> Self {
-        use pyo3::{exceptions::PyValueError, PyErr};
-        PyErr::new::<PyValueError, _>(e.to_string())
-    }
-}

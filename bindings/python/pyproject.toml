@@ -46,8 +46,8 @@ test = [
 ]
 
 [project.urls]
-homepage = "https://github.com/dottxt-ai/outlines-core"
-documentation = "https://dottxt-ai.github.io/outlines-core/"
+homepage = "https://github.com/dottxt-ai/outlines-core/bindings/python"
+documentation = "https://dottxt-ai.github.io/outlines-core/bindings/python"
 repository = "https://github.com/dottxt-ai/outlines-core"
 
 [project.readme]
@@ -65,7 +65,7 @@ package-dir = {"" = "python"}
 "outlines_core" = ["py.typed", "**/*.pyi"]
 
 [tool.setuptools_scm]
-write_to = "python/outlines_core/_version.py"
+write_to = "py_src/outlines_core/_version.py"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -94,16 +94,17 @@ ignore_missing_imports = true
 
 [tool.coverage.run]
 omit = [
-    "python/outlines_core/_version.py",
-    "python/outlines_core/__init__.py",
+    "py_src/outlines_core/_version.py",
+    "py_src/outlines_core/__init__.py",
     "tests/*",
+    "py_src/outlines_core/tests/*",
 ]
 branch = true
 relative_files = true
 
 [tool.coverage.report]
 omit = [
-    "tests/*",
+    "py_src/outlines_core/tests/*",
 ]
 exclude_lines = [
     "pragma: no cover",

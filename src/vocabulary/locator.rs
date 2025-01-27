@@ -2,8 +2,9 @@
 
 use hf_hub::{api::sync::ApiBuilder, Repo, RepoType};
 use serde::{Deserialize, Serialize};
-use tokenizers::{FromPretrainedParameters, Tokenizer};
+use tokenizers::Tokenizer;
 
+use crate::prelude::*;
 use crate::primitives::*;
 
 /// Mapping of characters to bytes for GPT-2 like tokenizers.

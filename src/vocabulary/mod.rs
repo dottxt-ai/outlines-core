@@ -1,8 +1,5 @@
 //! Creates `Vocabulary` manually or from pretrained large language model.
 
-use bincode::{Decode, Encode};
-use rustc_hash::FxHashMap as HashMap;
-
 use tokenizers::normalizers::Sequence;
 use tokenizers::{NormalizerWrapper, Tokenizer};
 
@@ -242,7 +239,6 @@ impl TryFrom<(TokenId, HashMap<String, Vec<TokenId>>)> for Vocabulary {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rustc_hash::FxHashSet as HashSet;
 
     #[test]
     fn basic_interface() {

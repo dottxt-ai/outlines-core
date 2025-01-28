@@ -3,8 +3,7 @@
 use std::num::NonZeroU64;
 
 use regex::escape;
-use serde_json::json;
-use serde_json::Value;
+use serde_json::{json, Value};
 
 use crate::json_schema::types;
 use crate::Error;

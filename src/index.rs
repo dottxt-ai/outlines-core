@@ -1,13 +1,15 @@
 //! Building an `Index` to efficiently map vocabulary tokens to state transitions.
 
-use crate::prelude::*;
-use crate::vocabulary::Vocabulary;
-use crate::{Error, Result};
 use bincode::{Decode, Encode};
-use regex_automata::dfa::{dense::DFA, Automaton};
+use regex_automata::dfa::dense::DFA;
+use regex_automata::dfa::Automaton;
 use regex_automata::util::primitives::StateID as AutomataStateId;
 use regex_automata::Anchored;
 use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
+
+use crate::prelude::*;
+use crate::vocabulary::Vocabulary;
+use crate::{Error, Result};
 
 /// `Index` efficiently maps vocabulary tokens to state transitions.
 #[derive(Clone, Debug, PartialEq, Encode, Decode)]

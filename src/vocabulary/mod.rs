@@ -1,16 +1,14 @@
 //! Creates `Vocabulary` manually or from pretrained large language model.
 
 use bincode::{Decode, Encode};
+use locator::{HFLocator, Locator};
+use processor::TokenProcessor;
 use rustc_hash::FxHashMap as HashMap;
-
 use tokenizers::normalizers::Sequence;
 use tokenizers::{NormalizerWrapper, Tokenizer};
 
 use crate::prelude::*;
 use crate::{Error, Result};
-
-use locator::{HFLocator, Locator};
-use processor::TokenProcessor;
 
 mod locator;
 mod processor;
@@ -241,8 +239,9 @@ impl TryFrom<(TokenId, HashMap<String, Vec<TokenId>>)> for Vocabulary {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use rustc_hash::FxHashSet as HashSet;
+
+    use super::*;
 
     #[test]
     fn basic_interface() {

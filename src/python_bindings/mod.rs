@@ -2,17 +2,17 @@
 
 use std::sync::Arc;
 
-use crate::index::Index;
-use crate::json_schema;
-use crate::prelude::*;
-use bincode::config;
-use bincode::{Decode, Encode};
+use bincode::{config, Decode, Encode};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyDict};
 use pyo3::wrap_pyfunction;
 use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 use tokenizers::FromPretrainedParameters;
+
+use crate::index::Index;
+use crate::json_schema;
+use crate::prelude::*;
 
 macro_rules! type_name {
     ($obj:expr) => {
@@ -148,6 +148,7 @@ impl PyIndex {
     fn get_initial_state(&self) -> StateId {
         self.0.initial_state()
     }
+
     fn __repr__(&self) -> String {
         format!("{:#?}", self.0)
     }

@@ -32,6 +32,8 @@ Or install in a rust project with cargo:
 cargo add outlines-core
 ```
 
+**Note:** The Minimum Supported Rust Version (MSRV) for this project is 1.78.0.
+
 # How to contribute?
 
 ## Setup

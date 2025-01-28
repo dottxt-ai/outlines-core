@@ -15,6 +15,12 @@ jobs:
     - uses: actions/setup-python@v4
       with:
         python-version: "3.10"
+
+    # toolchain choice needs to happen before cache: rustc version used as its cache key
+    - uses: dtolnay/rust-toolchain@nightly
+      with:
+          components: rustfmt
+    - uses: Swatinem/rust-cache@v2
     - uses: pre-commit/action@v3.0.0
 
   tests:

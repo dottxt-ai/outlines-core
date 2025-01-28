@@ -1,3 +1,5 @@
+//! Provides tools and interfaces to integrate the crate's functionality with Python.
+
 use std::sync::Arc;
 
 use crate::index::Index;
@@ -10,7 +12,6 @@ use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyDict};
 use pyo3::wrap_pyfunction;
 use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
-use serde_json::Value;
 use tokenizers::FromPretrainedParameters;
 
 macro_rules! type_name {
@@ -185,24 +186,6 @@ impl PyIndex {
     }
 }
 
-#[pyfunction(name = "build_regex_from_schema")]
-#[pyo3(signature = (json, whitespace_pattern=None))]
-pub fn build_regex_from_schema_py(
-    json: String,
-    whitespace_pattern: Option<&str>,
-) -> PyResult<String> {
-    json_schema::build_regex_from_schema(&json, whitespace_pattern)
-        .map_err(|e| PyValueError::new_err(e.to_string()))
-}
-
-#[pyfunction(name = "to_regex")]
-#[pyo3(signature = (json, whitespace_pattern=None))]
-pub fn to_regex_py(json: Bound<PyDict>, whitespace_pattern: Option<&str>) -> PyResult<String> {
-    let json_value: Value = serde_pyobject::from_pyobject(json)?;
-    json_schema::to_regex(&json_value, whitespace_pattern)
-        .map_err(|e| PyValueError::new_err(e.to_string()))
-}
-
 #[pyclass(name = "Vocabulary", module = "outlines_core.fsm.outlines_core_rs")]
 #[derive(Clone, Debug, Encode, Decode)]
 pub struct PyVocabulary(Vocabulary);
@@ -342,6 +325,19 @@ impl PyVocabulary {
     }
 }
 
+#[pyfunction(name = "build_regex_from_schema")]
+#[pyo3(signature = (json_schema, whitespace_pattern=None))]
+pub fn build_regex_from_schema_py(
+    json_schema: String,
+    whitespace_pattern: Option<&str>,
+) -> PyResult<String> {
+    let value = serde_json::from_str(&json_schema).map_err(|_| {
+        PyErr::new::<pyo3::exceptions::PyTypeError, _>("Expected a valid JSON string.")
+    })?;
+    json_schema::regex_from_value(&value, whitespace_pattern)
+        .map_err(|e| PyValueError::new_err(e.to_string()))
+}
+
 #[pymodule]
 fn outlines_core_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("BOOLEAN", json_schema::BOOLEAN)?;
@@ -359,7 +355,6 @@ fn outlines_core_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("URI", json_schema::URI)?;
 
     m.add_function(wrap_pyfunction!(build_regex_from_schema_py, m)?)?;
-    m.add_function(wrap_pyfunction!(to_regex_py, m)?)?;
 
     m.add_class::<PyIndex>()?;
     m.add_class::<PyVocabulary>()?;

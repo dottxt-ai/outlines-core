@@ -1,3 +1,5 @@
+//! Defines fundamental types used throughout the crate.
+
 /// Token content.
 pub type Token = Vec<u8>;
 

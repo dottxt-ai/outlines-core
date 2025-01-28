@@ -1,4 +1,5 @@
-/// Construct an Index.
+//! Building an `Index` to efficiently map vocabulary tokens to state transitions.
+
 use crate::prelude::*;
 use crate::vocabulary::Vocabulary;
 use crate::{Error, Result};
@@ -8,6 +9,7 @@ use regex_automata::util::primitives::StateID as AutomataStateId;
 use regex_automata::Anchored;
 use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 
+/// `Index` efficiently maps vocabulary tokens to state transitions.
 #[derive(Clone, Debug, PartialEq, Encode, Decode)]
 pub struct Index {
     /// The ID of the initial state in the automaton, processing begins from this state.
@@ -72,10 +74,10 @@ pub struct Index {
 /// println!("Initial state is {}", initial_state);
 /// println!("Is initial state a final state? {}", index.is_final_state(&initial_state));
 ///
-/// let allowed_tokens = index.allowed_tokens(&initial_state).unwrap();
+/// let allowed_tokens = index.allowed_tokens(&initial_state).expect("Some allowed tokens");
 /// println!("Allowed tokens at initial state are {:?}", allowed_tokens);
 ///
-/// let token_id = allowed_tokens.first().unwrap();
+/// let token_id = allowed_tokens.first().expect("First token");
 /// println!("Next state for the token_id {} is {:?}", token_id, index.next_state(&initial_state, token_id));
 ///
 /// println!("Final states are {:?}", index.final_states());

@@ -1,3 +1,5 @@
+//! Parsing known locations in order to retrieve `eos_token_id` information.
+
 use hf_hub::{api::sync::ApiBuilder, Repo, RepoType};
 use serde::{Deserialize, Serialize};
 use tokenizers::{FromPretrainedParameters, Tokenizer};

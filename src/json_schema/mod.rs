@@ -1,19 +1,186 @@
-mod parsing;
-mod types;
+//! Provides interfaces to generate a regular expression based on a given JSON schema.
+//!
+//! An optional custom pattern could be passed as well to handle whitespace within the regex.
+//! If `None`, the default [`WHITESPACE`] pattern is used.
+//!
+//! Returns errors if JSON schema's content is invalid or some feature is not yet supported
+//! for regex generation.
+//!
+//! ## Supported features
+//!
+//! Note, that only some of the features of JSON schema are supported for regex generation.
+//!
+//! ### Supported constraints
+//!
+//! #### Common
+//!  - `type`
+//!     - Specifies the data type (string, number, integer, boolean, array, object, null).
+//!  - `enum`
+//!     - Lists the allowed values.
+//!  - `const`
+//!     - Specifies a single allowed value.
+//!
+//! #### Object
+//! - `properties`
+//!     - Defines the expected properties of an object and their schemas.
+//! - `required`
+//!     - Lists the properties that must be present.
+//! - `additionalProperties`
+//!     - Specifies whether additional properties are allowed or defines their schema.
+//! - `minProperties`
+//!     - Minimum number of properties required.
+//! - `maxProperties`
+//!     - Maximum number of properties allowed.
+//!
+//! #### Array
+//! - `items`
+//!     - Defines the schema for array elements (single schema or a schema per index).
+//! - `prefixItems`
+//!     - Specifies schemas for the first few elements of an array (tuple validation).
+//! - `minItems`
+//!     - Minimum number of items required in the array.
+//! - `maxItems`
+//!     - Maximum number of items allowed in the array.
+//!
+//! #### String
+//! - `minLength`
+//!     - Minimum string length.
+//! - `maxLength`
+//!     - Maximum string length.
+//! - `pattern`
+//!     - Regular expression the string must match.
+//! - `format`
+//!     - Specifies a pre-defined format, these are supported [`FormatType`]
+//!
+//! #### Number
+//! - `minDigitsInteger`
+//!     - Specifies minimum number of digits in the integer part of a numeric value.
+//! - `maxDigitsInteger`
+//!     - Specifies maximum number of digits in the integer part of a numeric value.
+//! - `minDigitsFraction`
+//!     - Constraints on minimum number of digits allowed in the fractional part of a numeric value.
+//! - `maxDigitsFraction`
+//!     - Constraints on maximum number of digits allowed in the fractional part of a numeric value.
+//! - `minDigitsExponent`
+//!     - Defines minimum number of digits in the exponent part of a scientific notation number.
+//! - `maxDigitsExponent`
+//!     - Defines maximum number of digits in the exponent part of a scientific notation number.
+//!
+//! #### Integer
+//! - `minDigits`
+//!     - Defines the minimum number of digits.
+//! - `maxDigits`
+//!     - Defines the maximum number of digits.
+//!
+//! #### Logical
+//! - `allOf`
+//!     - Combines multiple schemas; all must be valid.
+//! - `anyOf`
+//!     - Combines multiple schemas; at least one must be valid.
+//! - `oneOf`
+//!     - Combines multiple schemas; exactly one must be valid.
+//!
+//! ### Recursion
+//!
+//! Currently maximum recursion depth is cautiously defined at the level 3.
+//!
+//! Note, that in general recursion in regular expressions is not the best approach due to inherent limitations
+//! and inefficiencies, especially when applied to complex patterns or large input.
+//!
+//! But often, even simple referential JSON schemas will produce enormous regex size, since it increases
+//! exponentially in recursive case, which likely to introduce performance issues by consuming large
+//! amounts of time, resources and memory.
+//!
+//! ### References
+//!
+//! Only local references are currently being supported.
+//!
+//! ### Unconstrained objects
+//!
+//! An empty object means unconstrained, allowing any JSON type.
 
 use serde_json::Value;
 pub use types::*;
 
-use crate::JsonSchemaParserError;
+mod parsing;
+pub mod types;
 
-type Result<T> = std::result::Result<T, JsonSchemaParserError>;
+pub use types::*;
 
-pub fn build_regex_from_schema(json: &str, whitespace_pattern: Option<&str>) -> Result<String> {
+use crate::Result;
+
+/// Generates a regular expression string from given JSON schema string.
+///
+/// # Example
+///
+/// ```rust
+/// # use outlines_core::Error;
+/// use outlines_core::prelude::*;
+///
+/// # fn main() -> Result<(), Error> {
+///     // Define a JSON schema
+///     let schema = r#"{
+///         "type": "object",
+///         "properties": {
+///             "name": { "type": "string" },
+///             "age": { "type": "integer" }
+///         },
+///         "required": ["name", "age"]
+///     }"#;
+///
+///     // Generate regex from schema
+///     let regex = json_schema::regex_from_str(&schema, None)?;
+///     println!("Generated regex: {}", regex);
+///
+///     // Custom whitespace pattern could be passed as well
+///     let whitespace_pattern = Some(r#"[\n ]*"#);
+///     let regex = json_schema::regex_from_str(&schema, whitespace_pattern)?;
+///     println!("Generated regex with custom whitespace pattern: {}", regex);
+///
+/// #   Ok(())
+/// }
+/// ```
+pub fn regex_from_str(json: &str, whitespace_pattern: Option<&str>) -> Result<String> {
     let json_value: Value = serde_json::from_str(json)?;
-    to_regex(&json_value, whitespace_pattern)
+    regex_from_value(&json_value, whitespace_pattern)
 }
 
-pub fn to_regex(json: &Value, whitespace_pattern: Option<&str>) -> Result<String> {
+/// Generates a regular expression string from `serde_json::Value` type of JSON schema.
+///
+/// # Example
+///
+/// ```rust
+/// # use outlines_core::Error;
+/// use serde_json::Value;
+/// use outlines_core::prelude::*;
+///
+/// # fn main() -> Result<(), Error> {
+///     // Define a JSON schema
+///     let schema = r#"{
+///         "type": "object",
+///         "properties": {
+///             "name": { "type": "string" },
+///             "age": { "type": "integer" }
+///         },
+///         "required": ["name", "age"]
+///     }"#;
+///
+///     // If schema's `Value` was already parsed
+///     let schema_value: Value = serde_json::from_str(schema)?;
+///
+///     // It's possible to generate a regex from schema value
+///     let regex = json_schema::regex_from_value(&schema_value, None)?;
+///     println!("Generated regex: {}", regex);
+///
+///     // Custom whitespace pattern could be passed as well
+///     let whitespace_pattern = Some(r#"[\n ]*"#);
+///     let regex = json_schema::regex_from_value(&schema_value, whitespace_pattern)?;
+///     println!("Generated regex with custom whitespace pattern: {}", regex);
+///
+/// #   Ok(())
+/// }
+/// ```
+pub fn regex_from_value(json: &Value, whitespace_pattern: Option<&str>) -> Result<String> {
     let mut parser = parsing::Parser::new(json);
     if let Some(pattern) = whitespace_pattern {
         parser = parser.with_whitespace_pattern(pattern)
@@ -937,10 +1104,92 @@ mod tests {
                     r#"1.3"a""#,
                     r#"12.3true"a""#,
                 ],
-            )
+            ),
+            // Confirm that oneOf doesn't produce illegal lookaround: https://github.com/dottxt-ai/outlines/issues/823
+            //
+            // The pet field uses the discriminator field to decide which schema (Cat or Dog) applies, based on the pet_type property.
+            // - if pet_type is "cat", the Cat schema applies, requiring a meows field (integer)
+            // - if pet_type is "dog", the Dog schema applies, requiring a barks field (number)
+            //
+            // So, expected object requires two fields:
+            //  - pet, which must be one of two types: Cat or Dog, determined by the pet_type field
+            //  - n, an integer
+            (
+                r##"{
+                    "$defs": {
+                        "Cat": {
+                            "properties": {
+                                "pet_type": {
+                                    "const": "cat",
+                                    "enum": ["cat"],
+                                    "title": "Pet Type",
+                                    "type": "string"
+                                },
+                                "meows": {
+                                    "title": "Meows",
+                                    "type": "integer"
+                                }
+                            },
+                            "required": ["pet_type", "meows"],
+                            "title": "Cat",
+                            "type": "object"
+                        },
+                        "Dog": {
+                            "properties": {
+                                "pet_type": {
+                                    "const": "dog",
+                                    "enum": ["dog"],
+                                    "title": "Pet Type",
+                                    "type": "string"
+                                },
+                                "barks": {
+                                    "title": "Barks",
+                                    "type": "number"
+                                }
+                            },
+                            "required": ["pet_type", "barks"],
+                            "title": "Dog",
+                            "type": "object"
+                        }
+                    },
+                    "properties": {
+                        "pet": {
+                            "discriminator": {
+                                "mapping": {
+                                    "cat": "#/$defs/Cat",
+                                    "dog": "#/$defs/Dog"
+                                },
+                                "propertyName": "pet_type"
+                            },
+                            "oneOf": [
+                                {"$ref": "#/$defs/Cat"},
+                                {"$ref": "#/$defs/Dog"}
+                            ],
+                            "title": "Pet"
+                        },
+                        "n": {
+                            "title": "N",
+                            "type": "integer"
+                        }
+                    },
+                    "required": ["pet", "n"],
+                    "title": "Model",
+                    "type": "object"
+                }"##,
+                r#"\{[ ]?"pet"[ ]?:[ ]?((?:\{[ ]?"pet_type"[ ]?:[ ]?("cat")[ ]?,[ ]?"meows"[ ]?:[ ]?(-)?(0|[1-9][0-9]*)[ ]?\})|(?:\{[ ]?"pet_type"[ ]?:[ ]?("dog")[ ]?,[ ]?"barks"[ ]?:[ ]?((-)?(0|[1-9][0-9]*))(\.[0-9]+)?([eE][+-][0-9]+)?[ ]?\}))[ ]?,[ ]?"n"[ ]?:[ ]?(-)?(0|[1-9][0-9]*)[ ]?\}"#,
+                vec![
+                    r#"{ "pet": { "pet_type": "cat", "meows": 5 }, "n": 10 }"#,
+                    r#"{ "pet": { "pet_type": "dog", "barks": 3.5 }, "n": 7 }"#,
+                ],
+                vec![
+                    // Missing required fields
+                    r#"{ "pet": { "pet_type": "cat" }, "n": 10 }"#,
+                    // Incorrect pet_type
+                    r#"{ "pet": { "pet_type": "bird", "meows": 2 }, "n": 5 }"#
+                ],
+            ),
         ] {
-            let json: Value = serde_json::from_str(schema).expect("Can't parse json");
-            let result = to_regex(&json, None).expect("To regex failed");
+            let result = regex_from_str(schema, None).expect("To regex failed");
             assert_eq!(result, regex, "JSON Schema {} didn't match", schema);
 
             let re = Regex::new(&result).expect("Regex failed");
@@ -996,8 +1245,7 @@ mod tests {
                 ],
             ),
         ] {
-            let json: Value = serde_json::from_str(schema).expect("Can't parse json");
-            let regex = to_regex(&json, None).expect("To regex failed");
+            let regex = regex_from_str(schema, None).expect("To regex failed");
             let re = Regex::new(&regex).expect("Regex failed");
             for m in a_match {
                 should_match(&re, m);
@@ -1009,8 +1257,60 @@ mod tests {
     }
 
     #[test]
+    fn with_whitespace_patterns() {
+        let schema = r#"{
+            "title": "Foo",
+            "type": "object",
+            "properties": {"date": {"type": "string", "format": "date"}}
+        }"#;
+
+        for (whitespace_pattern, expected_regex, a_match) in [
+            // Default
+            (
+                None,
+                format!(
+                    r#"\{{({WHITESPACE}"date"{WHITESPACE}:{WHITESPACE}{DATE})?{WHITESPACE}\}}"#
+                ),
+                vec![
+                    r#"{"date": "2018-11-13"}"#,
+                    r#"{ "date": "2018-11-13"}"#,
+                    r#"{"date": "2018-11-13" }"#,
+                ],
+            ),
+            (
+                Some(r#"[\n ]*"#),
+                format!(
+                    r#"\{{({ws}"date"{ws}:{ws}{DATE})?{ws}\}}"#,
+                    ws = r#"[\n ]*"#
+                ),
+                vec![
+                    r#"{
+                        "date":  "2018-11-13"
+                    }"#,
+                    r#"{ "date":
+
+                    "2018-11-13"     }"#,
+                ],
+            ),
+            (
+                Some("SPACE"),
+                format!(r#"\{{({ws}"date"{ws}:{ws}{DATE})?{ws}\}}"#, ws = "SPACE"),
+                vec![r#"{SPACE"date"SPACE:SPACE"2018-11-13"SPACE}"#],
+            ),
+        ] {
+            let regex = regex_from_str(schema, whitespace_pattern).expect("To regex failed");
+            assert_eq!(regex, expected_regex);
+
+            let re = Regex::new(&regex).expect("Regex failed");
+            for m in a_match {
+                should_match(&re, m);
+            }
+        }
+    }
+
+    #[test]
     fn direct_recursion_in_array_and_default_behaviour() {
-        let json = r##"
+        let schema = r##"
         {
             "type": "object",
             "properties": {
@@ -1022,8 +1322,7 @@ mod tests {
             }
         }"##;
 
-        let json_value: Value = serde_json::from_str(json).expect("Can't parse json");
-        let regex = to_regex(&json_value, None);
+        let regex = regex_from_str(schema, None);
         assert!(regex.is_ok(), "{:?}", regex);
 
         // Confirm the depth of 3 recursion levels by default, recursion level starts
@@ -1125,7 +1424,7 @@ mod tests {
 
     #[test]
     fn triple_recursion_doesnt_fail() {
-        let json = r##"
+        let schema = r##"
         {
             "definitions": {
                 "typeA": {
@@ -1156,8 +1455,7 @@ mod tests {
           "$ref": "#/definitions/typeA"
         }"##;
 
-        let json_value: Value = serde_json::from_str(json).expect("Can't parse json");
-        let regex = to_regex(&json_value, None);
+        let regex = regex_from_str(schema, None);
         assert!(regex.is_ok(), "{:?}", regex);
     }
 }

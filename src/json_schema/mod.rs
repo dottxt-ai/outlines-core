@@ -105,8 +105,6 @@ pub use types::*;
 mod parsing;
 pub mod types;
 
-pub use types::*;
-
 use crate::Result;
 
 /// Generates a regular expression string from given JSON schema string.

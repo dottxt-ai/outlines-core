@@ -6,8 +6,7 @@ use regex::escape;
 use serde_json::{json, Value};
 
 use crate::json_schema::types;
-use crate::Error;
-use crate::Result;
+use crate::{Error, Result};
 
 pub(crate) struct Parser<'a> {
     root: &'a Value,

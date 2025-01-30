@@ -69,7 +69,7 @@ jobs:
           CIBW_TEST_COMMAND: python -c "import outlines_core; print(outlines_core.__version__)"
           CMAKE_PREFIX_PATH: ./dist
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           path: ./wheelhouse/*.whl
           name: wheels
@@ -89,7 +89,7 @@ jobs:
           pip install build setuptools-rust
       - name: Build sdist
         run: python -m build --sdist
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           path: dist/*.tar.gz
           name: sdist
@@ -110,11 +110,11 @@ jobs:
           pip install setuptools setuptools-rust
       - name: Generate egg-info
         run: python setup.py egg_info
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: wheels
           path: dist
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: sdist
           path: dist

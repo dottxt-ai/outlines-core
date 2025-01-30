@@ -2,81 +2,170 @@
 
 <img src="./docs/assets/images/logo.png" alt="Outlines-core Logo" width=500></img>
 
-[![Contributors][contributors-badge]][contributors]
+[![Latest Version]][crates.io] [![License]][github] ![MSRV]
+
+[Latest Version]: https://img.shields.io/crates/v/outlines-core.svg
+[crates.io]: https://crates.io/crates/outlines-core
+[License]: https://img.shields.io/github/license/dottxt-ai/outlines-core.svg?color=blue&cachedrop
+[github]: https://github.com/dottxt-ai/outlines-core/blob/main/LICENSE
+[MSRV]: https://img.shields.io/badge/MSRV-1.71.1-brightgreen
+
+<!---
+Once it uploaded to crates.io badge could be generated like:
+ [version]: https://img.shields.io/crates/msrv/outlines-core.svg?label=msrv&color=lightgrayy
+ -->
 
 *Structured generation (in Rust).*
+
 </div>
 
-This package provides the core functionality for structured generation, formerly implemented in [Outlines][outlines], with a focus on performance and portability.
+## Outlines-core
 
-# Install
+This package provides the core functionality for structured generation, formerly implemented in [Outlines][outlines],
+with a focus on performance and portability, it offers a convenient way to:
 
-We provide bindings to the following languages:
-- [Rust][rust-implementation] (Original implementation)
-- [Python][python-bindings]
+- build regular expressions from JSON schemas
 
-The latest release of the Python bindings is available on PyPi using `pip`:
+- construct an `Index` object by combining a `Vocabulary` and regular expression to efficiently map tokens from a given vocabulary to state transitions in a finite-state automation
+
+### Example
+
+Basic example of how it all fits together.
+
+```rust
+use outlines_core::prelude::*;
+
+// Define a JSON schema
+let schema = r#"{
+    "type": "object",
+    "properties": {
+        "name": { "type": "string" },
+        "age": { "type": "integer" }
+    },
+    "required": ["name", "age"]
+}"#;
+
+// Generate a regular expression from it
+let regex = json_schema::regex_from_str(&schema, None)?;
+
+// Create `Vocabulary` from pretrained large language model (but manually is also possible)
+let vocabulary = Vocabulary::from_pretrained("openai-community/gpt2", None)?;
+
+// Create new `Index` from regex and a given `Vocabulary`
+let index = Index::new(&regex, &vocabulary)?;
+
+let initial_state = index.initial_state();
+let allowed_tokens = index.allowed_tokens(&initial_state).expect("Some allowed token ids");
+let token_id = allowed_tokens.first().expect("First token id");
+let next_state = index.next_state(&initial_state, token_id);
+let final_states = index.final_states();
+```
+
+## Python Bindings
+
+Additionally, project provides interfaces to integrate the crate's functionality with Python.
 
 ``` python
-pip install outlines-core
+import json
+
+from outlines_core.json_schema import build_regex_from_schema
+from outlines_core.guide import Guide, Index, Vocabulary
+
+schema =  {
+  "title": "Foo",
+  "type": "object",
+  "properties": {"date": {"type": "string", "format": "date"}}
+}
+regex = build_regex_from_schema(json.dumps(schema))
+
+vocabulary = Vocabulary.from_pretrained("openai-community/gpt2")
+index = Index(regex, vocabulary)
+guide = Guide(index)
+
+# Get current state of the Guide:
+current_state = guide.get_state()
+
+# Get allowed tokens for the current state of the Guide:
+allowed_tokens = guide.get_tokens()
+
+# Advance Guide to the next state via some token_id and return allowed tokens for that new state:
+next_allowed_tokens = guide.advance(allowed_tokens[-1])
+
+# To check if Guide is finished:
+guide.is_finished()
+
+# If it's finished then this assertion holds:
+assert guide.get_tokens() == [vocabulary.get_eos_token_id()]
 ```
 
-The current development branch of `outlines-core` can be installed from GitHub, also using `pip`:
+## How to contribute?
 
-``` shell
-pip install git+https://github.com/outlines-dev/outlines-core
-```
+### Setup
 
-Or install in a rust project with cargo:
-``` bash
-cargo add outlines-core
-```
-
-**Note:** The Minimum Supported Rust Version (MSRV) for this project is 1.78.0.
-
-# How to contribute?
-
-## Setup
-
-First, fork the repository on GitHub and clone the fork locally:
+Fork the repository on GitHub and clone the fork locally:
 
 ```bash
 git clone git@github.com/YourUserName/outlines-core.git
 cd outlines-core
 ```
 
-Create a new virtual environment:
+Create a new virtual environment and install the dependencies in editable mode:
 
 ``` bash
 python -m venv .venv
 source .venv/bin/activate
-```
-
-Then install the dependencies in editable mode, and install the pre-commit hooks:
-
-``` bash
 pip install -e ".[test]"
 pre-commit install
 ```
 
-## Before pushing your code
+### Before pushing your code
 
-Run the tests:
+If working with Python bindings don't forget to build Rust extension before testing, for example, in debug mode:
 
+```bash
+make build-extension-debug
+```
+
+Run Python tests:
 
 ``` bash
 pytest
 ```
 
-And run the code style checks:
+Run Rust tests:
+
+``` bash
+cargo test
+```
+
+Or alternatively using Makefile for both:
+
+``` bash
+make test
+```
+
+Finally, run the code style checks:
 
 ``` bash
 pre-commit run --all-files
 ```
 
+Or using Makefile:
+
+``` bash
+make pcc
+```
+
+If necessary you can run benchmarks locally:
+
+``` bash
+make pybench
+```
+
+## Join us
+
+- 💡 **Have an idea?** Come chat with us on [Discord][discord]
+-  **Found a bug?** Open an [issue](https://github.com/dottxt-ai/outlines-core/issues)
 
 [outlines]: https://github.com/dottxt-ai/outlines
-[contributors]: https://github.com/outlines-dev/outlines-core/graphs/contributors
-[contributors-badge]: https://img.shields.io/github/contributors/outlines-dev/outlines-core?style=flat-square&logo=github&logoColor=white&color=ECEFF4
-[rust-implementation]: https://github.com/outlines-dev/outlines-core/tree/readme/src
-[python-bindings]: https://github.com/outlines-dev/outlines-core/tree/readme/python/outlines_core
+[discord]: https://discord.gg/R9DSu34mGd

@@ -1,4 +1,4 @@
-from .outlines_core_rs import (  # noqa: F401
+from .outlines_core import (  # noqa: F401
     BOOLEAN,
     DATE,
     DATE_TIME,

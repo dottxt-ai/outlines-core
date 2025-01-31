@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2", "setuptools-rust"]
-build-backend = "setuptools.build_meta"
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
 
 [project]
 name = "outlines_core"
@@ -42,7 +42,7 @@ test = [
     "scipy",
     "asv",
     "psutil",
-    "setuptools-rust",
+    "maturin",
 ]
 
 [project.urls]
@@ -81,6 +81,8 @@ addopts = [
 
 [tool.mypy]
 exclude=["examples", "tests", "benchmarks"]
+namespace_packages = true
+explicit_package_bases = true
 
 [[tool.mypy.overrides]]
 module = [
@@ -88,7 +90,6 @@ module = [
     "pydantic.*",
     "pytest",
     "setuptools.*",
-    "setuptools_rust.*",
 ]
 ignore_missing_imports = true
 
@@ -115,3 +116,6 @@ show_missing = true
 [tool.diff_cover]
 compare_branch = "origin/main"
 diff_range_notation = ".."
+
+[tool.maturin]
+features = ["python-bindings"]

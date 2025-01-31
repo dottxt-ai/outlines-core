@@ -16,6 +16,7 @@ __pycache__
 benchmarks/results
 build
 Cargo.lock
+dist
 docs/build
 logs
 rust-coverage

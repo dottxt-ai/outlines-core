@@ -37,8 +37,12 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Set up test environment
       run: |
-        python -m pip install --upgrade pip
-        pip install -e .[test]
+        # python -m venv .venv
+        # source .venv/bin/activate
+        # echo "VIRTUAL_ENV=$(pwd)/.venv" >> $GITHUB_ENV
+        # echo "$(pwd)/.venv/bin" >> $GITHUB_PATH
+        pip install .[test]
+        maturin develop
     - name: Create matrix id
       id: matrix-id
       env:

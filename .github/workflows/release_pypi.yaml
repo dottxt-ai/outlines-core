@@ -1,6 +1,7 @@
 name: Release PyPi
 
 on:
+  workflow_dispatch:
   release:
     types:
       - created
@@ -26,6 +27,7 @@ jobs:
         uses: docker/setup-qemu-action@v3
         with:
           platforms: all
+          image: tonistiigi/binfmt:qemu-v8.1.5
 
       - name: Install cibuildwheel
         run: python -m pip install cibuildwheel==2.21.3

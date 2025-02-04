@@ -74,7 +74,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           path: ./wheelhouse/*.whl
-          name: wheels
+          name: wheels-${{ matrix.os }}
 
   build_sdist:
     name: Build source distribution
@@ -114,7 +114,8 @@ jobs:
         run: python setup.py egg_info
       - uses: actions/download-artifact@v4
         with:
-          name: wheels
+          pattern: wheels-*
+          merge-multiple: true
           path: dist
       - uses: actions/download-artifact@v4
         with:

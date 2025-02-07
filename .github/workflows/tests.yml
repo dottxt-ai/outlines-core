@@ -37,10 +37,9 @@ jobs:
         python-version: ${{ matrix.python-version }}
     - name: Set up test environment
       run: |
-        # python -m venv .venv
-        # source .venv/bin/activate
-        # echo "VIRTUAL_ENV=$(pwd)/.venv" >> $GITHUB_ENV
-        # echo "$(pwd)/.venv/bin" >> $GITHUB_PATH
+        python -m venv .venv
+        source .venv/bin/activate
+        python -m pip install --upgrade pip
         pip install .[test]
         maturin develop
     - name: Create matrix id
@@ -54,7 +53,7 @@ jobs:
         echo "::set-output name=id::$MATRIX_ID"
     - name: Run tests
       run: |
-        pytest --cov=outlines_core -vv
+        .venv/bin/python -m pytest --cov=outlines_core -vv
       env:
         COVERAGE_FILE: .coverage.${{ steps.matrix-id.outputs.id }}
     - name: Upload coverage data
@@ -80,11 +79,15 @@ jobs:
       - uses: actions/setup-python@v4
         with:
           cache: pip
-          python-version: "3.11"
+          python-version: "3.10"
 
       - name: Set up environment
         run: |
-          pip install --upgrade "coverage[toml]>=5.1" diff-cover
+          python -m venv .venv
+          source .venv/bin/activate
+          python -m pip install --upgrade pip
+          pip install --upgrade "coverage[toml]>=5.1" diff-cover maturin
+          maturin develop
 
       - name: Install lcov
         run: sudo apt-get update && sudo apt-get install -yqq lcov
@@ -105,6 +108,7 @@ jobs:
 
       - name: Combine coverage & fail if it's <100%.
         run: |
+          source .venv/bin/activate
           python -m coverage combine
           python -m coverage lcov
           lcov -a coverage.lcov -a lcov.info -o combined_coverage

@@ -16,11 +16,21 @@ serde-pyobject = { version = "0.5.0", optional = true }
 serde_json = { version = "1.0", features = ["preserve_order"] }
 serde = {version = "1.0", features = ["derive"]}
 bincode = "2.0.0-rc.3"
-# Fragile dependencies, minor updates often break the code
-hf-hub = "=0.3.2"
-tokenizers = { version = "=0.20.3", features = ["http"] }
 rustc-hash = "2.1.0"
 regex-automata = "0.4.9"
+
+# Below are fragile dependencies, even minor updates of which often break the code
+[dependencies.hf-hub]
+version = "=0.4.1"
+features = ["ureq", "rustls-tls"]
+default-features = false
+
+[dependencies.tokenizers]
+git = "https://github.com/huggingface/tokenizers.git"
+# This is a version > 0.21.0 before 0.21.1, we're looking for rustls-tls feature
+# Once released could be pinned to 0.21.1+
+rev = "4f1a810aa258d287e6936315e63fbf58bde2a980"
+features = ["http", "rustls-tls"]
 
 [features]
 python-bindings = ["pyo3", "serde-pyobject"]

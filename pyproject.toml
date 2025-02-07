@@ -23,9 +23,6 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
-dependencies = [
-   "jsonschema",
-]
 dynamic = ["version"]
 
 [project.optional-dependencies]
@@ -42,7 +39,7 @@ test = [
     "scipy",
     "asv",
     "psutil",
-    "maturin",
+    "maturin[patchelf]",
 ]
 
 [project.urls]
@@ -53,19 +50,6 @@ repository = "https://github.com/dottxt-ai/outlines-core"
 [project.readme]
 file="README.md"
 content-type = "text/markdown"
-
-[tool.cibuildwheel]
-skip = ["*-musllinux_i686"]
-
-[tool.setuptools]
-packages = ["outlines_core"]
-package-dir = {"" = "python"}
-
-[tool.setuptools.package-data]
-"outlines_core" = ["py.typed", "**/*.pyi"]
-
-[tool.setuptools_scm]
-write_to = "python/outlines_core/_version.py"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -86,10 +70,8 @@ explicit_package_bases = true
 
 [[tool.mypy.overrides]]
 module = [
-    "jsonschema.*",
     "pydantic.*",
     "pytest",
-    "setuptools.*",
 ]
 ignore_missing_imports = true
 

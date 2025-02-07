@@ -90,13 +90,12 @@ impl PyGuide {
 
     fn __reduce__(&self) -> PyResult<(PyObject, (Vec<u8>,))> {
         Python::with_gil(|py| {
-            let cls =
-                PyModule::import_bound(py, "outlines_core.outlines_core_rs")?.getattr("Guide")?;
+            let cls = PyModule::import(py, "outlines_core.outlines_core_rs")?.getattr("Guide")?;
             let binary_data: Vec<u8> =
                 bincode::encode_to_vec(self, config::standard()).map_err(|e| {
                     PyErr::new::<PyValueError, _>(format!("Serialization of Guide failed: {}", e))
                 })?;
-            Ok((cls.getattr("from_binary")?.to_object(py), (binary_data,)))
+            Ok((cls.getattr("from_binary")?.unbind(), (binary_data,)))
         })
     }
 
@@ -167,13 +166,12 @@ impl PyIndex {
 
     fn __reduce__(&self) -> PyResult<(PyObject, (Vec<u8>,))> {
         Python::with_gil(|py| {
-            let cls =
-                PyModule::import_bound(py, "outlines_core.outlines_core_rs")?.getattr("Index")?;
+            let cls = PyModule::import(py, "outlines_core.outlines_core_rs")?.getattr("Index")?;
             let binary_data: Vec<u8> = bincode::encode_to_vec(&self.0, config::standard())
                 .map_err(|e| {
                     PyErr::new::<PyValueError, _>(format!("Serialization of Index failed: {}", e))
                 })?;
-            Ok((cls.getattr("from_binary")?.to_object(py), (binary_data,)))
+            Ok((cls.getattr("from_binary")?.unbind(), (binary_data,)))
         })
     }
 
@@ -300,8 +298,8 @@ impl PyVocabulary {
 
     fn __reduce__(&self) -> PyResult<(PyObject, (Vec<u8>,))> {
         Python::with_gil(|py| {
-            let cls = PyModule::import_bound(py, "outlines_core.outlines_core_rs")?
-                .getattr("Vocabulary")?;
+            let cls =
+                PyModule::import(py, "outlines_core.outlines_core_rs")?.getattr("Vocabulary")?;
             let binary_data: Vec<u8> =
                 bincode::encode_to_vec(self, config::standard()).map_err(|e| {
                     PyErr::new::<PyValueError, _>(format!(
@@ -309,7 +307,7 @@ impl PyVocabulary {
                         e
                     ))
                 })?;
-            Ok((cls.getattr("from_binary")?.to_object(py), (binary_data,)))
+            Ok((cls.getattr("from_binary")?.unbind(), (binary_data,)))
         })
     }
 

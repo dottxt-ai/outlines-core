@@ -8,50 +8,23 @@ repository = "https://github.com/dottxt-ai/outlines-core"
 rust-version = "1.71.1"
 
 [dependencies]
-once_cell = "1.20"
-thiserror = "2.0"
-pyo3 = { version = "0.22.0", features = ["extension-module"], optional = true }
-regex = "1.10.6"
-serde-pyobject = "0.4.0"
-serde_json = { version = "1.0", features = ["preserve_order"] }
-serde = {version = "1.0", features = ["derive"]}
-bincode = "2.0.0-rc.3"
-# Fragile dependencies, minor updates often break the code
-hf-hub = "=0.3.2"
-tokenizers = { version = "=0.20.3", features = ["http"] }
-rustc-hash = "2.1.0"
-regex-automata = "0.4.9"
 
 [features]
-python-bindings = ["pyo3"]
 
 [lib]
 name = "outlines_core"
-crate-type = ["cdylib", "rlib"]
 
 [profile.release]
-opt-level = 3
-lto = true
-codegen-units = 1
+opt-level = 2
+lto = false
+codegen-units = 10
 strip = true
 panic = 'abort'
-
-[package.metadata.scripts]
-build-python-extension = "python setup.py build_rust --inplace --debug"
-build-python-extension-release = "python setup.py build_rust --inplace --release"
-
-[lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(tarpaulin_include)'] }
 
 [[bench]]
 path = "benchmarks/criterion.rs"
 name = "criterion"
 harness = false
-
-[[bin]]
-name = "convert-json-schema"
-test = false
-bench = false
 
 [dev-dependencies]
 criterion = "0.5.1"

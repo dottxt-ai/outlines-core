@@ -67,7 +67,7 @@ jobs:
         run: cargo criterion --bench criterion --output-format bencher|& tee benchmarks.txt
 
       - name: Compare benchmarks
-        uses: 414owen/github-action-benchmark@8be66a82d67d481e3524e7d35a752797825e9b7f
+        uses: 414owen/github-action-benchmark@745dc3ce0a9a35124ab058c1259f1970fd945fd3
         with:
           tool: 'cargo'
           output-file-path: benchmarks.txt

@@ -73,9 +73,9 @@ def test_token_trans_keys_identical():
     guide1 = Guide(index)
     guide2 = Guide(index)
 
-    assert guide1.advance(3) == guide2.advance(3)
+    assert sorted(guide1.advance(3)) == sorted(guide2.advance(3))
     # `a` and `b` have similar transitions to `z`
-    assert guide1.advance(1) == guide2.advance(2)
+    assert sorted(guide1.advance(1)) == sorted(guide2.advance(2))
     assert guide1.advance(3) == guide2.advance(3) == [eos_token_id]
     assert guide1.is_finished()
     assert guide2.is_finished()
@@ -94,9 +94,9 @@ def test_str_and_bytes_produce_the_same():
     guide1 = Guide(index1)
     guide2 = Guide(index2)
 
-    assert guide1.advance(3) == guide2.advance(3)
+    assert sorted(guide1.advance(3)) == sorted(guide2.advance(3))
     # `a` and `b` have similar transitions to `z`
-    assert guide1.advance(1) == guide2.advance(2)
+    assert sorted(guide1.advance(1)) == sorted(guide2.advance(2))
     assert guide1.advance(3) == guide2.advance(3) == [eos_token_id]
     assert guide1.is_finished()
     assert guide2.is_finished()

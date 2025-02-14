@@ -64,7 +64,7 @@ addopts = [
 ]
 
 [tool.mypy]
-exclude=["examples", "tests", "benchmarks"]
+exclude=["tests", "benchmarks", ".github"]
 namespace_packages = true
 explicit_package_bases = true
 

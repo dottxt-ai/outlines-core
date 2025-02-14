@@ -9,9 +9,12 @@ on:
     branches: [main]
 
 jobs:
-  build_wheels: 
+  build_wheels:
+    # TODO: switch to main
     uses: dottxt-ai/outlines-core/.github/workflows/build_wheels.yml@maturin
-    
+    with:
+      auto_bump: true
+
   release:
     needs: build_wheels
     name: Release to PyPI

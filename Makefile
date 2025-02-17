@@ -30,11 +30,11 @@ install-release:
 
 # Build only the Rust Python extension (in debug mode)
 build-extension-debug:
-	maturin build
+	maturin develop
 
 # Build only the Rust Python extension (in release mode)
 build-extension-release:
-	maturin build --release
+	maturin develop --release
 
 # Watches changes in the rust bindings and updates the python extension in place.
 watch-extension:

@@ -365,6 +365,9 @@ fn register_child_module(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
 
 #[pymodule]
 fn outlines_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    let version = env!("CARGO_PKG_VERSION");
+    m.add("__version__", version)?;
+
     m.add_class::<PyIndex>()?;
     m.add_class::<PyVocabulary>()?;
     m.add_class::<PyGuide>()?;

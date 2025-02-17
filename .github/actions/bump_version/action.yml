@@ -1,21 +1,52 @@
 name: 'Bump Versions'
-description: 'This action bumps versions of Cargo.toml and _version.py file, matching release tag'
+description: 'This action bumps versions of Cargo.toml file, matching release tag'
 
 runs:
   using: 'composite'
   steps:
     - uses: actions/checkout@v4
+      # To fetch all the tags and history
+      with:
+        fetch-depth: 0
+
+ #  - name: Fetch all tags explicitly
+ #    run: git fetch --tags
+ #    shell: bash
+
+ #  - name: Get all tags
+ #    run: git tag
+ #    shell: bash
+
+ #  - name: Get latest
+ #    run: git describe --tags --abbrev=0 2> /dev/null
+ #    shell: bash
+ #    
+ #  - name: Get the exact Git tag or latest tag + dev
+ #    run: |
+ #      tag=$(git describe --exact-match --tags 2>&1) || {
+ #        echo "Error: No exact match tag found."
+ #        tag=""
+ #      }
+ #      # If no exact match tag found, get the latest tag or set default
+ #      if [ -z "$tag" ]; then
+ #        version="0.0.0"
+ #      else
+ #        version="$tag"
+ #      fi
+ #      echo "Version: $version"
+ #      echo "version=$version" >> $GITHUB_ENV
+ #    shell: bash
 
     - name: Bump Cargo version
-      # python ./cargo_version_bumper.py --target Cargo.toml "${{ github.ref_name }}"
       run: |
-        python .github/actions/bump_version/cargo_version_bumper.py --target Cargo.toml "0.0.1"
+        # python .github/actions/bump_version/cargo_version_bumper.py --target Cargo.toml "${{ github.ref_name }}"
+        python .github/actions/bump_version/cargo_version_bumper.py --target Cargo.toml "0.2.3"
       shell: bash
 
-#   - name: Check Cargo.toml version matches Release tag
-#     run: |
-#       CARGO_VERSION=$(grep '^version =' Cargo.toml | sed 's/.*"\(.*\)".*/\1/')
-#       if [ "${GITHUB_REF#refs/tags/}" != "$CARGO_VERSION" ]; then
-#         echo "Version mismatch: Cargo.toml ($CARGO_VERSION) doesn't match Release tag (${GITHUB_REF#refs/tags/})"
-#         exit 1
-#       fi
+ #  - name: Check Cargo.toml version matches Release tag
+ #    run: |
+ #      CARGO_VERSION=$(grep '^version =' Cargo.toml | sed 's/.*"\(.*\)".*/\1/')
+ #      if [ "${GITHUB_REF#refs/tags/}" != "$CARGO_VERSION" ]; then
+ #        echo "Version mismatch: Cargo.toml ($CARGO_VERSION) doesn't match Release tag (${GITHUB_REF#refs/tags/})"
+ #        exit 1
+ #      fi

@@ -1,3 +1,5 @@
+"""This package provides core functionality for structured generation, formerly implemented in Outlines."""
+
 from typing import Dict, List, Optional, Set, Tuple, Union
 
 def build_regex_from_schema(

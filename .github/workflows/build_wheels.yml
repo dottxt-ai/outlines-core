@@ -41,15 +41,15 @@ jobs:
           sudo apt update
           sudo apt install pkg-config gcc-aarch64-linux-gnu g++-aarch64-linux-gnu -qy
 
-      - name: Bump Cargo version
-        if: ${{ inputs.auto_bump }}
-        uses: ./.github/actions/bump_version
-
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable
           target: ${{ matrix.platform.target}}-unknown-linux-gnu
       - uses: Swatinem/rust-cache@v2
+
+      - name: Bump version in Cargo.toml
+        if: ${{ inputs.auto_bump }}
+        uses: ./.github/actions/bump_version
 
       - name: Build wheels
         uses: PyO3/maturin-action@v1
@@ -105,15 +105,15 @@ jobs:
         run: |
           choco install nasm
 
-      - name: Bump Cargo version
-        if: ${{ inputs.auto_bump }}
-        uses: ./.github/actions/bump_version
-
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable
           target: ${{ matrix.platform.alias-target}}
       - uses: Swatinem/rust-cache@v2
+
+      - name: Bump version in Cargo.toml
+        if: ${{ inputs.auto_bump }}
+        uses: ./.github/actions/bump_version
 
       - name: Build wheels
         uses: PyO3/maturin-action@v1
@@ -172,15 +172,15 @@ jobs:
       - name: Set macOS version
         run: echo "MACOSX_DEPLOYMENT_TARGET=${{ matrix.platform.macos_version }}" >> $GITHUB_ENV
 
-      - name: Bump Cargo version
-        if: ${{ inputs.auto_bump }}
-        uses: ./.github/actions/bump_version
-
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable
           target: ${{ matrix.platform.target}}-apple-darwin
       - uses: Swatinem/rust-cache@v2
+
+      - name: Bump version in Cargo.toml
+        if: ${{ inputs.auto_bump }}
+        uses: ./.github/actions/bump_version
 
       - name: Build wheels
         uses: PyO3/maturin-action@v1

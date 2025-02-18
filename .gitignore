@@ -7,7 +7,6 @@ __pycache__
 .idea
 .pytest_cache
 .venv
-*_version.py
 *.egg-info
 *.gguf
 *.pyd

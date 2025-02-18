@@ -1,5 +1,8 @@
-name: 'Bump Versions'
-description: 'This action bumps versions of Cargo.toml file, matching release tag'
+# This action is called from PyPi and Rust release workflows to update Cargo.toml with release version.
+# It will only be successfull, if release tag, which triggered the workflow will match
+# package version in Cargo.toml (sanity check).
+name: 'Update package version to release version'
+description: 'This action bumps package version in Cargo.toml file, matching the release tag.'
 
 runs:
   using: 'composite'
@@ -9,44 +12,16 @@ runs:
       with:
         fetch-depth: 0
 
- #  - name: Fetch all tags explicitly
- #    run: git fetch --tags
- #    shell: bash
-
- #  - name: Get all tags
- #    run: git tag
- #    shell: bash
-
- #  - name: Get latest
- #    run: git describe --tags --abbrev=0 2> /dev/null
- #    shell: bash
- #    
- #  - name: Get the exact Git tag or latest tag + dev
- #    run: |
- #      tag=$(git describe --exact-match --tags 2>&1) || {
- #        echo "Error: No exact match tag found."
- #        tag=""
- #      }
- #      # If no exact match tag found, get the latest tag or set default
- #      if [ -z "$tag" ]; then
- #        version="0.0.0"
- #      else
- #        version="$tag"
- #      fi
- #      echo "Version: $version"
- #      echo "version=$version" >> $GITHUB_ENV
- #    shell: bash
-
-    - name: Bump Cargo version
+    - name: Bump version in Cargo.toml
       run: |
-        # python .github/actions/bump_version/cargo_version_bumper.py --target Cargo.toml "${{ github.ref_name }}"
-        python .github/actions/bump_version/cargo_version_bumper.py --target Cargo.toml "0.2.3"
+        python .github/actions/bump_version/bump_version.py --target Cargo.toml "${{ github.ref_name }}"
       shell: bash
 
- #  - name: Check Cargo.toml version matches Release tag
- #    run: |
- #      CARGO_VERSION=$(grep '^version =' Cargo.toml | sed 's/.*"\(.*\)".*/\1/')
- #      if [ "${GITHUB_REF#refs/tags/}" != "$CARGO_VERSION" ]; then
- #        echo "Version mismatch: Cargo.toml ($CARGO_VERSION) doesn't match Release tag (${GITHUB_REF#refs/tags/})"
- #        exit 1
- #      fi
+    - name: Check version in Cargo.toml matches Release tag
+      run: |
+        VERSION=$(cargo metadata --format-version=1 --no-deps | jq -r '.packages[0].version')
+        if [ "${GITHUB_REF#refs/tags/}" != "$VERSION" ]; then
+          echo "Version mismatch: Cargo.toml ($VERSION) doesn't match Release tag (${GITHUB_REF#refs/tags/})"
+          exit 1
+        fi
+      shell: bash

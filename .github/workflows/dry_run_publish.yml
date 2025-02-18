@@ -1,21 +1,21 @@
-name: Release PyPi
+name: Dry-run Publish
 
 on:
   workflow_dispatch:
-  release:
-    types:
-      - created
+  push:
+    branches: [main]
+  # TODO: remove
+  pull_request:
+    branches: [main]
 
 jobs:
   build_wheels:
     # TODO: switch to main
     uses: dottxt-ai/outlines-core/.github/workflows/build_wheels.yml@maturin
-    with:
-      auto_bump: true
 
-  release:
+  dry_run:
     needs: build_wheels
-    name: Release to PyPI
+    name: Dry-run for publishing to PyPI and crates.io
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -31,8 +31,10 @@ jobs:
           name: sdist
           path: dist
 
-  #     - name: Publish to PyPI
-  #       uses: pypa/gh-action-pypi-publish@v1.5.0
-  #       with:
-  #         user: __token__
-  #         password: ${{ secrets.PYPI_SECRET }}
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Dry-run publish to crates.io
+        run: cargo publish --dry-run

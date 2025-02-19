@@ -31,6 +31,9 @@ jobs:
           name: sdist
           path: dist
 
+      - name: List downloaded artifacts
+        run: ls -lh dist/
+
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable

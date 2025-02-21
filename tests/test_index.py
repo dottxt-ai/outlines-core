@@ -1,7 +1,6 @@
 import copy
 import gc
 import pickle
-from typing import Dict, List, Union
 
 import pytest
 from outlines_core import Index, Vocabulary
@@ -10,8 +9,7 @@ from outlines_core import Index, Vocabulary
 @pytest.fixture(scope="session")
 def index() -> Index:
     eos_token_id = 3
-    # types here only to please mypy checks
-    tokens: Dict[Union[str, bytes], List[int]] = {"1": [1], "2": [2]}
+    tokens = {"1": [1], "2": [2]}
     regex = r"[1-9]"
 
     vocabulary = Vocabulary(eos_token_id, tokens)

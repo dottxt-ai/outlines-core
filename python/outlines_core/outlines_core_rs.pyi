@@ -1,7 +1,7 @@
 from typing import Dict, List, Optional, Set, Tuple, Union
 
 def build_regex_from_schema(
-    json_schema: str, whitespace_pattern: Optional[str] = None
+    json_schema: str, whitespace_pattern: Optional[str] = None, max_recursion_depth: Optional[int] = None
 ) -> str:
     """Creates regex string from JSON schema with optional whitespace pattern."""
     ...

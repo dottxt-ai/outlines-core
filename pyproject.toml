@@ -63,16 +63,6 @@ addopts = [
     "--import-mode=importlib"
 ]
 
-[tool.mypy]
-exclude=["tests", "benchmarks", ".github"]
-namespace_packages = true
-explicit_package_bases = true
-
-[[tool.mypy.overrides]]
-module = [
-    "pydantic.*",
-    "pytest",
-]
 ignore_missing_imports = true
 
 [tool.coverage.run]

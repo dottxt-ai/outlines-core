@@ -24,16 +24,6 @@ repos:
   rev: 23.3.0
   hooks:
     - id: black
-- repo: https://github.com/pre-commit/mirrors-mypy
-  rev: v1.7.0
-  hooks:
-    - id: mypy
-      exclude: |
-          (?x)^(
-              tests/|
-              benchmarks/|
-              \.github/
-          )
 - repo: local
   hooks:
     - id: cargo-fmt

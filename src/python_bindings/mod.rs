@@ -3,6 +3,7 @@
 use std::sync::Arc;
 
 use bincode::{config, Decode, Encode};
+use pyo3::buffer::PyBuffer;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyDict};
@@ -42,7 +43,7 @@ impl PyGuide {
         self.state
     }
 
-    fn get_tokens(&self) -> PyResult<Vec<TokenId>> {
+    fn get_tokens(&mut self) -> PyResult<Vec<TokenId>> {
         self.index
             .get_allowed_tokens(self.state)
             // Since Guide advances only through the states offered by the Index, it means
@@ -53,11 +54,34 @@ impl PyGuide {
             )))
     }
 
+    fn get_tokens_into_mask(&mut self, mask: PyBuffer<u8>) -> PyResult<()> {
+        let buffer_ptr = mask.buf_ptr() as *mut u8;
+        let buffer_len = mask.len_bytes();
+
+        unsafe {
+            let mut_slice = std::slice::from_raw_parts_mut(buffer_ptr, buffer_len);
+            self.write_into_mask(mut_slice)
+        }
+    }
+
     fn advance(&mut self, token_id: TokenId) -> PyResult<Vec<TokenId>> {
         match self.index.get_next_state(self.state, token_id) {
             Some(new_state) => {
                 self.state = new_state;
                 self.get_tokens()
+            }
+            None => Err(PyErr::new::<PyValueError, _>(format!(
+                "No next state found for the current state: {} with token ID: {token_id}",
+                self.state
+            ))),
+        }
+    }
+
+    fn advance_with_mask(&mut self, token_id: TokenId, mask: PyBuffer<u8>) -> PyResult<()> {
+        match self.index.get_next_state(self.state, token_id) {
+            Some(new_state) => {
+                self.state = new_state;
+                self.get_tokens_into_mask(mask)
             }
             None => Err(PyErr::new::<PyValueError, _>(format!(
                 "No next state found for the current state: {} with token ID: {token_id}",
@@ -109,6 +133,41 @@ impl PyGuide {
     }
 }
 
+impl PyGuide {
+    // Pivate methods.
+    fn write_into_mask(&mut self, mask: &mut [u8]) -> PyResult<()> {
+        let vocab_size = self.index.get_vocab_size();
+        let total_size = vocab_size + 1; // Ceil
+
+        if (mask.len() * 8) < total_size {
+            return Err(PyErr::new::<PyValueError, _>(format!(
+                "Mask size ({} bytes) lower than required size ({} bytes)",
+                mask.len() * 8,
+                total_size
+            )));
+        }
+
+        // Fast reset
+        // for byte in mask.iter_mut() {
+        //     *byte = 0;
+        // }
+
+        mask.fill(0);
+
+        if let Some(allowed) = self.index.get_allowed_tokens_iter(self.state) {
+            for &token_id in allowed {
+                let byte_idx = (token_id as usize) >> 3; // Division by 8
+                let bit_idx = (token_id as usize) & 0x7; // modulo 8
+                if byte_idx < mask.len() {
+                    mask[byte_idx] |= 1 << (7 - bit_idx); // Format MSB
+                }
+            }
+        }
+
+        Ok(())
+    }
+}
+
 #[pyclass(name = "Index", module = "outlines_core.outlines_core_rs")]
 #[derive(Clone, Debug, PartialEq, Encode, Decode)]
 pub struct PyIndex(Arc<Index>);
@@ -148,6 +207,10 @@ impl PyIndex {
         self.0.initial_state()
     }
 
+    fn get_vocab_size(&self) -> usize {
+        self.0.vocab_size()
+    }
+
     fn __repr__(&self) -> String {
         format!("{:#?}", self.0)
     }
@@ -182,6 +245,12 @@ impl PyIndex {
                 PyErr::new::<PyValueError, _>(format!("Deserialization of Index failed: {}", e))
             })?;
         Ok(PyIndex(Arc::new(index)))
+    }
+}
+
+impl PyIndex {
+    fn get_allowed_tokens_iter(&self, state: StateId) -> Option<impl Iterator<Item = &TokenId>> {
+        self.0.allowed_tokens_iter(&state)
     }
 }
 

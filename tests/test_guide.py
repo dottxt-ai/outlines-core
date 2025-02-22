@@ -1,9 +1,10 @@
 import copy
 import pickle
+import time
 from typing import Dict, List, Union
 
 import pytest
-from outlines_core import Guide, Index, Vocabulary
+from outlines_core import Guide, Index, Vocabulary, create_mask, mask_to_list
 
 
 @pytest.fixture(scope="session")
@@ -148,3 +149,173 @@ def test_equality(index):
     guide1.advance(guide1.get_tokens()[-1])
     assert guide1 != guide2
     assert guide3 == guide2
+
+
+def test_get_tokens_into_mask_valid_size():
+    tokens = {"a": [0], "b": [1], "z": [2]}
+    eos_token_id = 3
+    regex = r"z[ab]z"
+
+    vocabulary = Vocabulary(eos_token_id, tokens)
+
+    index = Index(regex, vocabulary)
+
+    guide = Guide(index)
+    vocab_size = 3
+    mask_buffer = create_mask(vocab_size + 1)
+
+    guide.get_tokens_into_mask(mask_buffer)
+
+    allowed_tokens = mask_to_list(mask_buffer)
+    assert len(allowed_tokens) == 1
+    assert allowed_tokens[0] == 2
+
+
+def test_get_tokens_into_mask_invalid_size():
+    tokens = {
+        "a": [0],
+        "b": [1],
+        "z": [2],
+        "c": [3],
+        "d": [4],
+        "e": [5],
+        "f": [6],
+        "g": [7],
+    }
+    eos_token_id = 8
+    regex = r"z[ab]z"
+
+    vocabulary = Vocabulary(eos_token_id, tokens)
+
+    index = Index(regex, vocabulary)
+    guide = Guide(index)
+    mask = create_mask(1)
+    with pytest.raises(
+        ValueError,
+        match=r"Mask size \(8 bytes\) lower than required size \(9 bytes\)",
+    ):
+        guide.get_tokens_into_mask(mask)
+
+
+def test_advance_with_mask_valid_transition():
+    tokens = {"a": [1], "b": [2], "z": [3]}
+    eos_token_id = 4
+    regex = r"z[ab]z"
+    vocab_size = 4
+
+    vocabulary = Vocabulary(eos_token_id, tokens)
+    index = Index(regex, vocabulary)
+    guide = Guide(index)
+
+    mask = create_mask(vocab_size)
+
+    # Step 1 :Initial step, waits "z" (token_id=3)
+    guide.get_tokens_into_mask(mask)
+    allowed_token = mask_to_list(mask)
+    assert len(allowed_token) == 1 and allowed_token[0] == 3
+
+    # Step 2 : Advance with "z" (token_id=3), waits "a" or "b" (token_id=1 ou 2)
+    guide.advance_with_mask(3, mask)
+    allowed_token = mask_to_list(mask)
+    assert (
+        len(allowed_token) == 2
+        and (allowed_token[0] == 1 and allowed_token[1] == 2)
+        or (allowed_token[0] == 2 and allowed_token[1] == 1)
+    )
+
+    # Step 3 : Advance with "a" (token_id=1), waits "z" (token_id=3)
+    guide.advance_with_mask(1, mask)
+    allowed_token = mask_to_list(mask)
+    assert len(allowed_token) == 1 and allowed_token[0] == 3
+
+    # Step 4 : Advance with "z" (token_id=3), waits final state (eos=4)
+    guide.advance_with_mask(3, mask)
+    allowed_token = mask_to_list(mask)
+    assert len(allowed_token) == 1 and allowed_token[0] == 4 and guide.is_finished()
+
+
+def test_advance_with_mask_invalid_transition(index):
+    guide = Guide(index)
+    mask = create_mask(3)
+
+    with pytest.raises(
+        ValueError,
+        match="No next state found for the current state",
+    ):
+        guide.advance_with_mask(2, mask)
+        guide.advance_with_mask(2, mask)
+
+
+def test_TFM_standard():
+    regexes = [
+        {
+            "name": "email",
+            "regex": "[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?",
+        },
+        {"name": "phone", "regex": "\\+?[1-9][0-9]{7,14}"},
+        {
+            "name": "date",
+            "regex": "([1-9]|0[1-9]|1[0-9]|2[0-9]|3[0-1])(\\.|-|/)([1-9]|0[1-9]|1[0-2])(\\.|-|/)([0-9][0-9]|19[0-9][0-9]|20[0-9][0-9])|([0-9][0-9]|19[0-9][0-9]|20[0-9][0-9])(\\.|-|/)([1-9]|0[1-9]|1[0-2])(\\.|-|/)([1-9]|0[1-9]|1[0-9]|2[0-9]|3[0-1])",
+        },
+        {
+            "name": "ip",
+            "regex": "(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)",
+        },
+        {
+            "name": "url",
+            "regex": "(https?:\\/\\/)?([\\da-z\\.-]+)\\.([a-z\\.]{2,6})([\\/\\w \\.-]*)*\\/?",
+        },
+        {"name": "ssn", "regex": "\\d{3}-\\d{2}-\\d{4}"},
+    ]
+    vocab = Vocabulary.from_pretrained("gpt2")
+    print("\n> Current Behavior :")
+    for regex in regexes:
+        index = Index(regex["regex"], vocab)
+        guide = Guide(index)
+
+        start = time.perf_counter()
+
+        guide.get_tokens()
+
+        end = time.perf_counter()
+
+        elapsed_us = (end - start) * 1e6  # Conversion en microsecondes
+        print(f"{regex['name']}: TFM: {elapsed_us:.2f} µs")
+
+
+def test_TFM_optimized():
+    regexes = [
+        {
+            "name": "email",
+            "regex": "[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?",
+        },
+        {"name": "phone", "regex": "\\+?[1-9][0-9]{7,14}"},
+        {
+            "name": "date",
+            "regex": "([1-9]|0[1-9]|1[0-9]|2[0-9]|3[0-1])(\\.|-|/)([1-9]|0[1-9]|1[0-2])(\\.|-|/)([0-9][0-9]|19[0-9][0-9]|20[0-9][0-9])|([0-9][0-9]|19[0-9][0-9]|20[0-9][0-9])(\\.|-|/)([1-9]|0[1-9]|1[0-2])(\\.|-|/)([1-9]|0[1-9]|1[0-9]|2[0-9]|3[0-1])",
+        },
+        {
+            "name": "ip",
+            "regex": "(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)",
+        },
+        {
+            "name": "url",
+            "regex": "(https?:\\/\\/)?([\\da-z\\.-]+)\\.([a-z\\.]{2,6})([\\/\\w \\.-]*)*\\/?",
+        },
+        {"name": "ssn", "regex": "\\d{3}-\\d{2}-\\d{4}"},
+    ]
+    vocab = Vocabulary.from_pretrained("gpt2")
+    print("\n> Optimized Behavior :")
+    for regex in regexes:
+        index = Index(regex["regex"], vocab)
+        guide = Guide(index)
+        mask = create_mask(len(vocab) + 1)
+
+        start = time.perf_counter()
+
+        guide.get_tokens_into_mask(mask)
+
+        end = time.perf_counter()
+
+        elapsed_us = (end - start) * 1e6  # Conversion en microsecondes
+        print(f"{regex['name']}: TFM: {elapsed_us:.2f} µs")

@@ -25,6 +25,7 @@ classifiers = [
 ]
 dependencies = [
    "jsonschema",
+   "bitarray",
 ]
 dynamic = ["version"]
 

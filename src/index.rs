@@ -55,6 +55,8 @@ pub struct Index {
     transitions: HashMap<StateId, HashMap<TokenId, StateId>>,
     /// The token ID reserved for the "end-of-sequence" token.
     eos_token_id: TokenId,
+    /// The usefull size of the vocabulary
+    vocab_size: usize,
 }
 /// The `Index` structure is designed to efficiently map tokens from a given vocabulary
 /// to state transitions within a finite-state automaton.
@@ -100,6 +102,7 @@ impl Index {
     /// Builds an `Index` from regular expression and vocabulary tokens.
     pub fn new(regex: &str, vocabulary: &Vocabulary) -> Result<Self> {
         let eos_token_id = vocabulary.eos_token_id();
+        let vocab_size = vocabulary.tokens().len();
         let dfa = DFA::new(regex).map_err(Box::new)?;
         let start_state = match dfa.universal_start_state(Anchored::Yes) {
             Some(s) => s,
@@ -160,6 +163,7 @@ impl Index {
             final_states,
             transitions,
             eos_token_id,
+            vocab_size,
         })
     }
 
@@ -190,12 +194,21 @@ impl Index {
             .map(|res| res.keys().cloned().collect())
     }
 
+    pub fn allowed_tokens_iter(&self, state: &StateId) -> Option<impl Iterator<Item = &TokenId>> {
+        self.transitions.get(state).map(|res| res.keys())
+    }
+
     /// Returns transition state for a given state and token id or `None` otherwise.
     pub fn next_state(&self, state: &StateId, token_id: &TokenId) -> Option<StateId> {
         if token_id == &self.eos_token_id {
             return None;
         }
         Some(*self.transitions.get(state)?.get(token_id)?)
+    }
+
+    /// Returns the size of the vocabulary
+    pub fn vocab_size(&self) -> usize {
+        self.vocab_size
     }
 }
 
@@ -302,5 +315,118 @@ mod tests {
             (128, HashMap::from_iter([(8, 128)])),
         ]);
         assert_eq!(index.transitions(), &expected);
+    }
+
+    #[test]
+    fn test_allowed_tokens_iter() {
+        let mut vocabulary = Vocabulary::new(8);
+
+        for (token, token_id) in [
+            (vec![32, 240, 159, 152], 7),
+            (vec![32, 240, 159, 152, 141], 6),
+            (vec![240, 159, 152, 141], 4),
+        ] {
+            vocabulary
+                .try_insert(token, token_id as u32)
+                .expect("Insert failed");
+        }
+        let index = Index::new("[ ]?.?", &vocabulary).unwrap();
+        let initial_state = index.initial_state();
+
+        let tokens: Vec<_> = index
+            .allowed_tokens_iter(&initial_state)
+            .unwrap()
+            .cloned()
+            .collect();
+        assert_eq!(tokens, vec![7, 6, 4, 8]); // Vérifie les TokenId retournés
+    }
+
+    #[test]
+    fn test_index_memory_size() {
+        use std::mem::{size_of, size_of_val};
+        let schema = r#"{
+                 "type": "object",
+                     "properties": {
+                         "name": { "type": "string" },
+                         "age": { "type": "integer" }
+
+                     },
+                     "required": ["name", "age"]
+                 }"#;
+
+        // Generate regex from schema
+        let regex = json_schema::regex_from_str(schema, None).unwrap();
+        println!("Generated regex: {}", regex);
+
+        let vocabulary = Vocabulary::from_pretrained("gpt2", None).unwrap();
+
+        let index = Index::new(&regex, &vocabulary).expect("Index failed");
+
+        let struct_size = size_of::<Index>();
+        println!("Size of Index struct: {} bytes", struct_size);
+
+        // Taille des composants fixes
+        let initial_state_size = size_of::<StateId>();
+        let eos_token_size = size_of::<TokenId>();
+        let vocab_size_size = size_of::<usize>();
+
+        // Taille du HashSet des états finaux
+        let final_states_size =
+            size_of_val(index.final_states()) + (index.final_states().len() * size_of::<StateId>());
+        println!("Size of final_states content: {} bytes", final_states_size);
+
+        // Taille des transitions
+        let mut transitions_total_size = size_of_val(index.transitions());
+        let mut key_values_size = 0;
+
+        for (state, inner_map) in index.transitions() {
+            // Taille de la clé StateId
+            key_values_size += size_of_val(state);
+
+            // Taille de la HashMap interne
+            transitions_total_size += size_of_val(inner_map);
+
+            // Taille des entrées de la HashMap interne
+            for (token_id, next_state) in inner_map {
+                key_values_size += size_of_val(token_id) + size_of_val(next_state);
+            }
+        }
+
+        println!(
+            "Size of transitions structure: {} bytes",
+            transitions_total_size
+        );
+        println!("Size of transitions key-values: {} bytes", key_values_size);
+
+        // Taille totale estimée
+        let total_size = struct_size
+            + initial_state_size
+            + final_states_size
+            + transitions_total_size
+            + key_values_size
+            + eos_token_size
+            + vocab_size_size;
+
+        println!("\nEstimated total memory usage:");
+        println!("Structure size: {} bytes", struct_size);
+        println!("Content size: {} bytes", total_size - struct_size);
+        println!("Total size: {} bytes", total_size);
+        println!(
+            "Total size: {:.2} MB",
+            total_size as f64 / (1024.0 * 1024.0)
+        );
+
+        // Statistiques supplémentaires
+        println!("\nTransitions statistics:");
+        println!("Number of states: {}", index.transitions().len());
+        println!(
+            "Total transitions: {}",
+            index.transitions().values().map(|m| m.len()).sum::<usize>()
+        );
+        println!(
+            "Average transitions per state: {:.2}",
+            index.transitions().values().map(|m| m.len()).sum::<usize>() as f64
+                / index.transitions().len() as f64
+        );
     }
 }

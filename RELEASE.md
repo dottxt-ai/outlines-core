@@ -1,11 +1,27 @@
-# How to release
+## Overview
 
-## Python
-The python package uses the setuptools-scm plugin to automatically determine the version from git tags. When a release is created, it checks the tag and the CI automatically builds and publishes the package to PyPI.
+Release to PyPI and crates.io (`publish` workflow) is triggered automatically when a GitHub release is created.
 
-No internvention should be required.
+Python and Rust depend on package version in `Cargo.toml` which is dynamically updated to match release tag.
 
-## Rust
-The rust crate is similarly pushed through a Github Action that triggers on a release. But the version is determined by the Cargo.toml file, which has to be updated manually. Generally, the version should be the same as the python package but this isn't a strict requirement.
+### Python
 
-Currently we fail the rust release if the version in Cargo.toml doesn't match the tag. If that happens, just manually update the Cargo.toml version to match the tag. Push a new commit and rerun the job.
+`publish` workflow relies on `build_wheels` reusable workflow with `auto_bump` flag enabled.
+It then activates `bump_version` custom action to ensure that version in `Cargo.toml` was automatically updated to match the release tag before building the wheels with `maturin` backend.
+And `maturin` propagates this version to the wheels.
+
+### Rust
+
+The same `bump_version` action is used to update the version for building and publishing Rust.
+
+### Dry-run
+
+Before cutting a release, make sure that the `dry_run_publish` workflow on `main` was finished successfully.
+
+It uses `build_wheels` reusable workflow without `auto_bump` flag to build wheels (thus wheels produced with 0.0.0 version) and doesn't use `bump_version` action for Rust's publishing dry-run.
+
+### Notes
+
+Ensure that the required secrets: PYPI_SECRET, CARGO_REGISTRY_TOKEN are set up.
+
+If something went wrong `publish` workflow could be triggered manually via `workflow_dispatch` with a specified release tag.

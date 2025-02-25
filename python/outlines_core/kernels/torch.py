@@ -36,7 +36,7 @@ def allocate_token_bitmask(vocab_size: int) -> torch.Tensor:
 # Also compiles to one graph with no graph breaks
 # Performance characteristics are:
 # - Larger the logits array ( length ), the longer the kernel takes
-# - Constant time for mask i.e. number of allowed tokens does not effect execution
+# - Constant time for mask i.e. number of allowed tokens does not affect execution
 #   time
 @torch.compile(dynamic=True)
 def _apply_token_bitmask_kernel(logits, mask):

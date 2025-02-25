@@ -3,6 +3,8 @@ from importlib.metadata import PackageNotFoundError, version
 
 from .outlines_core_rs import Guide, Index, Vocabulary
 
+from .kernels import torch
+
 try:
     __version__ = version("outlines_core")
 except PackageNotFoundError:

@@ -41,7 +41,7 @@ class Guide:
         `element_size` must be 4. 
 
         `data_ptr` should be the data ptr to a `torch.tensor`, or `np.ndarray`, or other
-        continuous memory array"""
+        contiguous memory array"""
         ...
 
     def __repr__(self) -> str:

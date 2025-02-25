@@ -70,6 +70,45 @@ impl PyGuide {
         self.index.is_final_state(self.state)
     }
 
+    fn write_mask_into(
+        &self,
+        data_ptr: usize,
+        numel: usize,
+        element_size: usize
+    ) -> PyResult<()> {
+
+        if element_size != 4 {
+            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                "The data type of the Tensor must be `torch.int32`",
+            ));
+        } else if data_ptr == 0 {
+            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                "data_ptr cannot be null or nullptr",
+            ));
+        } else if data_ptr % 4 != 0 {
+            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                "data_ptr is not aligned",
+            ));
+        } else if ((self.index.0.vocab_size() +31) / 32) != numel * 4 {
+            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                "Invalid buffer size. Please ensure that the length of the mask tensor is equal to ((vocab_size + 31) / 32), and in `torch.int32` precision.",
+            ));
+        }
+        unsafe {
+            std::ptr::write_bytes(data_ptr as *mut u8, 0, numel * 4);
+        }
+        if let Some(tokens) = self.index.0.allowed_tokens_iter(&self.state) {
+            let slice = unsafe { std::slice::from_raw_parts_mut(data_ptr as *mut u32, numel) };
+            for &token in tokens {
+                let bucket = (token as usize) / 32;
+                if bucket < slice.len() {
+                    slice[bucket] |= 1 << ((token as usize) % 32);
+                }
+            }
+        }
+        Ok(())
+    }
+
     fn __repr__(&self) -> String {
         format!(
             "Guide object with the state={:#?} and {:#?}",

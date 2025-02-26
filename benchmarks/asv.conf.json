@@ -4,13 +4,18 @@
     "project_url": "https://dottxt-ai.github.io/outlines-core/",
     "repo": "..",
     "branches": [
-	      "HEAD",
+	      "HEAD"
     ],
     "build_command": [
         "pip install setuptools_rust",
         "python -mpip install .[test]",
-        "PIP_NO_BUILD_ISOLATION=false python -mpip wheel --no-deps --no-index -w {build_cache_dir} {build_dir}",
+        "PIP_NO_BUILD_ISOLATION=false python -mpip wheel --no-deps --no-index -w {build_cache_dir} {build_dir}"
     ],
+    "matrix": {
+        "torch": ["2.0.0"],
+        "numpy": ["1.24.0"],
+        "numba": ["0.60.0"]
+    },
     "environment_type": "virtualenv",
     "show_commit_url": "https://github.com/dottxt-ai/outlines-core/commit/",
     "benchmark_dir": ".",

@@ -39,6 +39,7 @@ test = [
     "coverage[toml]>=5.1",
     "diff-cover",
     "numpy",
+    "torch",
     "scipy",
     "asv",
     "psutil",

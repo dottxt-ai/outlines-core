@@ -149,8 +149,7 @@ impl Vocabulary {
     }
 
     pub fn len(&self) -> usize {
-        // +1 for `eos_token_id`
-        self.tokens.len() + 1
+        self.tokens.len()
     }
 
     /// Filters out `Prepend` kind of tokenizer's normalizers.

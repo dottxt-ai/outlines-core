@@ -76,22 +76,35 @@ impl PyGuide {
         numel: usize,
         element_size: usize
     ) -> PyResult<()> {
-
+        let expected_elements = (self.index.0.vocab_size() + 31) / 32;
         if element_size != 4 {
             return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-                "The data type of the Tensor must be `torch.int32`",
+                format!(
+                    "Invalid element size: got {} bytes per element, expected 4 bytes (32-bit integer).",
+                    element_size
+                ),
             ));
         } else if data_ptr == 0 {
             return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-                "data_ptr cannot be null or nullptr",
+                "Invalid data pointer: received a null pointer.",
             ));
         } else if data_ptr % 4 != 0 {
             return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-                "data_ptr is not aligned",
+                format!(
+                    "Invalid data pointer alignment: pointer address {} is not a multiple of 4.",
+                    data_ptr
+                )    
             ));
-        } else if ((self.index.0.vocab_size() +31) / 32) != numel * 4 {
+        } else if expected_elements != numel {
             return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-                "Invalid buffer size. Please ensure that the length of the mask tensor is equal to ((vocab_size + 31) / 32), and in `torch.int32` precision.",
+                format!(
+                    "Invalid buffer size: got {} elements ({} bytes), expected {} elements ({} bytes). \
+                    Ensure that the mask tensor has shape (1, (vocab_size + 31) // 32) and uses 32-bit integers.",
+                    numel,
+                    numel * element_size,
+                    expected_elements,
+                    expected_elements * 4
+                )
             ));
         }
         unsafe {

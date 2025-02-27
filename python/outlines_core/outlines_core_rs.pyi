@@ -35,8 +35,14 @@ class Guide:
     def advance_with_mask(self, token_id: int, mask: bytearray) -> None:
         """Guide moves to the next state provided by the token id and set the mask with allowed tokens"""
         ...
+    def advance_compressed(self, token_id: int) -> bytearray:
+        """Guide moves to the next state provided by the thoken id and return one "allowed tokens" mask"""
+        ...
     def get_tokens_into_mask(self, mask: bytearray) -> None:
         """Sets the mask with the allowed tokens for the current state"""
+        ...
+    def get_allowed_tokens_mask(self) -> bytearray:
+        """Gets the mask of the allowed tokens for the current state"""
         ...
     def is_finished(self) -> bool:
         """Checks if the automaton is in a final state."""
@@ -91,6 +97,10 @@ class Vocabulary:
 class Index:
     def __init__(self, regex: str, vocabulary: "Vocabulary"):
         """Creates an index from a regex and vocabulary."""
+        ...
+    @staticmethod
+    def with_compressed_index(regex: str, vocabulary: "Vocabulary") -> "Index":
+        """Returns an instance of CompressedIndex"""
         ...
     def get_allowed_tokens(self, state: int) -> Optional[List[int]]:
         """Returns allowed tokens in this state."""

@@ -15,9 +15,35 @@ def mask_to_list(mask_buffer: array.array) -> List[int]:
     Returns:
         List[int]: A list of token IDs corresponding to bits set to 1 in the mask.
     """
+
     mask = bitarray(endian="big")  # Reads mask from left to right.
     mask.frombytes(mask_buffer.tobytes())
     return [i for i, bit in enumerate(mask) if bit]
+
+
+def mask_bytearray_to_list(mask_buffer: bytearray) -> List[int]:
+    """
+    Converts a mask buffer into a list of token IDs where bits are set to 1.
+    Caution : It can be very slow when a lot of tokens is allowed.
+
+    Args:
+        mask_buffer: A bytearray or array.array containing the mask bits.
+
+    Returns:
+        List[int]: A list of token IDs corresponding to bits set to 1 in the mask.
+    """
+    if isinstance(mask_buffer, list):
+        # Assuming the list contains 64-bit integers
+        mask_buffer = array.array("Q", mask_buffer)
+
+    tokens = []
+    for word_idx, word in enumerate(mask_buffer):
+        base = word_idx * 64
+        for bit_idx in range(64):
+            if word & (1 << bit_idx):
+                tokens.append(base + bit_idx)
+
+    return tokens
 
 
 def create_mask(size: int) -> array.array:

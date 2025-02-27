@@ -11,7 +11,7 @@ use pyo3::wrap_pyfunction;
 use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 use tokenizers::FromPretrainedParameters;
 
-use crate::index::Index;
+use crate::index::IndexVariant;
 use crate::json_schema;
 use crate::prelude::*;
 
@@ -64,6 +64,15 @@ impl PyGuide {
         }
     }
 
+    fn get_allowed_tokens_mask(&mut self) -> PyResult<&Vec<u64>> {
+        self.index
+            .get_allowed_tokens_mask(self.state)
+            .ok_or(PyErr::new::<PyValueError, _>(format!(
+                "No allowed tokens available for the state {}",
+                self.state
+            )))
+    }
+
     fn advance(&mut self, token_id: TokenId) -> PyResult<Vec<TokenId>> {
         match self.index.get_next_state(self.state, token_id) {
             Some(new_state) => {
@@ -82,6 +91,19 @@ impl PyGuide {
             Some(new_state) => {
                 self.state = new_state;
                 self.get_tokens_into_mask(mask)
+            }
+            None => Err(PyErr::new::<PyValueError, _>(format!(
+                "No next state found for the current state: {} with token ID: {token_id}",
+                self.state
+            ))),
+        }
+    }
+
+    fn advance_compressed(&mut self, token_id: TokenId) -> PyResult<&Vec<u64>> {
+        match self.index.get_next_state(self.state, token_id) {
+            Some(new_state) => {
+                self.state = new_state;
+                self.get_allowed_tokens_mask()
             }
             None => Err(PyErr::new::<PyValueError, _>(format!(
                 "No next state found for the current state: {} with token ID: {token_id}",
@@ -170,14 +192,27 @@ impl PyGuide {
 
 #[pyclass(name = "Index", module = "outlines_core.outlines_core_rs")]
 #[derive(Clone, Debug, PartialEq, Encode, Decode)]
-pub struct PyIndex(Arc<Index>);
+pub struct PyIndex(Arc<IndexVariant>);
 
 #[pymethods]
 impl PyIndex {
     #[new]
     fn __new__(py: Python<'_>, regex: &str, vocabulary: &PyVocabulary) -> PyResult<Self> {
         py.allow_threads(|| {
-            Index::new(regex, &vocabulary.0)
+            IndexVariant::create_index(regex, &vocabulary.0)
+                .map(|x| PyIndex(Arc::new(x)))
+                .map_err(Into::into)
+        })
+    }
+
+    #[staticmethod]
+    fn with_compressed_index(
+        py: Python<'_>,
+        regex: &str,
+        vocabulary: &PyVocabulary,
+    ) -> PyResult<Self> {
+        py.allow_threads(|| {
+            IndexVariant::create_compressed(regex, &vocabulary.0)
                 .map(|x| PyIndex(Arc::new(x)))
                 .map_err(Into::into)
         })
@@ -240,7 +275,7 @@ impl PyIndex {
 
     #[staticmethod]
     fn from_binary(binary_data: Vec<u8>) -> PyResult<Self> {
-        let (index, _): (Index, usize) =
+        let (index, _): (IndexVariant, usize) =
             bincode::decode_from_slice(&binary_data[..], config::standard()).map_err(|e| {
                 PyErr::new::<PyValueError, _>(format!("Deserialization of Index failed: {}", e))
             })?;
@@ -251,6 +286,10 @@ impl PyIndex {
 impl PyIndex {
     fn get_allowed_tokens_iter(&self, state: StateId) -> Option<impl Iterator<Item = &TokenId>> {
         self.0.allowed_tokens_iter(&state)
+    }
+
+    fn get_allowed_tokens_mask(&self, state: StateId) -> Option<&Vec<u64>> {
+        self.0.allowed_tokens_mask(&state)
     }
 }
 

@@ -1,0 +1,80 @@
+# CompressedIndex Structure README
+
+The `CompressedIndex` structure is designed to provide an efficient, compressed representation of a finite-state automaton (FSA) used for token-based sequence validation or generation, such as in natural language processing or regex-based token matching. It is an optimized alternative to the standard `Index` structure, reducing memory usage and improving performance for certain operations by leveraging bitmasks and flat vectors. Below is a detailed explanation of each attribute in the `CompressedIndex` struct and its purpose.
+
+```rust
+pub struct CompressedIndex {
+    initial_state: StateId,
+    final_states: HashSet<StateId>,
+    pub state_to_index: HashMap<StateId, usize>,
+    pub state_offsets: Vec<usize>,
+    pub next_states: Vec<StateId>,
+    pub token_masks: Vec<Vec<u64>>,
+    eos_token_id: TokenId,
+    vocab_size: usize,
+    transitions: HashMap<StateId, HashMap<TokenId, StateId>>, // Useless but needed to be IndexBehavior Compliant
+}
+```
+
+## Attributes and Their Purposes
+
+### initial_state: StateId
+**Purpose**: Represents the starting state of the automaton from which processing begins.
+
+**Reason**: Every finite-state automaton requires a defined entry point to initiate token sequence evaluation. This attribute ensures that the `CompressedIndex` knows where to begin its traversal, mirroring the behavior of the standard `Index`.
+
+### final_states: HashSet<StateId>
+**Purpose**: A set of states considered terminal or accepting states in the automaton.
+
+**Reason**: In an FSA, final states indicate valid end points for a sequence. This attribute allows the `CompressedIndex` to determine when a sequence is complete (e.g., matches a regex), enabling functions like `is_final_state()` to check completion status efficiently.
+
+### state_to_index: HashMap<StateId, usize>
+**Purpose**: Maps each state identifier (StateId) to a unique index in the token_masks, state_offsets, and next_states arrays.
+
+**Reason**: This hash map provides a fast lookup mechanism to locate the position of a state's data in the compressed arrays. It ensures that all accessible states (both origins and targets of transitions) can be referenced without requiring a linear search, optimizing state-specific operations like `next_state()`.
+
+### state_offsets: Vec<usize>
+**Purpose**: Stores the starting index in the next_states vector where transitions for each state begin.
+
+**Reason**: In a flat vector like next_states, transitions for all states are stored contiguously. state_offsets acts as a delimiter, allowing quick access to the subset of next_states corresponding to a specific state. For example, `state_offsets[idx]` to `state_offsets[idx + 1]` defines the range of transitions for `state_to_index[state] = idx`.
+
+### next_states: Vec<StateId>
+**Purpose**: A flat vector containing the target states for all transitions across all states in the automaton.
+
+**Reason**: By flattening the transition targets into a single vector, `CompressedIndex` avoids the memory overhead of nested hash maps (as in `Index.transitions`). Combined with state_offsets, it provides an efficient way to retrieve the next state for a given token, reducing memory usage while maintaining access speed.
+
+### token_masks: Vec<Vec<u64>>
+**Purpose**: A vector of bitmasks where each inner Vec<u64> represents the valid tokens for a given state, with each u64 encoding 64 possible token IDs as bits (1 for allowed, 0 for not allowed).
+
+**Reason**: This is the core of the compression in `CompressedIndex`. Instead of storing a hash map of TokenId to StateId for each state, token_masks uses bits to indicate which tokens are valid, drastically reducing memory usage for large vocabularies (e.g., 50,257 tokens in GPT-2). It enables fast token validation and iteration over allowed tokens via bitwise operations.
+
+### eos_token_id: TokenId
+**Purpose**: Stores the token ID reserved for the "end-of-sequence" (EOS) token.
+
+**Reason**: The EOS token is a special marker used to indicate the end of a sequence in token-based processing. This attribute ensures compatibility with the vocabulary and allows `CompressedIndex` to handle sequence termination consistently with `Index`, rejecting EOS transitions in `next_state()` when appropriate.
+
+### vocab_size: usize
+**Purpose**: Indicates the total number of tokens in the vocabulary used by the automaton.
+
+**Reason**: This value defines the size of the token_masks bitmasks (e.g., ((vocab_size + 63) / 64) * 64 bits) and ensures that the structure can accommodate the full range of token IDs. It's crucial for memory allocation and validation of token indices.
+
+### transitions: HashMap<StateId, HashMap<TokenId, StateId>>
+**Purpose**: A hash map storing state transitions, mapping each state to a set of token-to-next-state pairs (currently unused but required for IndexBehavior compliance).
+
+**Reason**: This attribute exists solely to satisfy the IndexBehavior trait, which mandates a `transitions()` method returning a `&HashMap<StateId, HashMap<TokenId, StateId>>`. In `CompressedIndex`, it's initialized as an empty HashMap because the actual transition data is stored in token_masks and next_states. It's a legacy requirement for interface compatibility and could potentially be removed with a trait redesign.
+
+## Why Use CompressedIndex?
+
+The `CompressedIndex` structure trades off some flexibility (e.g., direct hash map lookups) for significant memory efficiency and performance improvements in specific scenarios:
+
+- **Memory Efficiency**: By using bitmasks (token_masks) and flat vectors (next_states, state_offsets), it reduces the memory footprint compared to the nested hash maps in `Index.transitions`.
+
+- **Performance**: Bitwise operations on token_masks can be faster than hash map lookups for token validation, especially with large vocabularies.
+
+- **Scalability**: Ideal for applications with large state machines or vocabularies, such as regex-driven token generation with GPT-2.
+
+## Notes
+
+- The transitions field is currently redundant and maintained only for compatibility. Future optimizations could refactor the IndexBehavior trait to remove this requirement.
+
+- The structure assumes that all states (both origins and targets) are indexed in state_to_index, ensuring full coverage of the automaton's state space.

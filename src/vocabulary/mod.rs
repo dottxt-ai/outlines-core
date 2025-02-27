@@ -148,6 +148,10 @@ impl Vocabulary {
         self.tokens.remove(&token);
     }
 
+    pub fn len(&self) -> usize {
+        self.tokens.len()
+    }
+
     /// Filters out `Prepend` kind of tokenizer's normalizers.
     fn filter_prepend_normalizers(tokenizer: &mut Tokenizer) {
         // Main concern is prepend normalizers, for example https://github.com/google/sentencepiece

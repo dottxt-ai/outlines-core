@@ -47,11 +47,17 @@ def apply_token_bitmask_inplace(logits: np.ndarray, mask: np.ndarray) -> None:
         mask = np.expand_dims(mask, axis=0)
 
     if mask.dtype != np.int32:
-        raise ValueError(f"Invalid mask dtype: Expected `np.int32`, but got `{mask.dtype}`.")
+        raise ValueError(
+            f"Invalid mask dtype: Expected `np.int32`, but got `{mask.dtype}`."
+        )
     elif mask.ndim != 2:
-        raise ValueError(f"Invalid mask dimensions: Expected a 2D array, but got {mask.ndim}D.")
+        raise ValueError(
+            f"Invalid mask dimensions: Expected a 2D array, but got {mask.ndim}D."
+        )
     elif logits.ndim != 2:
-        raise ValueError(f"Invalid logits dimensions: Expected a 2D array, but got {mask.ndim}D.")
+        raise ValueError(
+            f"Invalid logits dimensions: Expected a 2D array, but got {mask.ndim}D."
+        )
     elif mask.shape[0] != logits.shape[0]:
         raise ValueError(
             f"Invalid batch size: Expected `mask.shape[0]` ({mask.shape[0]}) to match `logits.shape[0]` ({logits.shape[0]})."
@@ -61,15 +67,22 @@ def apply_token_bitmask_inplace(logits: np.ndarray, mask: np.ndarray) -> None:
 def fill_next_token_bitmask(
     guide: Guide, mask: np.ndarray
 ) -> None:
-    # timing: all checks take roughly 0.5 microseconds.
     if mask.dtype != np.int32:
-        raise ValueError(f"Invalid mask dtype: Expected `np.int32`, but got `{mask.dtype}`.")
+        raise ValueError(
+            f"Invalid mask dtype: Expected `np.int32`, but got `{mask.dtype}`."
+        )
     elif mask.ndim != 2:
-        raise ValueError(f"Invalid mask dimensions: Expected a 2D array, but got {mask.ndim}D.")
+        raise ValueError(
+            f"Invalid mask dimensions: Expected a 2D array, but got {mask.ndim}D."
+        )
     elif mask.shape[0] != 1:
-        raise ValueError(f"Batch mask writes are not supported. Expected shape[0] == 1, but got shape {mask.shape}.")
+        raise ValueError(
+            f"Batch mask writes are not supported. Expected shape[0] == 1, but got shape {mask.shape}."
+        )
     elif not mask.flags["C_CONTIGUOUS"]:
-        raise ValueError("Mask array must be contiguous in memory. Use `np.ascontiguousarray(mask)`.")
+        raise ValueError(
+            "Mask array must be contiguous in memory. Use `np.ascontiguousarray(mask)`."
+        )
 
     return guide.write_mask_into(
         mask.ctypes.data,

@@ -1,13 +1,13 @@
 # Note that these benchmarks measure kernels to be slower then they are
-# when benchmarked outside of ASV for whatever reason. 
-# the approximate times for each kernel measured outside asv 
+# when benchmarked outside of ASV for whatever reason.
+# the approximate times for each kernel measured outside asv
 # are commented above the kernels.
-import torch
-import numpy as np
 import random
 
-from outlines_core.kernels.torch import _apply_token_bitmask_kernel as torch_kernel
+import numpy as np
+import torch
 from outlines_core.kernels.numpy import _apply_token_bitmask_kernel as np_kernel
+from outlines_core.kernels.torch import _apply_token_bitmask_kernel as torch_kernel
 
 
 class TorchBitmaskApplyBench:
@@ -23,7 +23,9 @@ class TorchBitmaskApplyBench:
         self.logits = torch.randn(1, self.vocab, device=self.device)
         self.logits_ref = self.logits.clone()
 
-        mask = self._generate_sparse_mask(1, self.vocab, allowed_count=self.allowed_tokens)
+        mask = self._generate_sparse_mask(
+            1, self.vocab, allowed_count=self.allowed_tokens
+        )
         self.mask = mask.to(self.device)
 
         self.kernel = torch_kernel
@@ -42,7 +44,7 @@ class TorchBitmaskApplyBench:
         for idx in allowed_indices:
             group = idx // 32
             shift = idx % 32
-            mask[0, group] |= (1 << shift)
+            mask[0, group] |= 1 << shift
         return mask
 
     def time_kernel(self, allowed_tokens):
@@ -61,8 +63,10 @@ class NumpyBitmaskApplyBench:
         self.logits = np.random.randn(1, self.vocab).astype(np.float32)
         self.logits_ref = self.logits.copy()
 
-        self.mask = self._generate_sparse_mask(1, self.vocab, allowed_count=self.allowed_tokens)
-        
+        self.mask = self._generate_sparse_mask(
+            1, self.vocab, allowed_count=self.allowed_tokens
+        )
+
         self.kernel = np_kernel
 
         self.input_array = self.logits_ref.copy()
@@ -79,7 +83,7 @@ class NumpyBitmaskApplyBench:
         for idx in allowed_indices:
             group = idx // 32
             shift = idx % 32
-            mask[0, group] |= (1 << shift)
+            mask[0, group] |= 1 << shift
         return mask
 
     def time_kernel(self, allowed_tokens):

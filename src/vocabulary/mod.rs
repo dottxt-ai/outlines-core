@@ -152,6 +152,10 @@ impl Vocabulary {
         self.tokens.len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.tokens.is_empty()
+    }
+
     /// Filters out `Prepend` kind of tokenizer's normalizers.
     fn filter_prepend_normalizers(tokenizer: &mut Tokenizer) {
         // Main concern is prepend normalizers, for example https://github.com/google/sentencepiece

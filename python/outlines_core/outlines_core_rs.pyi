@@ -38,12 +38,11 @@ class Guide:
     def write_mask_into(self, data_ptr: int, numel: int, element_size: int) -> None:
         """Write the mask of allowed tokens into the memory specified by data_ptr.
         Size of the memory to be written to is indicated by `numel`, and `element_size`.
-        `element_size` must be 4. 
+        `element_size` must be 4.
 
         `data_ptr` should be the data ptr to a `torch.tensor`, or `np.ndarray`, or other
         contiguous memory array"""
         ...
-
     def __repr__(self) -> str:
         """Gets the debug string representation of the guide."""
         ...

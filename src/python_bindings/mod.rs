@@ -70,12 +70,7 @@ impl PyGuide {
         self.index.is_final_state(self.state)
     }
 
-    fn write_mask_into(
-        &self,
-        data_ptr: usize,
-        numel: usize,
-        element_size: usize
-    ) -> PyResult<()> {
+    fn write_mask_into(&self, data_ptr: usize, numel: usize, element_size: usize) -> PyResult<()> {
         let expected_elements = (self.index.0.vocab_size() + 31) / 32;
         if element_size != 4 {
             return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
@@ -89,12 +84,10 @@ impl PyGuide {
                 "Invalid data pointer: received a null pointer.",
             ));
         } else if data_ptr % 4 != 0 {
-            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
-                format!(
-                    "Invalid data pointer alignment: pointer address {} is not a multiple of 4.",
-                    data_ptr
-                )
-            ));
+            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
+                "Invalid data pointer alignment: pointer address {} is not a multiple of 4.",
+                data_ptr 
+            )));
         } else if expected_elements != numel {
             return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
                 format!(

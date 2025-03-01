@@ -1,4 +1,5 @@
 //! Building an `Index` to efficiently map vocabulary tokens to state transitions.
+use std::mem::{size_of, size_of_val};
 
 use bincode::{Decode, Encode};
 use regex_automata::dfa::dense::DFA;
@@ -7,6 +8,7 @@ use regex_automata::util::primitives::StateID as AutomataStateId;
 use regex_automata::Anchored;
 use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 
+use crate::index::{IndexBehavior, TokenIdIterator};
 use crate::prelude::*;
 use crate::vocabulary::Vocabulary;
 use crate::{Error, Result};
@@ -55,6 +57,8 @@ pub struct Index {
     transitions: HashMap<StateId, HashMap<TokenId, StateId>>,
     /// The token ID reserved for the "end-of-sequence" token.
     eos_token_id: TokenId,
+    /// The usefull size of the vocabulary
+    vocab_size: usize,
 }
 /// The `Index` structure is designed to efficiently map tokens from a given vocabulary
 /// to state transitions within a finite-state automaton.
@@ -70,20 +74,20 @@ pub struct Index {
 /// # fn run() -> Result<(), outlines_core::Error> {
 /// let regex = "0|[1-9][0-9]*";
 /// let vocabulary = Vocabulary::from_pretrained("openai-community/gpt2", None)?;
-/// let index = Index::new(regex, &vocabulary)?;
+/// let Index = Index::new(regex, &vocabulary)?;
 ///
-/// let initial_state = index.initial_state();
+/// let initial_state = Index.initial_state();
 /// println!("Initial state is {}", initial_state);
-/// println!("Is initial state a final state? {}", index.is_final_state(&initial_state));
+/// println!("Is initial state a final state? {}", Index.is_final_state(&initial_state));
 ///
-/// let allowed_tokens = index.allowed_tokens(&initial_state).expect("Some allowed tokens");
+/// let allowed_tokens = Index.allowed_tokens(&initial_state).expect("Some allowed tokens");
 /// println!("Allowed tokens at initial state are {:?}", allowed_tokens);
 ///
 /// let token_id = allowed_tokens.first().expect("First token");
-/// println!("Next state for the token_id {} is {:?}", token_id, index.next_state(&initial_state, token_id));
+/// println!("Next state for the token_id {} is {:?}", token_id, Index.next_state(&initial_state, token_id));
 ///
-/// println!("Final states are {:?}", index.final_states());
-/// println!("Index has exactly {} transitions", index.transitions().len());
+/// println!("Final states are {:?}", Index.final_states());
+/// println!("Index has exactly {} transitions", Index.transitions().len());
 /// # Ok(())
 /// # }
 ///
@@ -100,6 +104,7 @@ impl Index {
     /// Builds an `Index` from regular expression and vocabulary tokens.
     pub fn new(regex: &str, vocabulary: &Vocabulary) -> Result<Self> {
         let eos_token_id = vocabulary.eos_token_id();
+        let vocab_size = vocabulary.tokens().len();
         let dfa = DFA::new(regex).map_err(Box::new)?;
         let start_state = match dfa.universal_start_state(Anchored::Yes) {
             Some(s) => s,
@@ -160,42 +165,130 @@ impl Index {
             final_states,
             transitions,
             eos_token_id,
+            vocab_size,
         })
     }
 
+    pub fn memory_usage(&self) -> usize {
+        let struct_size = size_of::<Index>();
+
+        let initial_state_size = size_of::<StateId>();
+        let eos_token_id_size = size_of::<TokenId>();
+        let vocab_size_size = size_of::<usize>();
+
+        let final_states_container = size_of_val(&self.final_states);
+
+        let final_states_content = self.final_states.len() * (size_of::<StateId>() + 1);
+        let final_states_size = final_states_container + final_states_content;
+
+        let transitions_container = size_of_val(&self.transitions);
+
+        let mut inner_maps_size = 0;
+        let mut transitions_content_size = 0;
+        #[allow(clippy::for_kv_map)]
+        for (_, inner_map) in &self.transitions {
+            inner_maps_size += size_of_val(inner_map);
+
+            transitions_content_size +=
+                inner_map.len() * (size_of::<TokenId>() + size_of::<StateId>() + 1);
+        }
+
+        let transitions_total_size =
+            transitions_container + inner_maps_size + transitions_content_size;
+
+        let total_size = struct_size
+            + initial_state_size
+            + eos_token_id_size
+            + vocab_size_size
+            + final_states_size
+            + transitions_total_size;
+
+        println!("Index memory usage:");
+        println!("  Structure de base: {} bytes", struct_size);
+        println!("  initial_state: {} bytes", initial_state_size);
+        println!("  final_states: {} bytes", final_states_size);
+        println!("  transitions: {} bytes", transitions_total_size);
+        println!("    - container: {} bytes", transitions_container);
+        println!("    - inner maps: {} bytes", inner_maps_size);
+        println!("    - transitions data: {} bytes", transitions_content_size);
+        println!("  eos_token_id: {} bytes", eos_token_id_size);
+        println!("  vocab_size: {} bytes", vocab_size_size);
+        println!(
+            "Total memory usage: {} bytes ({:.2} MB)",
+            total_size,
+            total_size as f64 / (1024.0 * 1024.0)
+        );
+
+        println!("\nTransitions statistics:");
+        println!("  Number of states: {}", self.transitions.len());
+        let total_transitions = self.transitions.values().map(|m| m.len()).sum::<usize>();
+        println!("  Total transitions: {}", total_transitions);
+        println!(
+            "  Average transitions per state: {:.2}",
+            if self.transitions.is_empty() {
+                0.0
+            } else {
+                total_transitions as f64 / self.transitions.len() as f64
+            }
+        );
+
+        total_size
+    }
+}
+
+impl IndexBehavior for Index {
     /// Returns the ID of the initial state in the automaton.
-    pub fn initial_state(&self) -> StateId {
+    fn initial_state(&self) -> StateId {
         self.initial_state
     }
 
     /// Returns set of final states.
-    pub fn final_states(&self) -> &HashSet<StateId> {
+    fn final_states(&self) -> &HashSet<StateId> {
         &self.final_states
     }
 
+    fn eos_token_id(&self) -> TokenId {
+        self.eos_token_id
+    }
+
     /// Returns state transitions map of tokens ids and their corresponding transition states.
-    pub fn transitions(&self) -> &HashMap<StateId, HashMap<TokenId, StateId>> {
+    fn transitions(&self) -> &HashMap<StateId, HashMap<TokenId, StateId>> {
         &self.transitions
     }
 
     /// Checks if state is in final states set or not.
-    pub fn is_final_state(&self, state: &StateId) -> bool {
+    fn is_final_state(&self, state: &StateId) -> bool {
         self.final_states.contains(state)
     }
 
     /// Lists allowed tokens for a give state ID or `None` if it is not found in `Index`.
-    pub fn allowed_tokens(&self, state: &StateId) -> Option<Vec<TokenId>> {
+    fn allowed_tokens(&self, state: &StateId) -> Option<Vec<TokenId>> {
         self.transitions
             .get(state)
             .map(|res| res.keys().cloned().collect())
     }
 
+    fn allowed_tokens_iter(&self, state: &StateId) -> Option<TokenIdIterator> {
+        self.transitions
+            .get(state)
+            .map(|res| TokenIdIterator::new(res.keys()))
+    }
+
+    fn allowed_tokens_mask(&self, _state: &StateId) -> Option<&Vec<u64>> {
+        None
+    }
+
     /// Returns transition state for a given state and token id or `None` otherwise.
-    pub fn next_state(&self, state: &StateId, token_id: &TokenId) -> Option<StateId> {
+    fn next_state(&self, state: &StateId, token_id: &TokenId) -> Option<StateId> {
         if token_id == &self.eos_token_id {
             return None;
         }
         Some(*self.transitions.get(state)?.get(token_id)?)
+    }
+
+    /// Returns the size of the vocabulary
+    fn vocab_size(&self) -> usize {
+        self.vocab_size
     }
 }
 
@@ -302,5 +395,47 @@ mod tests {
             (128, HashMap::from_iter([(8, 128)])),
         ]);
         assert_eq!(index.transitions(), &expected);
+    }
+
+    #[test]
+    fn test_allowed_tokens_iter() {
+        let mut vocabulary = Vocabulary::new(8);
+
+        for (token, token_id) in [
+            (vec![32, 240, 159, 152], 7),
+            (vec![32, 240, 159, 152, 141], 6),
+            (vec![240, 159, 152, 141], 4),
+        ] {
+            vocabulary
+                .try_insert(token, token_id as u32)
+                .expect("Insert failed");
+        }
+        let index = Index::new("[ ]?.?", &vocabulary).unwrap();
+        let initial_state = index.initial_state();
+
+        let tokens: Vec<_> = index
+            .allowed_tokens_iter(&initial_state)
+            .unwrap()
+            .cloned()
+            .collect();
+        assert_eq!(tokens, vec![7, 6, 4, 8]); // Vérifie les TokenId retournés
+    }
+
+    #[test]
+    fn test_index_memory_size() {
+        let schema = r#"{"type": "object", "properties": {"name": {"type": "string"}, "age": {"type": "integer"}, "email": {"type": "string", "format": "email"}}, "required": ["name", "age", "email"]}"#;
+
+        // Generate regex from schema
+        let regex = json_schema::regex_from_str(schema, None).unwrap();
+
+        //let regex : &str =  r"[a-zA-Z]{100}";
+        // println!("Generated regex: {}", regex);
+
+        let vocabulary = Vocabulary::from_pretrained("gpt2", None).unwrap();
+
+        let index = Index::new(&regex, &vocabulary).expect("Index failed");
+
+        let memory_usage = index.memory_usage();
+        println!("Index utilise {} bytes", memory_usage);
     }
 }

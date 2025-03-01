@@ -21,6 +21,7 @@ hf-hub = "=0.3.2"
 tokenizers = { version = "=0.20.3", features = ["http"] }
 rustc-hash = "2.1.0"
 regex-automata = "0.4.9"
+rand = "0.9.0"
 
 [features]
 python-bindings = ["pyo3", "serde-pyobject"]

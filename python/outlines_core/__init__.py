@@ -1,7 +1,6 @@
 """This package provides core functionality for structured generation, formerly implemented in Outlines."""
 from importlib.metadata import PackageNotFoundError, version
 
-from .kernels import torch
 from .outlines_core_rs import Guide, Index, Vocabulary
 
 try:

@@ -39,6 +39,7 @@ test = [
     "coverage[toml]>=5.1",
     "diff-cover",
     "numpy",
+    "torch",
     "scipy",
     "asv",
     "psutil",
@@ -58,7 +59,7 @@ content-type = "text/markdown"
 skip = ["*-musllinux_i686"]
 
 [tool.setuptools]
-packages = ["outlines_core"]
+packages = ["outlines_core", "outlines_core.kernels"]
 package-dir = {"" = "python"}
 
 [tool.setuptools.package-data]

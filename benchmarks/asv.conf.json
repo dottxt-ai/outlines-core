@@ -12,8 +12,8 @@
         "PIP_NO_BUILD_ISOLATION=false python -mpip wheel --no-deps --no-index -w {build_cache_dir} {build_dir}"
     ],
     "matrix": {
-        "torch": ["2.0.0"],
-        "numpy": ["1.24.0"],
+        "torch": ["2.4.0"],
+        "numpy": ["2.2.3"],
         "numba": ["0.60.0"]
     },
     "environment_type": "virtualenv",

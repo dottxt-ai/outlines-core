@@ -75,12 +75,23 @@ class MlxBitmaskApplyBenchmark:
     params = [10, 100, 1000, 10000]
     param_names = ["allowed_tokens"]
     number = 10
-    disabled = True
+
 
     def setup(self, allowed_tokens):
-        import mlx.core as mx
-        from outlines_core.kernels.mlx import _apply_token_bitmask_kernel as mlx_kernel
+        try:
+            import mlx.core as mx
+            from outlines_core.kernels.mlx import _apply_token_bitmask_kernel as mlx_kernel
+            self.mlx_available = True
+        except ImportError as e:
+            self.mlx_available = False
 
+        # if mlx is unavailable, reset the time_kernel to pass,
+        # so that when mlx is available timings are not impacted.
+        if not self.mlx_available:
+            def time_kernel(self, allowed_tokens):
+                pass
+            self.time_kernel = time_kernel
+            return
         self.allowed_tokens = allowed_tokens
         self.vocab = 128000
 

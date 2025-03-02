@@ -86,7 +86,7 @@ impl PyGuide {
         } else if data_ptr % 4 != 0 {
             return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
                 "Invalid data pointer alignment: pointer address {} is not a multiple of 4.",
-                data_ptr 
+                data_ptr
             )));
         } else if expected_elements != numel {
             return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(

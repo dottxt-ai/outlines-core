@@ -56,7 +56,7 @@ pub struct Index {
     /// The token ID reserved for the "end-of-sequence" token.
     eos_token_id: TokenId,
     /// The size of the vocabulary used to build the index
-    vocab_size: usize
+    vocab_size: usize,
 }
 /// The `Index` structure is designed to efficiently map tokens from a given vocabulary
 /// to state transitions within a finite-state automaton.
@@ -163,7 +163,7 @@ impl Index {
             final_states,
             transitions,
             eos_token_id,
-            vocab_size
+            vocab_size,
         })
     }
 

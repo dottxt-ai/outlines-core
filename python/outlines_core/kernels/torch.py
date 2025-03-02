@@ -42,17 +42,12 @@ def allocate_token_bitmask(vocab_size: int) -> torch.Tensor:
 #   time
 @torch.compile(dynamic=True)
 def _apply_token_bitmask_kernel(logits, mask):
-    # This should not modify, so long as the mask
-    # is allocated at the correct size
-    logits = torch.where(
-        torch.ge(
-            torch.arange(logits.shape[1], device=logits.device), 32 * mask.shape[1]
-        ),
-        -torch.inf,
-        logits,
-    )
+    # This will set any logits beyond the mask
+    # to -torch.inf
+    cutoff = 32 * mask.shape[1]
+    logits[:, cutoff:] = -torch.inf
 
-    # Unpack each 32-bit mask value into 32 individual bits (as booleans)
+    # Unpack mask so each bit is a boolean
     bit_masks = (
         (
             torch.bitwise_right_shift(
@@ -66,8 +61,6 @@ def _apply_token_bitmask_kernel(logits, mask):
         .narrow(1, 0, logits.shape[1])
     )
 
-    # Possibly trim mask to match the logits width
-    bit_masks = bit_masks[:, : logits.shape[1]]
     logits.masked_fill_(~bit_masks, -torch.inf)
 
 

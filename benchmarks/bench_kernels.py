@@ -10,14 +10,14 @@ from outlines_core.kernels.numpy import _apply_token_bitmask_kernel as np_kernel
 from outlines_core.kernels.torch import _apply_token_bitmask_kernel as torch_kernel
 
 def generate_sparse_mask(batch, vocab, allowed_count=1000):
-        mask_shape = (batch, (vocab + 31) // 32)
-        mask = np.zeros(mask_shape, dtype=np.int32)
-        allowed_indices = random.sample(range(vocab), allowed_count)
-        for idx in allowed_indices:
-            group = idx // 32
-            shift = idx % 32
-            mask[0, group] |= 1 << shift
-        return mask
+    mask_shape = (batch, (vocab + 31) // 32)
+    mask = np.zeros(mask_shape, dtype=np.int32)
+    allowed_indices = random.sample(range(vocab), allowed_count)
+    for idx in allowed_indices:
+        group = idx // 32
+        shift = idx % 32
+        mask[0, group] |= 1 << shift
+    return mask
 
 class TorchBitmaskApplyBench:
     params = [10, 100, 1000, 10000]
@@ -31,9 +31,9 @@ class TorchBitmaskApplyBench:
 
         self.logits = torch.randn(1, self.vocab, device=self.device)
 
-        mask = torch.from_numpy(generate_sparse_mask(
-            1, self.vocab, allowed_count=self.allowed_tokens
-        ))
+        mask = torch.from_numpy(
+            generate_sparse_mask(1, self.vocab, allowed_count=self.allowed_tokens)
+        )
         self.mask = mask.to(self.device)
 
         self.kernel = torch_kernel
@@ -76,16 +76,17 @@ class MlxBitmaskApplyBench:
     disabled = True
 
     def setup(self, allowed_tokens):
-        from outlines_core.kernels.mlx import _apply_token_bitmask_kernel as mlx_kernel
         import mlx.core as mx
+        from outlines_core.kernels.mlx import _apply_token_bitmask_kernel as mlx_kernel
+
         self.allowed_tokens = allowed_tokens
         self.vocab = 128000
 
         self.logits = mx.array(np.random.randn(1, self.vocab).astype(np.float32))
 
-        self.mask = mx.array(generate_sparse_mask(
-            1, self.vocab, allowed_count=self.allowed_tokens
-        ))
+        self.mask = mx.array(
+            generate_sparse_mask(1, self.vocab, allowed_count=self.allowed_tokens)
+        )
 
         self.kernel = mlx_kernel
 

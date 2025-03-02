@@ -53,13 +53,6 @@ impl CompressedIndex {
         sorted_states.sort_by_key(|&(_, &idx)| idx);
 
         for (state_id, idx) in sorted_states {
-            if *state_id == 96 {
-                let empty_map = HashMap::default();
-                let transitions = index.transitions().get(state_id).unwrap_or(&empty_map);
-
-                let mut sorted_transitions: Vec<_> = transitions.iter().collect();
-                sorted_transitions.sort_by_key(|(&token, _)| token);
-            }
             state_offsets[*idx] = current_offset;
 
             if let Some(transitions) = index.transitions().get(state_id) {

@@ -148,3 +148,21 @@ def test_equality(index):
     guide1.advance(guide1.get_tokens()[-1])
     assert guide1 != guide2
     assert guide3 == guide2
+
+def test_write_mask_into(index):
+    import torch
+    guide = Guide(index)
+    mask = torch.tensor(torch.tensor([-1], dtype=torch.uint32))
+    guide.write_mask_into(
+        mask.data_ptr(),
+        mask.numel(),
+        mask.element_size()
+    )
+
+    expected_mask = 0
+    for token in guide.get_tokens():
+        expected_mask |= (1 << (token % 32))
+
+    assert mask[0] == expected_mask, f"mask and expected mask do not match. Mask: {mask[0]}, Expected: {expected_mask}"
+
+

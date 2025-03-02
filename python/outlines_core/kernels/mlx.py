@@ -102,7 +102,7 @@ def fill_next_token_bitmask(guide: Guide, mask: np.ndarray) -> None:
         )
     elif mask.shape[0] != 1:
         raise ValueError(
-            f"Batch mask writes are not supported. Expected shape[0] == 1, but got shape {mask.shape}."
+            f"Invalid batch size: Batch mask writes are not supported. Expected shape[0] == 1, but got shape {mask.shape}."
         )
     elif not mask.flags["C_CONTIGUOUS"]:
         raise ValueError(

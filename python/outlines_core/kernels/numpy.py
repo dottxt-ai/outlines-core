@@ -19,7 +19,7 @@ def allocate_token_bitmask(vocab_size: int) -> np.ndarray:
 
 
 @numba.njit
-def _apply_token_bitmask_kernel(logits, mask):
+def _apply_token_bitmask_inplace_kernel(logits, mask):
     mask_len = mask.shape[1]
     cutoff = 32 * mask_len
 
@@ -78,7 +78,7 @@ def apply_token_bitmask_inplace(logits: np.ndarray, mask: np.ndarray) -> None:
         raise ValueError(
             f"Invalid batch size: Expected `mask.shape[0]` ({mask.shape[0]}) to match `logits.shape[0]` ({logits.shape[0]})."
         )
-    _apply_token_bitmask_kernel(logits, mask)
+    _apply_token_bitmask_inplace_kernel(logits, mask)
 
 
 def fill_next_token_bitmask(guide: Guide, mask: np.ndarray) -> None:

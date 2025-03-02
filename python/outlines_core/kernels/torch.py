@@ -41,7 +41,7 @@ def allocate_token_bitmask(vocab_size: int) -> torch.Tensor:
 # - Constant time for mask i.e. number of allowed tokens does not affect execution
 #   time
 @torch.compile(dynamic=True)
-def _apply_token_bitmask_kernel(logits, mask):
+def _apply_token_bitmask_inplace_kernel(logits, mask):
     # This will set any logits beyond the mask
     # to -torch.inf
     cutoff = 32 * mask.shape[1]
@@ -96,7 +96,7 @@ def apply_token_bitmask_inplace(logits: torch.Tensor, mask: torch.Tensor) -> Non
         raise ValueError(
             f"Invalid batch size: Expected `mask.shape[0]` ({mask.shape[0]}) to match `logits.shape[0]` ({logits.shape[0]})."
         )
-    _apply_token_bitmask_kernel(logits, mask)
+    _apply_token_bitmask_inplace_kernel(logits, mask)
 
 
 def fill_next_token_bitmask(guide: Guide, mask: torch.Tensor) -> None:

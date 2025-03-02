@@ -9,6 +9,7 @@ import torch
 from outlines_core.kernels.numpy import _apply_token_bitmask_kernel as np_kernel
 from outlines_core.kernels.torch import _apply_token_bitmask_kernel as torch_kernel
 
+
 def generate_sparse_mask(batch, vocab, allowed_count=1000):
     mask_shape = (batch, (vocab + 31) // 32)
     mask = np.zeros(mask_shape, dtype=np.int32)
@@ -19,7 +20,8 @@ def generate_sparse_mask(batch, vocab, allowed_count=1000):
         mask[0, group] |= 1 << shift
     return mask
 
-class TorchBitmaskApplyBench:
+
+class TorchBitmaskApplyBenchmark:
     params = [10, 100, 1000, 10000]
     param_names = ["allowed_tokens"]
     number = 10
@@ -45,7 +47,7 @@ class TorchBitmaskApplyBench:
         self.kernel(self.logits, self.mask)
 
 
-class NumpyBitmaskApplyBench:
+class NumpyBitmaskApplyBenchmark:
     params = [10, 100, 1000, 10000]
     param_names = ["allowed_tokens"]
     number = 10
@@ -69,7 +71,7 @@ class NumpyBitmaskApplyBench:
         self.kernel(self.logits, self.mask)
 
 
-class MlxBitmaskApplyBench:
+class MlxBitmaskApplyBenchmark:
     params = [10, 100, 1000, 10000]
     param_names = ["allowed_tokens"]
     number = 10

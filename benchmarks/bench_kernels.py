@@ -6,8 +6,10 @@ import random
 
 import numpy as np
 import torch
-from outlines_core.kernels.numpy import _apply_token_bitmask_kernel as np_kernel
-from outlines_core.kernels.torch import _apply_token_bitmask_kernel as torch_kernel
+from outlines_core.kernels.numpy import _apply_token_bitmask_inplace_kernel as np_kernel
+from outlines_core.kernels.torch import (
+    _apply_token_bitmask_inplace_kernel as torch_kernel,
+)
 
 
 def generate_sparse_mask(batch, vocab, allowed_count=1000):
@@ -76,20 +78,24 @@ class MlxBitmaskApplyBenchmark:
     param_names = ["allowed_tokens"]
     number = 10
 
-
     def setup(self, allowed_tokens):
         try:
             import mlx.core as mx
-            from outlines_core.kernels.mlx import _apply_token_bitmask_kernel as mlx_kernel
+            from outlines_core.kernels.mlx import (
+                _apply_token_bitmask_kernel as mlx_kernel,
+            )
+
             self.mlx_available = True
-        except ImportError as e:
+        except ImportError:
             self.mlx_available = False
 
         # if mlx is unavailable, reset the time_kernel to pass,
         # so that when mlx is available timings are not impacted.
         if not self.mlx_available:
+
             def time_kernel(self, allowed_tokens):
                 pass
+
             self.time_kernel = time_kernel
             return
         self.allowed_tokens = allowed_tokens

@@ -99,8 +99,5 @@ class WriteMaskIntoBenchmark:
 
     def time_write_mask_into(self, regex_key):
         self.guide.write_mask_into(
-            self.mask.data_ptr(),
-            self.mask.numel(),
-            self.mask.element_size()
+            self.mask.data_ptr(), self.mask.numel(), self.mask.element_size()
         )
-

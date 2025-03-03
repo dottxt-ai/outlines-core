@@ -5,7 +5,7 @@ import random
 import time
 
 import psutil
-from outlines_core import Guide, Index, Vocabulary, mask_bytearray_to_list
+from outlines_core import Guide, Index, Vocabulary, create_mask, mask_to_list
 from outlines_core.json_schema import build_regex_from_schema
 
 os.environ["RUST_LOG"] = "debug"
@@ -76,12 +76,14 @@ schemas = [
 
 class IndexVariantBenchmark:
     def setup(self, regex):
-        self.vocab = Vocabulary.from_pretrained("unsloth/Meta-Llama-3.1-8B-Instruct")
+        self.vocab = Vocabulary.from_pretrained("gpt2")
         self.standard_index = Index(regex, self.vocab)
         self.compressed_index = Index.with_compressed_index(regex, self.vocab)
 
         self.standard_guide = Guide(self.standard_index)
         self.compressed_guide = Guide(self.compressed_index)
+
+        self.mask = create_mask(len(self.vocab) + 1)
 
         self.process = psutil.Process()
         assert (
@@ -110,7 +112,7 @@ class IndexVariantBenchmark:
             standard_total_time += standard_time
 
             start_compressed = time.perf_counter()
-            compressed_tokens = self.compressed_guide.get_allowed_tokens_mask()
+            self.compressed_guide.get_tokens_into_mask(self.mask)
             end_compressed = time.perf_counter()
 
             compressed_time = end_compressed - start_compressed
@@ -119,7 +121,7 @@ class IndexVariantBenchmark:
             random_idx = random.randrange(len(standard_tokens))
             self.current_token_id = standard_tokens[random_idx]
 
-            mask_tokens_list = mask_bytearray_to_list(compressed_tokens)
+            mask_tokens_list = mask_to_list(self.mask)
             assert (
                 self.current_token_id in mask_tokens_list,
                 f"Token {self.current_token_id} from Standard not found in Compressed, Iteration {iterations}",
@@ -140,9 +142,7 @@ class IndexVariantBenchmark:
             standard_total_time += standard_time  # noqa: E713
 
             start_compressed = time.perf_counter()
-            compressed_tokens = self.compressed_guide.advance_compressed(
-                self.current_token_id
-            )
+            self.compressed_guide.advance_compressed(self.current_token_id, self.mask)
             end_compressed = time.perf_counter()
 
             compressed_time = end_compressed - start_compressed
@@ -160,7 +160,7 @@ class IndexVariantBenchmark:
                 random_idx = random.randrange(len(standard_tokens))
                 self.current_token_id = standard_tokens[random_idx]
 
-                mask_tokens_list = mask_bytearray_to_list(compressed_tokens)
+                mask_tokens_list = mask_to_list(self.mask)
                 assert (
                     self.current_token_id in mask_tokens_list,
                     f"Token {self.current_token_id} from Standard not found in Compressed, Iteration {iterations}",  # noqa: E731,F631

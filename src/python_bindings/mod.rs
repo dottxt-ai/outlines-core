@@ -54,9 +54,17 @@ impl PyGuide {
             )))
     }
 
-    fn get_tokens_into_mask(&mut self, mask: PyBuffer<u8>) -> PyResult<()> {
-        let buffer_ptr = mask.buf_ptr() as *mut u8;
-        let buffer_len = mask.len_bytes();
+    fn get_tokens_into_mask(&mut self, mask: &Bound<'_, PyAny>) -> PyResult<()> {
+        let buffer: PyBuffer<u64> = PyBuffer::get(mask)?;
+
+        if buffer.item_size() != std::mem::size_of::<u64>() {
+            return Err(PyErr::new::<PyValueError, _>(
+                "Buffer must contain u64 elements",
+            ));
+        }
+
+        let buffer_ptr = buffer.buf_ptr() as *mut u64;
+        let buffer_len = buffer.len_bytes();
 
         unsafe {
             let mut_slice = std::slice::from_raw_parts_mut(buffer_ptr, buffer_len);
@@ -86,7 +94,7 @@ impl PyGuide {
         }
     }
 
-    fn advance_with_mask(&mut self, token_id: TokenId, mask: PyBuffer<u8>) -> PyResult<()> {
+    fn advance_with_mask(&mut self, token_id: TokenId, mask: &Bound<'_, PyAny>) -> PyResult<()> {
         match self.index.get_next_state(self.state, token_id) {
             Some(new_state) => {
                 self.state = new_state;
@@ -99,11 +107,11 @@ impl PyGuide {
         }
     }
 
-    fn advance_compressed(&mut self, token_id: TokenId) -> PyResult<&Vec<u64>> {
+    fn advance_compressed(&mut self, token_id: TokenId, mask: &Bound<'_, PyAny>) -> PyResult<()> {
         match self.index.get_next_state(self.state, token_id) {
             Some(new_state) => {
                 self.state = new_state;
-                self.get_allowed_tokens_mask()
+                self.get_tokens_into_mask(mask)
             }
             None => Err(PyErr::new::<PyValueError, _>(format!(
                 "No next state found for the current state: {} with token ID: {token_id}",
@@ -157,33 +165,22 @@ impl PyGuide {
 
 impl PyGuide {
     // Pivate methods.
-    fn write_into_mask(&mut self, mask: &mut [u8]) -> PyResult<()> {
+    fn write_into_mask(&mut self, mask: &mut [u64]) -> PyResult<()> {
         let vocab_size = self.index.get_vocab_size();
         let total_size = vocab_size + 1; // Ceil
 
-        if (mask.len() * 8) < total_size {
+        if (mask.len() * 64) < total_size {
             return Err(PyErr::new::<PyValueError, _>(format!(
                 "Mask size ({} bytes) lower than required size ({} bytes)",
-                mask.len() * 8,
+                mask.len() * 64,
                 total_size
             )));
         }
 
-        // Fast reset
-        // for byte in mask.iter_mut() {
-        //     *byte = 0;
-        // }
-
-        mask.fill(0);
-
-        if let Some(allowed) = self.index.get_allowed_tokens_iter(self.state) {
-            for &token_id in allowed {
-                let byte_idx = (token_id as usize) >> 3; // Division by 8
-                let bit_idx = (token_id as usize) & 0x7; // modulo 8
-                if byte_idx < mask.len() {
-                    mask[byte_idx] |= 1 << (7 - bit_idx); // Format MSB
-                }
-            }
+        if let Some(inner_mask) = self.index.get_allowed_tokens_mask(self.state) {
+            mask[..inner_mask.len()].copy_from_slice(inner_mask);
+        } else {
+            mask.fill(0);
         }
 
         Ok(())
@@ -284,6 +281,7 @@ impl PyIndex {
 }
 
 impl PyIndex {
+    #[allow(dead_code)]
     fn get_allowed_tokens_iter(&self, state: StateId) -> Option<impl Iterator<Item = &TokenId>> {
         self.0.allowed_tokens_iter(&state)
     }

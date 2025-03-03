@@ -1,3 +1,4 @@
+import array
 from typing import Dict, List, Optional, Set, Tuple, Union
 
 def build_regex_from_schema(
@@ -32,16 +33,16 @@ class Guide:
     def advance(self, token_id: int) -> List[int]:
         """Guide moves to the next state provided by the token id and returns a list of allowed tokens."""
         ...
-    def advance_with_mask(self, token_id: int, mask: bytearray) -> None:
+    def advance_with_mask(self, token_id: int, mask: array.array) -> None:
         """Guide moves to the next state provided by the token id and set the mask with allowed tokens"""
         ...
-    def advance_compressed(self, token_id: int) -> bytearray:
+    def advance_compressed(self, token_id: int, mask: array.array) -> None:
         """Guide moves to the next state provided by the thoken id and return one "allowed tokens" mask"""
         ...
-    def get_tokens_into_mask(self, mask: bytearray) -> None:
+    def get_tokens_into_mask(self, mask: array.array) -> None:
         """Sets the mask with the allowed tokens for the current state"""
         ...
-    def get_allowed_tokens_mask(self) -> bytearray:
+    def get_allowed_tokens_mask(self) -> array.array:
         """Gets the mask of the allowed tokens for the current state"""
         ...
     def is_finished(self) -> bool:

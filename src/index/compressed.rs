@@ -253,6 +253,8 @@ impl std::fmt::Display for CompressedIndex {
 
 #[cfg(test)]
 mod tests {
+    use std::time::{Duration, Instant};
+
     use super::*;
 
     #[test]
@@ -397,5 +399,85 @@ mod tests {
                 compressed_state = compressed_next_state;
             }
         }
+    }
+
+    fn pick_last_bit_position(tokens_mask: &[u64]) -> Option<usize> {
+        // Collecter toutes les positions des bits à 1
+        let mut bit_positions = Vec::new();
+
+        for (i, &mask) in tokens_mask.iter().enumerate() {
+            if mask != 0 {
+                // Ignorer les u64 vides
+                let mut value = mask;
+                while value != 0 {
+                    // Trouver la position du bit le plus à droite (trailing zeros)
+                    let bit_pos = value.trailing_zeros() as usize;
+                    // Position globale = (index du u64 * 64) + position dans ce u64
+                    let global_pos = i * 64 + bit_pos;
+                    bit_positions.push(global_pos);
+                    // Effacer ce bit pour passer au suivant
+                    value &= value - 1;
+                }
+            }
+        }
+        if bit_positions.is_empty() {
+            return None;
+        }
+        if bit_positions.len() == 1 {
+            return Some(bit_positions[0]);
+        }
+        Some(bit_positions[bit_positions.len() / 2])
+    }
+    #[test]
+    fn test_speed() {
+        let regex: &str = r"(?:[a-z0-9!#$%&'*+/=?^_`{|}~-]{1,63}(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]{1,63}){0,10})@(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.){1,3}[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?";
+        let vocabulary =
+            Vocabulary::from_pretrained("unsloth/Llama-3.1-8B-Instruct", None).unwrap();
+        let index = IndexVariant::create_compressed(regex, &vocabulary).expect("Index failed");
+
+        let start_state = index.initial_state();
+        let mut tokens_mask = index.allowed_tokens_mask(&start_state).unwrap();
+        let mut current_state = start_state;
+        let mut iteration = 0;
+
+        let mut next_state_total_time = Duration::new(0, 0);
+        let mut allowed_tokens_total_time = Duration::new(0, 0);
+
+        while !index.final_states().contains(&current_state) {
+            iteration += 1;
+            let token_id = pick_last_bit_position(tokens_mask).unwrap();
+
+            let start_next_state = Instant::now();
+            current_state = index
+                .next_state(&current_state, &(token_id as u32))
+                .unwrap();
+            let next_state_time = start_next_state.elapsed();
+            next_state_total_time += next_state_time;
+
+            let start_allowed_tokens = Instant::now();
+            tokens_mask = index.allowed_tokens_mask(&current_state).unwrap();
+            let allowed_tokens_time = start_allowed_tokens.elapsed();
+            allowed_tokens_total_time += allowed_tokens_time;
+        }
+
+        let next_total_time_us = next_state_total_time.as_micros() as f64;
+        let allowed_total_time_us = allowed_tokens_total_time.as_micros() as f64;
+
+        println!("Total iterations (Number of tokens): {}", iteration);
+        println!(
+            "next_state(): {:.2} µs ({:.2} µs per iteration)",
+            next_total_time_us,
+            next_total_time_us / iteration as f64
+        );
+        println!(
+            "allowed_tokens_mask(): {:.2} µs ({:.2} µs per iteration)",
+            allowed_total_time_us,
+            allowed_total_time_us / iteration as f64
+        );
+        println!(
+            "Total Time: {:.2} µs ({:.2} µs per iteration)",
+            allowed_total_time_us + next_total_time_us,
+            (next_total_time_us + allowed_total_time_us) / iteration as f64
+        );
     }
 }

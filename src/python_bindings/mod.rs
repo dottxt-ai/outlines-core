@@ -6,11 +6,12 @@ use bincode::{config, Decode, Encode};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyDict};
+use pyo3::buffer::PyBuffer;
 use pyo3::wrap_pyfunction;
 use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 use tokenizers::FromPretrainedParameters;
 
-use crate::index::Index;
+use crate::v2_index::V2Index;
 use crate::json_schema;
 use crate::prelude::*;
 
@@ -41,23 +42,54 @@ impl PyGuide {
     fn get_state(&self) -> StateId {
         self.state
     }
+    #[pyo3(signature = (mask=None))]
+    fn get_tokens(&self, mask: Option<&Bound<'_, PyAny>>) -> PyResult<Vec<TokenId>> {
+        
+        // If a mask reference is passed from parameters then it's filled with inner_mask value.
+        // else, the inner mask is turned to a vec of TokenId and the vec is returned.
+        // It allows no breaking change for outlines-core users. 
+        // Of course, use the Guide with mask reference to get better speed perfomance.
 
-    fn get_tokens(&self) -> PyResult<Vec<TokenId>> {
-        self.index
-            .get_allowed_tokens(self.state)
+        let  vec_result: Vec<TokenId> = Vec::new();
+
+        let inner_mask_opt = self.index
+            .get_allowed_tokens(self.state);
+        
+        if let Some(inner_mask) = inner_mask_opt {
+            if let  Some(outer_mask_py) = mask{
+                let buffer: PyBuffer<u64> = PyBuffer::get(outer_mask_py)?;
+                if buffer.item_size() != std::mem::size_of::<u64>() {
+                    return Err(PyErr::new::<PyValueError, _>(
+                        "Buffer must contain u64 elements",
+                    ));
+                }
+                let buffer_ptr = buffer.buf_ptr() as *mut u64;
+                let buffer_len = buffer.len_bytes();
+                unsafe {
+                    let outer_mask = std::slice::from_raw_parts_mut(buffer_ptr, buffer_len);
+                    outer_mask[..inner_mask.len()].copy_from_slice(inner_mask);
+                }
+
+            }else {
+                
+                return Ok(mask_to_list(inner_mask));
+            }
+        } else {
             // Since Guide advances only through the states offered by the Index, it means
             // None here shouldn't happen and it's an issue at Index creation step
-            .ok_or(PyErr::new::<PyValueError, _>(format!(
+            return Err(PyErr::new::<PyValueError, _>(format!(
                 "No allowed tokens available for the state {}",
                 self.state
-            )))
+            )));
+        }   
+        Ok(vec_result)
     }
-
-    fn advance(&mut self, token_id: TokenId) -> PyResult<Vec<TokenId>> {
+    #[pyo3(signature = (token_id, mask=None))]
+    fn advance(&mut self, token_id: TokenId, mask: Option<&Bound<'_, PyAny>>) -> PyResult<Vec<TokenId>> {
         match self.index.get_next_state(self.state, token_id) {
             Some(new_state) => {
                 self.state = new_state;
-                self.get_tokens()
+                self.get_tokens(mask)
             }
             None => Err(PyErr::new::<PyValueError, _>(format!(
                 "No next state found for the current state: {} with token ID: {token_id}",
@@ -111,21 +143,23 @@ impl PyGuide {
 
 #[pyclass(name = "Index", module = "outlines_core.outlines_core_rs")]
 #[derive(Clone, Debug, PartialEq, Encode, Decode)]
-pub struct PyIndex(Arc<Index>);
+pub struct PyIndex(Arc<V2Index>);
 
 #[pymethods]
 impl PyIndex {
     #[new]
     fn __new__(py: Python<'_>, regex: &str, vocabulary: &PyVocabulary) -> PyResult<Self> {
         py.allow_threads(|| {
-            Index::new(regex, &vocabulary.0)
+            V2Index::new(regex, &vocabulary.0)
                 .map(|x| PyIndex(Arc::new(x)))
                 .map_err(Into::into)
         })
     }
 
-    fn get_allowed_tokens(&self, state: StateId) -> Option<Vec<TokenId>> {
+    fn get_allowed_tokens(&self, state: StateId) -> Option<&Vec<u64>> {
+        
         self.0.allowed_tokens(&state)
+      
     }
 
     fn get_next_state(&self, state: StateId, token_id: TokenId) -> Option<StateId> {
@@ -140,6 +174,7 @@ impl PyIndex {
         self.0.final_states().clone()
     }
 
+    /// WARNING : VERY COSTLY FUNCTION
     fn get_transitions(&self) -> HashMap<StateId, HashMap<TokenId, StateId>> {
         self.0.transitions().clone()
     }
@@ -177,7 +212,7 @@ impl PyIndex {
 
     #[staticmethod]
     fn from_binary(binary_data: Vec<u8>) -> PyResult<Self> {
-        let (index, _): (Index, usize) =
+        let (index, _): (V2Index, usize) =
             bincode::decode_from_slice(&binary_data[..], config::standard()).map_err(|e| {
                 PyErr::new::<PyValueError, _>(format!("Deserialization of Index failed: {}", e))
             })?;
@@ -360,4 +395,20 @@ fn outlines_core_rs(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<PyGuide>()?;
 
     Ok(())
+}
+
+
+fn mask_to_list(inner_mask: &Vec<u64>)-> Vec<TokenId>{
+    let mut result = Vec::with_capacity(inner_mask.iter().map(|b| b.count_ones() as usize).sum());
+    for (chunk_index, &chunk) in inner_mask.iter().enumerate() {
+        let base_id = (chunk_index * 64) as u32;
+        let mut bit_pos = chunk;
+        
+        while bit_pos != 0 {
+            let bit = bit_pos.trailing_zeros(); 
+            result.push(base_id + bit);
+            bit_pos &= bit_pos - 1; 
+        }
+    }
+    return result;
 }

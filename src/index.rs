@@ -197,6 +197,8 @@ impl Index {
         }
         Some(*self.transitions.get(state)?.get(token_id)?)
     }
+
+    
 }
 
 impl std::fmt::Display for Index {
@@ -206,6 +208,38 @@ impl std::fmt::Display for Index {
             writeln!(f, "{:?} -> {:#?}", state_id, token_ids)?;
         }
         Ok(())
+    }
+}
+
+#[cfg(any(feature = "run_benchmarks", debug_assertions))]
+impl Index {
+    pub fn size(&self) -> usize {
+        let transitions_size = 
+        
+        std::mem::size_of::<HashMap<StateId, HashMap<TokenId, StateId>>>() +
+        
+       
+        self.transitions.capacity() * std::mem::size_of::<usize>() +
+        
+       
+        self.transitions.iter().map(|(_state_id, token_map)| {
+            
+            std::mem::size_of::<StateId>() +
+            
+       
+            std::mem::size_of::<HashMap<TokenId, StateId>>() +
+            
+            //bucket size
+            token_map.capacity() * std::mem::size_of::<usize>() +
+           
+            token_map.len() * (
+                std::mem::size_of::<TokenId>() +  
+                std::mem::size_of::<StateId>() +  
+                std::mem::size_of::<usize>()      
+            )
+        }).sum::<usize>();
+
+        transitions_size
     }
 }
 

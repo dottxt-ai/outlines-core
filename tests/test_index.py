@@ -9,10 +9,10 @@ from outlines_core import Index, Vocabulary
 
 @pytest.fixture(scope="session")
 def index() -> Index:
-    eos_token_id = 3
+    eos_token_id = 2
     # types here only to please mypy checks
-    tokens: Dict[Union[str, bytes], List[int]] = {"1": [1], "2": [2]}
-    regex = r"[1-9]"
+    tokens: Dict[Union[str, bytes], List[int]] = {"0": [0], "1": [1]}
+    regex = r"[0-9]"
 
     vocabulary = Vocabulary(eos_token_id, tokens)
     return Index(regex, vocabulary)
@@ -20,24 +20,24 @@ def index() -> Index:
 
 def test_basic_interface(index):
     init_state = index.get_initial_state()
-    assert init_state == 12
+    assert init_state == 0
     assert index.is_final_state(init_state) is False
 
     allowed_tokens = index.get_allowed_tokens(init_state)
-    assert allowed_tokens == [1, 2]
+    assert allowed_tokens == [3] # BIT 0 and 1 Activated
 
-    next_state = index.get_next_state(init_state, allowed_tokens[-1])
-    assert next_state == 20
+    next_state = index.get_next_state(init_state, 0)
+    assert next_state == 1
     assert index.is_final_state(next_state) is True
-    assert index.get_final_states() == {20}
+    assert index.get_final_states() == {1}
 
     expected_transitions = {
-        12: {
-            1: 20,
-            2: 20,
+        0: {
+            0: 1,
+            1: 1,
         },
-        20: {
-            3: 20,
+        1: {
+            2: 1,
         },
     }
     assert index.get_transitions() == expected_transitions

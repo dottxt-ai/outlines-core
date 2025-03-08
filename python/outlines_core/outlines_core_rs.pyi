@@ -1,4 +1,5 @@
 from typing import Dict, List, Optional, Set, Tuple, Union
+import array
 
 def build_regex_from_schema(
     json_schema: str, whitespace_pattern: Optional[str] = None
@@ -26,10 +27,10 @@ class Guide:
     def get_state(self) -> int:
         """Retrieves current state id of the Guide."""
         ...
-    def get_tokens(self) -> List[int]:
+    def get_tokens(self, mask:Optional[array.array]) -> List[int]:
         """Gets the list of allowed tokens for the current state."""
         ...
-    def advance(self, token_id: int) -> List[int]:
+    def advance(self, token_id: int, mask: Optional[array.array]) -> List[int]:
         """Guide moves to the next state provided by the token id and returns a list of allowed tokens."""
         ...
     def is_finished(self) -> bool:
@@ -86,7 +87,7 @@ class Index:
     def __init__(self, regex: str, vocabulary: "Vocabulary"):
         """Creates an index from a regex and vocabulary."""
         ...
-    def get_allowed_tokens(self, state: int) -> Optional[List[int]]:
+    def get_allowed_tokens(self, state: int, mask: Optional[array.array]) -> Optional[List[int]]:
         """Returns allowed tokens in this state."""
         ...
     def get_next_state(self, state: int, token_id: int) -> Optional[int]:

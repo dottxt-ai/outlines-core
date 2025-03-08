@@ -82,12 +82,18 @@
 
 pub mod error;
 pub mod index;
+pub mod v2_index;
 pub mod json_schema;
 pub mod prelude;
 pub mod primitives;
 pub mod vocabulary;
 
+mod tokens_dfa;
+
 pub use error::{Error, Result};
 
 #[cfg(feature = "python-bindings")]
 mod python_bindings;
+
+#[cfg(any(feature = "run_benchmarks", debug_assertions))]
+mod benchmarks;

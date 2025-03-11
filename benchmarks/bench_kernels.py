@@ -12,12 +12,13 @@ from outlines_core.kernels import numpy_kernel, torch_kernel
 
 def generate_sparse_mask(batch, vocab, allowed_count=1000):
     mask_shape = (batch, (vocab + 31) // 32)
-    mask = np.zeros(mask_shape, dtype=np.int32)
+    mask = np.zeros(mask_shape, dtype=np.uint32)
     allowed_indices = random.sample(range(vocab), allowed_count)
     for idx in allowed_indices:
         group = idx // 32
         shift = idx % 32
-        mask[0, group] |= 1 << shift
+        bit_mask = np.uint32(1) << np.uint32(shift)
+        mask[0, group] |= bit_mask
     return mask
 
 

@@ -6,10 +6,8 @@ import random
 
 import numpy as np
 import torch
-from outlines_core.kernels.numpy import _apply_token_bitmask_inplace_kernel as np_kernel
-from outlines_core.kernels.torch import (
-    _apply_token_bitmask_inplace_kernel as torch_kernel,
-)
+from outlines_core.kernels import numpy_kernel, torch_kernel
+
 
 
 def generate_sparse_mask(batch, vocab, allowed_count=1000):
@@ -24,7 +22,7 @@ def generate_sparse_mask(batch, vocab, allowed_count=1000):
 
 
 class TorchBitmaskApplyBenchmark:
-    params = [10, 100, 1000, 10000]
+    params = [10, 100, 1_000, 10_000, 100_000]
     param_names = ["allowed_tokens"]
     number = 10
 
@@ -50,7 +48,7 @@ class TorchBitmaskApplyBenchmark:
 
 
 class NumpyBitmaskApplyBenchmark:
-    params = [10, 100, 1000, 10000]
+    params = [10, 100, 1_000, 10_000, 100_000]
     param_names = ["allowed_tokens"]
     number = 10
 
@@ -64,7 +62,7 @@ class NumpyBitmaskApplyBenchmark:
             1, self.vocab, allowed_count=self.allowed_tokens
         )
 
-        self.kernel = np_kernel
+        self.kernel = numpy_kernel
 
         for _ in range(4):
             self.kernel(self.logits, self.mask)
@@ -74,30 +72,17 @@ class NumpyBitmaskApplyBenchmark:
 
 
 class MlxBitmaskApplyBenchmark:
-    params = [10, 100, 1000, 10000]
+    params = [10, 100, 1_000, 10_000, 100_000]
     param_names = ["allowed_tokens"]
     number = 10
 
     def setup(self, allowed_tokens):
         try:
             import mlx.core as mx
-            from outlines_core.kernels.mlx import (
-                _apply_token_bitmask_kernel as mlx_kernel,
-            )
-
-            self.mlx_available = True
+            from outlines_core.kernels.mlx import mlx_kernel
         except ImportError:
             self.mlx_available = False
 
-        # if mlx is unavailable, reset the time_kernel to pass,
-        # so that when mlx is available timings are not impacted.
-        if not self.mlx_available:
-
-            def time_kernel(self, allowed_tokens):
-                pass
-
-            self.time_kernel = time_kernel
-            return
         self.allowed_tokens = allowed_tokens
         self.vocab = 128000
 

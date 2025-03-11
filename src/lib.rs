@@ -90,4 +90,4 @@ pub mod vocabulary;
 pub use error::{Error, Result};
 
 #[cfg(feature = "python-bindings")]
-mod python_bindings;
+pub mod python_bindings;

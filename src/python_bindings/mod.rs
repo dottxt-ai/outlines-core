@@ -3,6 +3,7 @@
 use std::sync::Arc;
 
 use bincode::{config, Decode, Encode};
+use pyo3::buffer::PyBuffer;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyDict};
@@ -10,7 +11,7 @@ use pyo3::wrap_pyfunction;
 use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 use tokenizers::FromPretrainedParameters;
 
-use crate::index::Index;
+use crate::index::IndexVariant;
 use crate::json_schema;
 use crate::prelude::*;
 
@@ -42,11 +43,38 @@ impl PyGuide {
         self.state
     }
 
-    fn get_tokens(&self) -> PyResult<Vec<TokenId>> {
+    fn get_tokens(&mut self) -> PyResult<Vec<TokenId>> {
         self.index
             .get_allowed_tokens(self.state)
             // Since Guide advances only through the states offered by the Index, it means
             // None here shouldn't happen and it's an issue at Index creation step
+            .ok_or(PyErr::new::<PyValueError, _>(format!(
+                "No allowed tokens available for the state {}",
+                self.state
+            )))
+    }
+
+    fn get_tokens_into_mask(&mut self, mask: &Bound<'_, PyAny>) -> PyResult<()> {
+        let buffer: PyBuffer<u64> = PyBuffer::get(mask)?;
+
+        if buffer.item_size() != std::mem::size_of::<u64>() {
+            return Err(PyErr::new::<PyValueError, _>(
+                "Buffer must contain u64 elements",
+            ));
+        }
+
+        let buffer_ptr = buffer.buf_ptr() as *mut u64;
+        let buffer_len = buffer.len_bytes();
+
+        unsafe {
+            let mut_slice = std::slice::from_raw_parts_mut(buffer_ptr, buffer_len);
+            self.write_into_mask(mut_slice)
+        }
+    }
+
+    fn get_allowed_tokens_mask(&mut self) -> PyResult<&Vec<u64>> {
+        self.index
+            .get_allowed_tokens_mask(self.state)
             .ok_or(PyErr::new::<PyValueError, _>(format!(
                 "No allowed tokens available for the state {}",
                 self.state
@@ -58,6 +86,32 @@ impl PyGuide {
             Some(new_state) => {
                 self.state = new_state;
                 self.get_tokens()
+            }
+            None => Err(PyErr::new::<PyValueError, _>(format!(
+                "No next state found for the current state: {} with token ID: {token_id}",
+                self.state
+            ))),
+        }
+    }
+
+    fn advance_with_mask(&mut self, token_id: TokenId, mask: &Bound<'_, PyAny>) -> PyResult<()> {
+        match self.index.get_next_state(self.state, token_id) {
+            Some(new_state) => {
+                self.state = new_state;
+                self.get_tokens_into_mask(mask)
+            }
+            None => Err(PyErr::new::<PyValueError, _>(format!(
+                "No next state found for the current state: {} with token ID: {token_id}",
+                self.state
+            ))),
+        }
+    }
+
+    fn advance_compressed(&mut self, token_id: TokenId, mask: &Bound<'_, PyAny>) -> PyResult<()> {
+        match self.index.get_next_state(self.state, token_id) {
+            Some(new_state) => {
+                self.state = new_state;
+                self.get_tokens_into_mask(mask)
             }
             None => Err(PyErr::new::<PyValueError, _>(format!(
                 "No next state found for the current state: {} with token ID: {token_id}",
@@ -109,16 +163,53 @@ impl PyGuide {
     }
 }
 
+impl PyGuide {
+    // Pivate methods.
+    fn write_into_mask(&mut self, mask: &mut [u64]) -> PyResult<()> {
+        let vocab_size = self.index.get_vocab_size();
+        let total_size = vocab_size + 1; // Ceil
+
+        if (mask.len() * 64) < total_size {
+            return Err(PyErr::new::<PyValueError, _>(format!(
+                "Mask size ({} bytes) lower than required size ({} bytes)",
+                mask.len() * 64,
+                total_size
+            )));
+        }
+
+        if let Some(inner_mask) = self.index.get_allowed_tokens_mask(self.state) {
+            mask[..inner_mask.len()].copy_from_slice(inner_mask);
+        } else {
+            mask.fill(0);
+        }
+
+        Ok(())
+    }
+}
+
 #[pyclass(name = "Index", module = "outlines_core.outlines_core_rs")]
 #[derive(Clone, Debug, PartialEq, Encode, Decode)]
-pub struct PyIndex(Arc<Index>);
+pub struct PyIndex(Arc<IndexVariant>);
 
 #[pymethods]
 impl PyIndex {
     #[new]
     fn __new__(py: Python<'_>, regex: &str, vocabulary: &PyVocabulary) -> PyResult<Self> {
         py.allow_threads(|| {
-            Index::new(regex, &vocabulary.0)
+            IndexVariant::create_index(regex, &vocabulary.0)
+                .map(|x| PyIndex(Arc::new(x)))
+                .map_err(Into::into)
+        })
+    }
+
+    #[staticmethod]
+    fn with_compressed_index(
+        py: Python<'_>,
+        regex: &str,
+        vocabulary: &PyVocabulary,
+    ) -> PyResult<Self> {
+        py.allow_threads(|| {
+            IndexVariant::create_compressed(regex, &vocabulary.0)
                 .map(|x| PyIndex(Arc::new(x)))
                 .map_err(Into::into)
         })
@@ -146,6 +237,10 @@ impl PyIndex {
 
     fn get_initial_state(&self) -> StateId {
         self.0.initial_state()
+    }
+
+    fn get_vocab_size(&self) -> usize {
+        self.0.vocab_size()
     }
 
     fn __repr__(&self) -> String {
@@ -177,11 +272,22 @@ impl PyIndex {
 
     #[staticmethod]
     fn from_binary(binary_data: Vec<u8>) -> PyResult<Self> {
-        let (index, _): (Index, usize) =
+        let (index, _): (IndexVariant, usize) =
             bincode::decode_from_slice(&binary_data[..], config::standard()).map_err(|e| {
                 PyErr::new::<PyValueError, _>(format!("Deserialization of Index failed: {}", e))
             })?;
         Ok(PyIndex(Arc::new(index)))
+    }
+}
+
+impl PyIndex {
+    #[allow(dead_code)]
+    fn get_allowed_tokens_iter(&self, state: StateId) -> Option<impl Iterator<Item = &TokenId>> {
+        self.0.allowed_tokens_iter(&state)
+    }
+
+    fn get_allowed_tokens_mask(&self, state: StateId) -> Option<&Vec<u64>> {
+        self.0.allowed_tokens_mask(&state)
     }
 }
 

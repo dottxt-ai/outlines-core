@@ -1,7 +1,3 @@
-# Note that these benchmarks measure kernels to be slower then they are
-# when benchmarked outside of ASV for whatever reason.
-# the approximate times for each kernel measured outside asv
-# are commented above the kernels.
 import random
 
 import numpy as np
@@ -22,19 +18,20 @@ def generate_sparse_mask(batch, vocab, allowed_count=1000):
 
 
 class TorchBitmaskApplyBenchmark:
-    params = [10, 100, 1_000, 10_000, 100_000]
-    param_names = ["allowed_tokens"]
+    params = [[10, 100, 1_000, 10_000, 100_000], [1, 2, 4, 8]]
+    param_names = ["allowed_tokens", "batch"]
     number = 10
 
-    def setup(self, allowed_tokens):
+    def setup(self, allowed_tokens, batch):
         self.device = "cpu"
         self.allowed_tokens = allowed_tokens
         self.vocab = 128000
+        self.batch = batch
 
-        self.logits = torch.randn(1, self.vocab, device=self.device)
+        self.logits = torch.randn(self.batch, self.vocab, device=self.device)
 
         mask = torch.from_numpy(
-            generate_sparse_mask(1, self.vocab, allowed_count=self.allowed_tokens)
+            generate_sparse_mask(self.batch, self.vocab, allowed_count=self.allowed_tokens)
         )
         self.mask = mask.to(self.device)
 
@@ -43,23 +40,24 @@ class TorchBitmaskApplyBenchmark:
         for _ in range(4):
             self.kernel(self.logits, self.mask)
 
-    def time_kernel(self, allowed_tokens):
+    def time_kernel(self, allowed_tokens, batch):
         self.kernel(self.logits, self.mask)
 
 
 class NumpyBitmaskApplyBenchmark:
-    params = [10, 100, 1_000, 10_000, 100_000]
-    param_names = ["allowed_tokens"]
+    params = [[10, 100, 1_000, 10_000, 100_000], [1, 2, 4, 8]]
+    param_names = ["allowed_tokens", "batch"]
     number = 10
 
-    def setup(self, allowed_tokens):
+    def setup(self, allowed_tokens, batch):
         self.allowed_tokens = allowed_tokens
         self.vocab = 128000
+        self.batch = batch
 
-        self.logits = np.random.randn(1, self.vocab).astype(np.float32)
+        self.logits = np.random.randn(self.batch, self.vocab).astype(np.float32)
 
         self.mask = generate_sparse_mask(
-            1, self.vocab, allowed_count=self.allowed_tokens
+            self.batch, self.vocab, allowed_count=self.allowed_tokens
         )
 
         self.kernel = numpy_kernel
@@ -67,29 +65,30 @@ class NumpyBitmaskApplyBenchmark:
         for _ in range(4):
             self.kernel(self.logits, self.mask)
 
-    def time_kernel(self, allowed_tokens):
+    def time_kernel(self, allowed_tokens, batch):
         self.kernel(self.logits, self.mask)
 
 
 class MlxBitmaskApplyBenchmark:
-    params = [10, 100, 1_000, 10_000, 100_000]
-    param_names = ["allowed_tokens"]
+    params = [[10, 100, 1_000, 10_000, 100_000], [1, 2, 4, 8]]
+    param_names = ["allowed_tokens", "batch"]
     number = 10
 
-    def setup(self, allowed_tokens):
+    def setup(self, allowed_tokens, batch):
         try:
             import mlx.core as mx
-            from outlines_core.kernels.mlx import mlx_kernel
+            from outlines_core.kernels import mlx_kernel
         except ImportError:
             raise NotImplementedError
 
         self.allowed_tokens = allowed_tokens
         self.vocab = 128000
+        self.batch = batch
 
-        self.logits = mx.array(np.random.randn(1, self.vocab).astype(np.float32))
+        self.logits = mx.array(np.random.randn(self.batch, self.vocab).astype(np.float32))
 
         self.mask = mx.array(
-            generate_sparse_mask(1, self.vocab, allowed_count=self.allowed_tokens)
+            generate_sparse_mask(self.batch, self.vocab, allowed_count=self.allowed_tokens)
         )
 
         self.kernel = mlx_kernel
@@ -98,5 +97,5 @@ class MlxBitmaskApplyBenchmark:
         for _ in range(4):
             self.kernel(self.logits, self.mask)
 
-    def time_kernel(self, allowed_tokens):
+    def time_kernel(self, allowed_tokens, batch):
         self.kernel(self.logits, self.mask)

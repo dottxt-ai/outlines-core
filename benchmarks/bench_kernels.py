@@ -9,7 +9,6 @@ import torch
 from outlines_core.kernels import numpy_kernel, torch_kernel
 
 
-
 def generate_sparse_mask(batch, vocab, allowed_count=1000):
     mask_shape = (batch, (vocab + 31) // 32)
     mask = np.zeros(mask_shape, dtype=np.uint32)
@@ -82,7 +81,7 @@ class MlxBitmaskApplyBenchmark:
             import mlx.core as mx
             from outlines_core.kernels.mlx import mlx_kernel
         except ImportError:
-            self.mlx_available = False
+            raise NotImplementedError
 
         self.allowed_tokens = allowed_tokens
         self.vocab = 128000

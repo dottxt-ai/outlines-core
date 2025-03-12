@@ -43,7 +43,6 @@ class TorchBitmaskApplyBenchmark:
     def time_kernel(self, allowed_tokens, batch):
         self.kernel(self.logits, self.mask)
 
-
 class NumpyBitmaskApplyBenchmark:
     params = [[10, 100, 1_000, 10_000, 100_000], [1, 2, 4, 8]]
     param_names = ["allowed_tokens", "batch"]

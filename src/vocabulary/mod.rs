@@ -160,7 +160,7 @@ impl Vocabulary {
                 NormalizerWrapper::Sequence(normalization_sequence) => {
                     let new_sequence = Sequence::new(
                         normalization_sequence
-                            .as_ref()
+                            .get_normalizers()
                             .iter()
                             .filter_map(|normalizer| match normalizer {
                                 NormalizerWrapper::Prepend(_) => None,
@@ -465,7 +465,7 @@ mod tests {
             if let Some(n) = normalized_t.get_normalizer() {
                 match n {
                     NormalizerWrapper::Sequence(seq) => {
-                        for n in seq.as_ref() {
+                        for n in seq.get_normalizers() {
                             if let NormalizerWrapper::Prepend(_) = n {
                                 unreachable!()
                             }

@@ -16,7 +16,10 @@ jobs:
     strategy:
       matrix:
         platform:
-          # older ubuntu to avoid messing with glibc version
+          # Older ubuntu to avoid messing with glibc version since glibc is forward compatible,
+          # but not backwards compatible (since about glibc 2.2 or 2.4)
+          # All programs built against an older glibc work on a system with a newer glibc than
+          # it was built with. The reverse is not true.
           - runner: ubuntu-22.04
             target: x86_64
             manylinux: auto

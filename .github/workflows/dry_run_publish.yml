@@ -4,14 +4,10 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-  # TODO: remove
-  pull_request:
-    branches: [main]
 
 jobs:
   build_wheels:
-    # TODO: switch to main
-    uses: dottxt-ai/outlines-core/.github/workflows/build_wheels.yml@maturin
+    uses: dottxt-ai/outlines-core/.github/workflows/build_wheels.yml@main
 
   dry_run:
     needs: build_wheels

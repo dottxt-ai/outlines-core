@@ -12,8 +12,7 @@ on:
 
 jobs:
   build_wheels:
-    # TODO: switch to main
-    uses: dottxt-ai/outlines-core/.github/workflows/build_wheels.yml@maturin
+    uses: dottxt-ai/outlines-core/.github/workflows/build_wheels.yml@main
     with:
       auto_bump: true
 

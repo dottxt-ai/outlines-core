@@ -159,10 +159,10 @@ mod tests {
 
     #[test]
     fn test_sample(){
-        let regex = r"[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?";
+        let regex = r"(0?[1-9]|1[0-2]):[0-5]\d\s?(am|pm)?";
         //let sch =r#"{"type": "object", "properties": {"name": {"type": "string"}, "age": {"type": "integer"}, "complexe_phone": {"type": "string", "pattern": "\\+?\\d{1,4}?[-. ]?\\(\\d{1,3}\\)?[-. ]?\\d{1,4}[-. ]?\\d{1,4}[-. ]?\\d{1,9}"}}, "required": ["name", "age", "complexe_phone"]}"#;
         //let regex = &json_schema::regex_from_str(sch, None).unwrap(); 
-         println!("{}", regex);
+        println!("{}", regex);
         let model_name = "unsloth/Llama-3.1-8B-Instruct";
         let vocab = Vocabulary::from_pretrained(model_name, None).unwrap();
         

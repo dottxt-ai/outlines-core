@@ -38,7 +38,7 @@ pub fn init_classes_and_graph_optimized(
         if token_ids[0] == 216 {return None;} // BUG IN THE VOCABULARY. token_id 216 ""\u011c"" is interpreted as \x1C, (Byte 28)
         let t_class = get_token_class(token, byte_classes);
         
-        if t_class.as_bytes().iter().any(|byte| dead_byte_classes.contains(byte)) {
+        if t_class.as_bytes().iter().any(|byte| dead_byte_classes.contains(byte)) && !token_ids.iter().any(|&id| additionnal_tokens.iter().any(|(_, add_id)| *add_id == id)) {
             return None; 
         }
         
@@ -67,7 +67,6 @@ pub fn init_classes_and_graph_optimized(
             transitions_table.get_token_ids_by_class().add_token_id(class_id, id);
             // Avoid to override the Tokens class of muted token.
             if additionnal_classes.contains(&t_class){
-                
                 continue;
             
             }
@@ -313,9 +312,7 @@ fn decompose_all_literals_optimized(
             
             token_sequence.reverse();
             result.insert(literal.clone(), (token_sequence, positions.clone()));
-        } else {
-            println!("Aucune décomposition trouvée pour le littéral: {}", literal);
-        }
+        } 
     }
     
     result

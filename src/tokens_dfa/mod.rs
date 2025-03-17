@@ -57,6 +57,7 @@ impl TokensDFA
         //let start_muting = Instant::now();
         let (muted_regex, muted_list) = mute_literals(regex, vocabulary, &mut additionnal_tokens);
         //let time_muting = start_muting.elapsed();
+        // println!("> Muted Regex : {}", muted_regex);
         // println!("> Muted List {:?}", muted_list);
         // println!("> Additionnal : {:?}", additionnal_tokens);
         let alphabet_len = vocabulary.len_alphabet()+additionnal_tokens.len(); // Real number of different token_id

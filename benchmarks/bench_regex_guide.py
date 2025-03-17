@@ -21,7 +21,7 @@ class RegexIndexBenchmark:
     params = regex_samples.keys()
 
     def setup(self, pattern_name):
-        self.vocabulary = Vocabulary.from_pretrained("gpt2")
+        self.vocabulary = Vocabulary.from_pretrained("unsloth/Llama-3.1-8B-Instruct")
         self.pattern = regex_samples[pattern_name]
 
     def time_regex_to_guide(self, pattern_name):

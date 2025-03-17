@@ -13,6 +13,7 @@ rust_extensions = [
         binding=Binding.PyO3,
         features=["python-bindings"],
         rustc_flags=["--crate-type=cdylib"],
+        debug=False,
     ),
 ]
 

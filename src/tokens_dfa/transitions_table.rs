@@ -164,7 +164,6 @@ impl MasksTable {
                 let mut real_class_id = class_id.clone();
 
                 if tokens.len() == 1 && muted_list.contains(&tokens[0]) { 
-                    
                     real_class_id = self.token_classes[tokens[0]]
                 }
 

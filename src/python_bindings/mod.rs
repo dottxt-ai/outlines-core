@@ -334,7 +334,7 @@ impl PyVocabulary {
     }
 
     fn __len__(&self) -> usize {
-        self.0.tokens().len()
+        self.0.len()
     }
 
     fn __deepcopy__(&self, _py: Python<'_>, _memo: Py<PyDict>) -> Self {

@@ -1,5 +1,6 @@
 
 use std::default;
+use std::time::Instant;
 
 use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 use regex_automata::util::alphabet::ByteClasses;
@@ -191,129 +192,75 @@ pub fn mute_literals(regex: &str, vocabulary: &Vocabulary, additionnal_tokens: &
     let literals_raw = extract_literals(regex);
     
     if literals_raw.len() == 0 {return (regex.to_string(), HashSet::default());}
-
     let tokens: &HashMap<Token, Vec<TokenId>> =  vocabulary.tokens();
 
     let decompositions = decompose_all_literals_optimized(&literals_raw, &tokens);
-    
     let (literals_updated, muted_list )= update_vocabulary(vocabulary, &decompositions, additionnal_tokens);
-    
+
     return (replace_literals(regex, &literals_updated), muted_list);
     
 }
 
 
 
-struct Trie {
-    children: HashMap<u8, Trie>,
-    token_ids: Option<Vec<u32>>,
-}
-
-impl Trie {
-    fn new() -> Self {
-        Trie {
-            children: HashMap::default(),
-            token_ids: None,
-        }
-    }
-
-    fn insert(&mut self, token: &[u8], ids: &[u32]) {
-        let mut node = self;
-        for &byte in token {
-            node = node.children.entry(byte).or_insert_with(Trie::new);
-        }
-        node.token_ids = Some(ids.to_vec());
-    }
-
-    fn find_tokens_at_position<'a>(&'a self, text: &[u8], pos: usize) -> Vec<(usize, &'a Vec<u32>)> {
-        let mut result = Vec::new();
-        let mut node = self;
-        let mut offset = 0;
-
-        while pos + offset < text.len() {
-            let byte = text[pos + offset];
-            if let Some(next_node) = node.children.get(&byte) {
-                offset += 1;
-                node = next_node;
-                
-                if let Some(ids) = &node.token_ids {
-                    result.push((offset, ids));
-                }
-            } else {
-                break;
-            }
-        }
-        
-        result
-    }
-}
-
-/// Construit un Trie à partir d'une HashMap de tokens
-fn build_trie(tokens: &HashMap<Vec<u8>, Vec<u32>>) -> Trie {
-    let mut trie = Trie::new();
-    for (token, ids) in tokens {
-        trie.insert(token, ids);
-    }
-    trie
-}
-
 /// Trouve la décomposition optimale de tous les littéraux en une seule passe
 fn decompose_all_literals_optimized(
     literals: &HashMap<String, Vec<usize>>,
     tokens: &HashMap<Vec<u8>, Vec<u32>>
 ) -> HashMap<String, (Vec<(Vec<u8>, Vec<u32>)>, Vec<usize>)> {
-    let trie = build_trie(tokens);
+
+    let start_compo = Instant::now();
     let mut result = HashMap::default();
-    
+
     for (literal, positions) in literals {
         let literal_bytes = literal.as_bytes();
         let n = literal_bytes.len();
         
+        // Tableau DP pour stocker le nombre minimal de tokens, position précédente et longueur
         let mut dp: Vec<Option<(usize, usize, usize)>> = vec![None; n + 1];
-        dp[0] = Some((0, 0, 0));  // Base case
-        
+        dp[0] = Some((0, 0, 0)); // Cas de base
+
+        // Parcours de chaque position dans le littéral
         for i in 0..n {
             if dp[i].is_none() {
                 continue;
             }
-            
-            // Trouver tous les tokens qui commencent à la position i
-            let tokens_at_pos = trie.find_tokens_at_position(literal_bytes, i);
-            
-            for (token_len, token_ids) in tokens_at_pos {
-                let next_pos = i + token_len;
-                
-                // Si aucune décomposition n'existe pour next_pos ou
-                // si la nouvelle décomposition utilise moins de tokens
-                if dp[next_pos].is_none() || 
-                   dp[next_pos].unwrap().0 > dp[i].unwrap().0 + 1 {
-                    dp[next_pos] = Some((dp[i].unwrap().0 + 1, i, token_len));
+
+            // Chercher tous les tokens possibles commençant à la position i
+            let max_len = n - i; // Longueur maximale restante
+            for len in 1..=max_len {
+                let token_bytes = &literal_bytes[i..i + len];
+                if let Some(token_ids) = tokens.get(token_bytes) {
+                    let next_pos = i + len;
+                    // Si aucune décomposition n'existe ou si on trouve une meilleure
+                    if dp[next_pos].is_none() || dp[next_pos].unwrap().0 > dp[i].unwrap().0 + 1 {
+                        dp[next_pos] = Some((dp[i].unwrap().0 + 1, i, len));
+                    }
                 }
             }
         }
-        
- 
+
+        // Si une décomposition complète est trouvée
         if let Some(_) = dp[n] {
             // Reconstruire la séquence de tokens
             let mut token_sequence = Vec::new();
             let mut pos = n;
-            
+
             while pos > 0 {
                 let (_, prev_pos, token_len) = dp[pos].unwrap();
                 let token_bytes = literal_bytes[prev_pos..prev_pos + token_len].to_vec();
-                
-                // Trouver les IDs correspondant à ce token
                 if let Some(token_ids) = tokens.get(&token_bytes) {
                     token_sequence.push((token_bytes, token_ids.clone()));
                 }
-                
                 pos = prev_pos;
             }
-            
+
             token_sequence.reverse();
             result.insert(literal.clone(), (token_sequence, positions.clone()));
-        } 
+        }
     }
+
+    let time_compo = start_compo.elapsed();
     
     result
 }

@@ -167,7 +167,6 @@ impl MasksTable {
                     real_class_id = self.token_classes[tokens[0]]
                 }
 
-
                 self.next_states[idx].insert(real_class_id, *next_state_id);
                 
             }

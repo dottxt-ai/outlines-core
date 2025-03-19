@@ -88,7 +88,7 @@ impl PyGuide {
                 "Invalid data pointer alignment: pointer address {} is not a multiple of 4.",
                 data_ptr
             )));
-        } else if expected_elements != numel {
+        } else if numel < expected_elements {
             return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
                 format!(
                     "Invalid buffer size: got {} elements ({} bytes), expected {} elements ({} bytes). \

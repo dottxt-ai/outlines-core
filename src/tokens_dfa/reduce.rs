@@ -1,102 +1,98 @@
 
-use std::default;
+use core::time;
+use std::sync::Mutex;
 use std::time::Instant;
 
 use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 use regex_automata::util::alphabet::ByteClasses;
 use rayon::prelude::*;
 
-use super::token_classes::TokenClassId;
-pub use super::transitions_table::MasksTable;
+use super::token_classes::{from_token_to_token_class, TokenClassId, TokenClass};
+use super::token_classes_graph::PrefixGraphes;
+use super::transitions_table::EquivalentGrid;
+
 
 use crate::prelude::*;
 use crate::vocabulary::Vocabulary;
 
-pub use super::token_classes::{TokenClass, MapTokenClassTokenClassId};
-pub use super::token_classes_graph::TokenClassesGraph;
 pub use super::regex::{extract_literals, replace_literals};
 
 const MUTE_BYTE: u8 = 0x1C;  // En hexadécimal
-const MUTE_INDEX_BYTE: u8 = 0x1E;
 
 
-pub fn init_classes_and_graph_optimized(
+pub fn minimizing_alphabet(
     tokens: &HashMap<Vec<u8>, Vec<TokenId>>, // Token comme Vec<u8>
     additionnal_tokens: &Vec<(Vec<u8>, TokenId)>,
-    token_classes_graph: &mut TokenClassesGraph, // Référence mutable inchangée
-    transitions_table: &mut MasksTable, // Référence mutable inchangée
     byte_classes: &ByteClasses,
-    dead_byte_classes: &mut HashSet<u8>, // Référence mutable inchangée
-    eos_token_id: u32,
+    dead_byte_classes: HashSet<u8>,
+    equivalent_grid: &mut EquivalentGrid,
+    eos_token_id: u32
 ) -> TokenClassId {
-    
-    let mut results: Vec<(Vec<TokenId>, TokenClass)> = tokens
-    .par_iter() 
-    .filter_map(|(token, token_ids)| {
-        if token_ids.contains(&eos_token_id) {
-            return None; 
-        }
-        if token_ids[0] == 216 {return None;} // BUG IN THE VOCABULARY. token_id 216 ""\u011c"" is interpreted as \x1C, (Byte 28)
-        let t_class = get_token_class(token, byte_classes);
-        
-        if t_class.as_bytes().iter().any(|byte| dead_byte_classes.contains(byte)) && !token_ids.iter().any(|&id| additionnal_tokens.iter().any(|(_, add_id)| *add_id == id)) {
-            return None; 
-        }
-        
-        Some((token_ids.clone(), t_class)) 
-    })
-    .collect();
 
-    let mut classes_set = MapTokenClassTokenClassId::new();
+    let start_filter = Instant::now();
+
+    let filtered_tokens: Vec<_> = tokens.par_iter()
+            .filter_map(|(token, token_ids)| {
+                if token_ids.iter().any(|id| *id == eos_token_id || *id == 216) {
+                    return None;
+                }
+
+                let token_class = from_token_to_token_class(token, byte_classes);
+
+                if token_class.as_bytes().iter().any(|byte| dead_byte_classes.contains(byte)) 
+                {
+                    return None; 
+                }
+
+                Some((token_class, token_ids))
+        })
+        .collect();
     
-    let mut additionnal_classes:HashSet<TokenClass> = HashSet::default();
-    for token in additionnal_tokens {
-        let t_class = get_token_class(&token.0, byte_classes);
-        additionnal_classes.insert(t_class.clone());
+    let time_filter = start_filter.elapsed();
+    
+    let start_tokens = Instant::now();
+    for (token_class, token_ids) in filtered_tokens {
+        let class_id = equivalent_grid.insert_class(token_class);
         
-        results.push((vec![token.1], t_class))
+        for token_id in token_ids {
+            equivalent_grid.bind_token_id_and_class_id(*token_id, class_id);
+        }
     }
 
-
-    results.sort_by_key(|a| a.1.len());
+    let time_tokens = start_tokens.elapsed();
     
-    for (token_ids, t_class) in results {
+
+    for (token, token_id) in additionnal_tokens.iter(){
         
-        let class_id = classes_set.insert(&t_class);
-
-        for &id in &token_ids {
-            transitions_table.get_token_ids_by_class().add_token_id(class_id, id);
-            // Avoid to override the Tokens class of muted token.
-            if additionnal_classes.contains(&t_class){
-                continue;
-            
-            }
-            transitions_table.get_token_classes()[id] = class_id;
-            
-            
-        }
-  
-        token_classes_graph.add_class(t_class.clone(), class_id);
-    
+        let token_class = from_token_to_token_class(&token, &byte_classes);
+        
+        let class_id = equivalent_grid.insert_class(token_class.clone());
+        
+        equivalent_grid.mute_bind_token_id_and_class_id(*token_id, class_id);
     }
-    
 
     let eos_u8 = eos_token_id as u8;
-    let eos_token_class = byte_classes.get(eos_u8);
-    let eos_token_class_id = classes_set.insert(&TokenClass::from_bytes(vec![eos_token_class; 1]));
-    transitions_table.set_eos_token_class_id(eos_token_class_id);
-    transitions_table.get_token_classes()[eos_token_id] = eos_token_class_id;
-    transitions_table.get_token_ids_by_class().add_token_id(eos_token_class_id, eos_token_id);
+    let eos_token_class: u8 = byte_classes.get_by_unit(byte_classes.eoi()) as u8;
+    let eos_token_class_id = equivalent_grid.insert_class(TokenClass::from_bytes(vec![eos_token_class;1]));
+    equivalent_grid.bind_token_id_and_class_id(eos_token_id, eos_token_class_id);
+    equivalent_grid.sort_classes();
     eos_token_class_id
 
+}
 
+pub fn build_prefix_based_graphes(
+    equivalent_grid: &EquivalentGrid,
+    graphes: &mut PrefixGraphes
+){
+   let sorted_classes: &Vec<TokenClassId> = equivalent_grid.get_sorted_classes();
+    for class_id in sorted_classes {
+        let class = equivalent_grid.get_class_from_class_id(*class_id);
+        graphes.add_class(class, *class_id, equivalent_grid.get_classes());
+    }
 }
 
 
 
-fn get_token_class(token: &Vec<u8>, byte_classes: &ByteClasses) -> TokenClass {
-    TokenClass::from_token_with_classes(token, byte_classes)
-}
 
 fn update_vocabulary(
     vocab: &Vocabulary, 
@@ -148,43 +144,6 @@ fn update_vocabulary(
 
       return (results, muted_list);
 
-
-
-        // let mut results: Vec<(String, String, Vec<usize>)> = Vec::default();
-        // let mut muted_list:HashSet<TokenId> = HashSet::default();
-        
-        // let mut i: usize = 1;
-        // for literal_row in decompositions{
-            
-        //     let mut new_literal_value = String::new();
-        //     new_literal_value += "(";
-        //     let (tokens, pos) = literal_row.1 ;
-                
-        //         for token in tokens {
-        //             for id in token.1.as_slice(){
-        //                 let i_str = i.to_string();
-
-        //                 let mut new_token = vec![MUTE_BYTE];
-        //                 new_token.extend_from_slice(i_str.as_bytes());
-                       
-        //                 new_literal_value += &String::from_utf8_lossy(&new_token);
-                        
-                
-        //                 additionnal_tokens.push((new_token,*id) );
-        //                 muted_list.insert(*id);
-                      
-        //                 i+=1;
-                        
-        //             }
-        //         }
-        //     new_literal_value += ")";
-                
-               
-        //     results.push((literal_row.0.clone(), new_literal_value, pos.clone()));
-        
-        // }
-
-        // return (results, muted_list);
 }
 
 pub fn mute_literals(regex: &str, vocabulary: &Vocabulary, additionnal_tokens: &mut Vec<(Vec<u8>, TokenId)>) -> (String, HashSet<TokenId>) {
@@ -209,7 +168,6 @@ fn decompose_all_literals_optimized(
     tokens: &HashMap<Vec<u8>, Vec<u32>>
 ) -> HashMap<String, (Vec<(Vec<u8>, Vec<u32>)>, Vec<usize>)> {
 
-    let start_compo = Instant::now();
     let mut result = HashMap::default();
 
     for (literal, positions) in literals {
@@ -259,8 +217,6 @@ fn decompose_all_literals_optimized(
             result.insert(literal.clone(), (token_sequence, positions.clone()));
         }
     }
-
-    let time_compo = start_compo.elapsed();
     
     result
 }

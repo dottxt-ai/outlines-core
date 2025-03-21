@@ -159,9 +159,43 @@ mod tests {
 
     #[test]
     fn test_sample(){
-        let regex = r"(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?";
-        // let sch =r#"{"type": "object", "properties": {"name": {"type": "string"}, "age": {"type": "integer"}}, "required": ["name", "age"]}"#;
-        // let regex = &json_schema::regex_from_str(sch, None).unwrap(); 
+        //let regex = r"(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?";
+        let sch =r###"{
+      "$schema": "http://json-schema.org/draft-04/schema#",
+      "title": "Schema for a recording",
+      "type": "object",
+      "definitions": {
+        "artist": {
+          "type": "object",
+          "properties": {
+            "id": {"type": "number"},
+            "name": {"type": "string"},
+            "functions": {
+              "type": "array",
+              "items": {"type": "string"}
+            }
+          },
+          "required": ["id", "name", "functions"]
+        }
+      },
+      "properties": {
+        "id": {"type": "number"},
+        "work": {
+          "type": "object",
+          "properties": {
+            "id": {"type": "number"},
+            "name": {"type": "string"},
+            "composer": {"$ref": "#/definitions/artist"}
+          }
+        },
+        "recording_artists": {
+          "type": "array",
+          "items": {"$ref": "#/definitions/artist"}
+        }
+      },
+      "required": ["id", "work", "recording_artists"]
+    }"###;
+        let regex = &json_schema::regex_from_str(sch, None).unwrap(); 
         //println!("{}", regex);
         let model_name = "unsloth/Llama-3.1-8B-Instruct";
         let vocab = Vocabulary::from_pretrained(model_name, None).unwrap();
@@ -174,10 +208,10 @@ mod tests {
 
         println!("Time V2Index : {:?}", duration_optimized);
         
-        let start_optimized = Instant::now();
-        let indexd = Index::new(regex, &vocab).expect("Failed to create Index with new_optimized");
-        let duration_optimized = start_optimized.elapsed();
-        println!("Time Index : {:?}", duration_optimized);
+        // let start_optimized = Instant::now();
+        // let indexd = Index::new(regex, &vocab).expect("Failed to create Index with new_optimized");
+        // let duration_optimized = start_optimized.elapsed();
+        // println!("Time Index : {:?}", duration_optimized);
        
        }
 

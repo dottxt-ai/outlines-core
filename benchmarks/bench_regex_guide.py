@@ -14,6 +14,7 @@ regex_samples = {
     "url": r"(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?",
     "ssn": r"\d{3}-\d{2}-\d{4}",
     "complex_span_constrained_relation_extraction": "(['\"\\ ,]?((?:of|resulting|case|which|cultures|a|core|extreme|selflessness|spiritual|various|However|both|vary|in|other|secular|the|religious|among|moral|and|It|object|worldviews|altruism|traditional|material|aspect|or|life|beings|virtue|is|however|opposite|concern|an|practice|it|for|s|quality|religions|In|Altruism|animals|happiness|many|become|principle|human|selfishness|may|synonym)['\"\\ ,]?)+['\"\\ ,]?\\s\\|\\s([^|\\(\\)\n]{1,})\\s\\|\\s['\"\\ ,]?((?:of|resulting|case|which|cultures|a|core|extreme|selflessness|spiritual|various|However|both|vary|in|other|secular|the|religious|among|moral|and|It|object|worldviews|altruism|traditional|material|aspect|or|life|beings|virtue|is|however|opposite|concern|an|practice|it|for|s|quality|religions|In|Altruism|animals|happiness|many|become|principle|human|selfishness|may|synonym)['\"\\ ,]?)+['\"\\ ,]?(\\s\\|\\s\\(([^|\\(\\)\n]{1,})\\s\\|\\s([^|\\(\\)\n]{1,})\\))*\\n)*",
+    "complexe":  r"""\{[ ]?"name"[ ]?:[ ]?"([^"\\\x00-\x1F\x7F-\x9F]|\\["\\])*"[ ]?,[ ]?"age"[ ]?:[ ]?(-)?(0|[1-9][0-9]*)[ ]?,[ ]?"complexe_phone"[ ]?:[ ]?"(\+?\d{1,4}?[-. ]?\(\d{1,3}\)?[-. ]?\d{1,4}[-. ]?\d{1,4}[-. ]?\d{1,9})"[ ]?\}"""
 }
 
 
@@ -21,7 +22,7 @@ class RegexIndexBenchmark:
     params = regex_samples.keys()
 
     def setup(self, pattern_name):
-        self.vocabulary = Vocabulary.from_pretrained("unsloth/Llama-3.1-8B-Instruct")
+        self.vocabulary = Vocabulary.from_pretrained("gpt2")
         self.pattern = regex_samples[pattern_name]
 
     def time_regex_to_guide(self, pattern_name):

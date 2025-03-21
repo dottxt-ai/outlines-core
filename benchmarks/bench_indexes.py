@@ -23,7 +23,8 @@ regexes = [
     },
     {"name": "permissive_any", "regex": r".{255}$"},
     {"name": "permissive_words", "regex": r"[a-zA-Z]{100}"},
-    {"name": "https", "regex" : r"(https?:\\/\\/)?([\\da-z\\.-]+)\\.([a-z\\.]{2,6})([\\/\\w \\.-]*)*\\/?"}
+    {"name": "https", "regex" : r"(https?:\\/\\/)?([\\da-z\\.-]+)\\.([a-z\\.]{2,6})([\\/\\w \\.-]*)*\\/?"},
+    {"name": "complexe", "regex" : r"""\{[ ]?"name"[ ]?:[ ]?"([^"\\\x00-\x1F\x7F-\x9F]|\\["\\])*"[ ]?,[ ]?"age"[ ]?:[ ]?(-)?(0|[1-9][0-9]*)[ ]?,[ ]?"complexe_phone"[ ]?:[ ]?"(\+?\d{1,4}?[-. ]?\(\d{1,3}\)?[-. ]?\d{1,4}[-. ]?\d{1,4}[-. ]?\d{1,9})"[ ]?\}"""}
 ]
 schemas = [
     {
@@ -206,6 +207,7 @@ def test_benchmark_v2index():
         name = s["name"]
         schema = s["regex"]
         regex = build_regex_from_schema(schema, None)
+        print(regex)
         print(f"> Schema : '{name}'")
         bench = V2IndexBenchmark()
         bench.setup(regex)
@@ -214,4 +216,11 @@ def test_benchmark_v2index():
 
 if __name__ == "__main__":
     print("Running main...")
-    test_benchmark_v2index()
+    #test_benchmark_v2index()
+    schema = schemas[3]['regex']
+    regex = build_regex_from_schema(schema, None)
+    print(regex)
+    print(f"> Schema : curriculum")
+    bench = V2IndexBenchmark()
+    bench.setup(regex)
+    bench.run_benchmark()

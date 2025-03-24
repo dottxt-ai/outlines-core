@@ -53,11 +53,11 @@ impl PyGuide {
             )))
     }
 
-    fn advance(&mut self, token_id: TokenId) -> PyResult<Vec<TokenId>> {
+    fn advance(&mut self, token_id: TokenId) -> PyResult<()> {
         match self.index.get_next_state(self.state, token_id) {
             Some(new_state) => {
                 self.state = new_state;
-                self.get_tokens()
+                Ok(())
             }
             None => Err(PyErr::new::<PyValueError, _>(format!(
                 "No next state found for the current state: {} with token ID: {token_id}",
@@ -113,6 +113,10 @@ impl PyGuide {
             }
         }
         Ok(())
+    }
+
+    fn reset(&mut self) {
+        self.state = self.index.get_initial_state();
     }
 
     fn __repr__(&self) -> String {

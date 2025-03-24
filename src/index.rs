@@ -55,7 +55,7 @@ pub struct Index {
     transitions: HashMap<StateId, HashMap<TokenId, StateId>>,
     /// The token ID reserved for the "end-of-sequence" token.
     eos_token_id: TokenId,
-    /// The size of the vocabulary used to build the index
+    /// The size of the vocabulary used to build the index.
     vocab_size: usize,
 }
 /// The `Index` structure is designed to efficiently map tokens from a given vocabulary

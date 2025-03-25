@@ -1,8 +1,21 @@
 import os
+import sys
 from concurrent.futures import ThreadPoolExecutor
 
 import psutil
 from outlines_core import Guide, Index, Vocabulary
+
+# There is a conflict between asv.statistics and the standard library's statistics module.
+# This is a workaround to use the standard library's median function.
+if "asv.statistics" in sys.modules:
+
+    def median(data):
+        import statistics
+
+        return statistics.median(data)
+
+    asv_statistics = sys.modules["asv.statistics"]
+    asv_statistics.median = median  # type: ignore
 
 regex_samples = {
     "email": r"[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?",

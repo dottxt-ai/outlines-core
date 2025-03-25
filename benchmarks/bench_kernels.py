@@ -2,17 +2,18 @@ import random
 
 import numpy as np
 import torch
-from outlines_core.kernels import numpy_kernel, torch_kernel
+from outlines_core.kernels.numpy import apply_token_bitmask_inplace as numpy_kernel
+from outlines_core.kernels.torch import apply_token_bitmask_inplace as torch_kernel
 
 
 def generate_sparse_mask(batch, vocab, allowed_count=1000):
     mask_shape = (batch, (vocab + 31) // 32)
-    mask = np.zeros(mask_shape, dtype=np.uint32)
+    mask = np.zeros(mask_shape, dtype=np.int32)
     allowed_indices = random.sample(range(vocab), allowed_count)
     for idx in allowed_indices:
         group = idx // 32
         shift = idx % 32
-        bit_mask = np.uint32(1) << np.uint32(shift)
+        bit_mask = np.int32(1) << np.int32(shift)
         mask[0, group] |= bit_mask
     return mask
 
@@ -31,7 +32,9 @@ class TorchBitmaskApplyBenchmark:
         self.logits = torch.randn(self.batch, self.vocab, device=self.device)
 
         mask = torch.from_numpy(
-            generate_sparse_mask(self.batch, self.vocab, allowed_count=self.allowed_tokens)
+            generate_sparse_mask(
+                self.batch, self.vocab, allowed_count=self.allowed_tokens
+            )
         )
         self.mask = mask.to(self.device)
 
@@ -42,6 +45,7 @@ class TorchBitmaskApplyBenchmark:
 
     def time_kernel(self, allowed_tokens, batch):
         self.kernel(self.logits, self.mask)
+
 
 class NumpyBitmaskApplyBenchmark:
     params = [[10, 100, 1_000, 10_000, 100_000], [1, 2, 4, 8]]
@@ -84,10 +88,14 @@ class MlxBitmaskApplyBenchmark:
         self.vocab = 128000
         self.batch = batch
 
-        self.logits = mx.array(np.random.randn(self.batch, self.vocab).astype(np.float32))
+        self.logits = mx.array(
+            np.random.randn(self.batch, self.vocab).astype(np.float32)
+        )
 
         self.mask = mx.array(
-            generate_sparse_mask(self.batch, self.vocab, allowed_count=self.allowed_tokens)
+            generate_sparse_mask(
+                self.batch, self.vocab, allowed_count=self.allowed_tokens
+            )
         )
 
         self.kernel = mlx_kernel

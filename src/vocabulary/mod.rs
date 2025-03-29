@@ -150,9 +150,7 @@ impl Vocabulary {
 
     pub fn len(&self) -> usize {
         // +1 for eos_token_id which is not in self.tokens map.
-        self.tokens.values()
-            .map(|ids| ids.len())
-            .sum::<usize>() + 1
+        self.tokens.values().map(|ids| ids.len()).sum::<usize>() + 1
     }
 
     pub fn is_empty(&self) -> bool {

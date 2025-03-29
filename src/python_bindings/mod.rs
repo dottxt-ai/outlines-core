@@ -59,7 +59,11 @@ impl PyGuide {
 
     /// Guide moves to the next state provided by the token id and returns a list of allowed tokens, unless return_tokens is False.
     #[pyo3(signature = (token_id, return_tokens=None))]
-    fn advance(&mut self, token_id: TokenId, return_tokens: Option<bool>) -> PyResult<Option<Vec<TokenId>>> {
+    fn advance(
+        &mut self, 
+        token_id: TokenId, 
+        return_tokens: Option<bool>
+    ) -> PyResult<Option<Vec<TokenId>>> {
         match self.index.get_next_state(self.state, token_id) {
             Some(new_state) => {
                 self.state = new_state;

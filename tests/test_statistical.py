@@ -34,7 +34,7 @@ def test_generate_length():
         index = Index(regex_str, vocabulary)
         guide = Guide(index)
 
-        n_tokens = len(vocabulary) + 1  # include eos token in count
+        n_tokens = len(vocabulary)  # include eos token in count
         tokens = None
         allowed = guide.get_tokens()
         while True:

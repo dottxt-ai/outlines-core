@@ -174,7 +174,7 @@ def test_write_mask_into_interface(index):
     mask = torch.tensor(torch.tensor([-1], dtype=torch.uint32))
 
     with pytest.raises(ValueError, match="Invalid buffer size"):
-        guide.write_mask_into(mask.data_ptr(), 5, mask.element_size())
+        guide.write_mask_into(mask.data_ptr(), 0, mask.element_size())
     with pytest.raises(ValueError, match="Invalid element size"):
         guide.write_mask_into(mask.data_ptr(), mask.numel(), 5)
     with pytest.raises(ValueError, match="Invalid data pointer"):

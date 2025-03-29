@@ -1,8 +1,10 @@
 import torch
 
 from outlines_core import Guide, Index, Vocabulary
-from outlines_core.kernels.torch import allocate_token_bitmask, _apply_token_bitmask_inplace_kernel
-
+from outlines_core.kernels.torch import (
+    _apply_token_bitmask_inplace_kernel,
+    allocate_token_bitmask,
+)
 
 regex_samples = {
     "email": r"[a-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\.[a-z0-9!#$%&'*+/=?^_`{|}~-]+)*@(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z0-9](?:[a-z0-9-]*[a-z0-9])?",
@@ -29,11 +31,8 @@ class TorchE2EBenchmark:
         self.logits = torch.randn(1, len(self.vocabulary))
 
     def time_write_mask_and_apply(self, pattern_name):
-        
         self.guide.write_mask_into(
-            self.mask.data_ptr(),
-            self.mask.numel(),
-            self.mask.element_size()
+            self.mask.data_ptr(), self.mask.numel(), self.mask.element_size()
         )
 
         _apply_token_bitmask_inplace_kernel(self.logits, self.mask)

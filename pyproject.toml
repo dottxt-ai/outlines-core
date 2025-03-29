@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=45", "setuptools_scm[toml]>=6.2", "setuptools-rust"]
-build-backend = "setuptools.build_meta"
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
 
 [project]
 name = "outlines_core"
@@ -23,9 +23,6 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
-dependencies = [
-   "jsonschema",
-]
 dynamic = ["version"]
 
 [project.optional-dependencies]
@@ -39,12 +36,12 @@ test = [
     "coverage[toml]>=5.1",
     "diff-cover",
     "numpy",
-    "numba",
     "torch",
+    "numba",
     "scipy",
     "asv",
     "psutil",
-    "setuptools-rust",
+    "maturin[patchelf]",
 ]
 
 [project.urls]
@@ -55,19 +52,6 @@ repository = "https://github.com/dottxt-ai/outlines-core"
 [project.readme]
 file="README.md"
 content-type = "text/markdown"
-
-[tool.cibuildwheel]
-skip = ["*-musllinux_i686"]
-
-[tool.setuptools]
-packages = ["outlines_core", "outlines_core.kernels"]
-package-dir = {"" = "python"}
-
-[tool.setuptools.package-data]
-"outlines_core" = ["py.typed", "**/*.pyi"]
-
-[tool.setuptools_scm]
-write_to = "python/outlines_core/_version.py"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -81,23 +65,10 @@ addopts = [
     "--import-mode=importlib"
 ]
 
-[tool.mypy]
-exclude=["examples", "tests", "benchmarks"]
-
-[[tool.mypy.overrides]]
-module = [
-    "jsonschema.*",
-    "pydantic.*",
-    "pytest",
-    "setuptools.*",
-    "setuptools_rust.*",
-]
 ignore_missing_imports = true
 
 [tool.coverage.run]
 omit = [
-    "python/outlines_core/_version.py",
-    "python/outlines_core/__init__.py",
     "tests/*",
 ]
 branch = true
@@ -117,3 +88,6 @@ show_missing = true
 [tool.diff_cover]
 compare_branch = "origin/main"
 diff_range_notation = ".."
+
+[tool.maturin]
+features = ["python-bindings"]

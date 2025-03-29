@@ -3,6 +3,7 @@ import importlib
 import numpy as np
 import pytest
 import torch
+
 from outlines_core import Guide, Index, Vocabulary
 
 VOCAB = Vocabulary.from_pretrained("gpt2", None, None)
@@ -42,7 +43,7 @@ def test_interface_torch():
 
     logits_1d = torch.randn(100)
     with pytest.raises(
-        ValueError, match="Invalid mask dimensions: Expected a 2D array"
+        ValueError, match="Invalid logits dimensions: Expected a 2D array, but got 1D."
     ):
         apply_token_bitmask_inplace(logits_1d, mask)
 
@@ -123,6 +124,7 @@ def test_interface_mlx():
     import mlx.core as mx
     import numpy as np
     import pytest
+
     from outlines_core.kernels.mlx import (
         allocate_token_bitmask,
         apply_token_bitmask,
@@ -231,6 +233,7 @@ def test_numpy_correctness(guide):
 )
 def test_mlx_correctness(guide):
     import mlx.core as mx
+
     from outlines_core.kernels.mlx import _apply_token_bitmask_kernel
 
     allowed_tokens = set(guide.get_tokens())

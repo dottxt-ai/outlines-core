@@ -88,15 +88,15 @@ def apply_token_bitmask_inplace(logits: np.ndarray, mask: np.ndarray) -> None:
 
 def fill_next_token_bitmask(guide: Guide, mask: np.ndarray) -> None:
     """
-    Writes a bitmask to represent the tokens permissible by the current state of the `guide`. 
-    Each bit in the bitmask corresponds to a token ID, with a bit value of 1 indicating that 
-    the token is allowed and 0 indicating that it is disallowed. This function directly modifies 
+    Writes a bitmask to represent the tokens permissible by the current state of the `guide`.
+    Each bit in the bitmask corresponds to a token ID, with a bit value of 1 indicating that
+    the token is allowed and 0 indicating that it is disallowed. This function directly modifies
     the `mask` array in-place.
 
     Arguments:
         guide (Guide): An instance of the `Guide` class that provides the current guidance state.
-        mask (np.ndarray): A 2D tensor of type `torch.int32` where the bitmask will be written. 
-                             The tensor must be contiguous, have a single batch dimension 
+        mask (np.ndarray): A 2D tensor of type `torch.int32` where the bitmask will be written.
+                             The tensor must be contiguous, have a single batch dimension
                              (shape[0] == 1), and reside on the CPU.
 
     Raises:

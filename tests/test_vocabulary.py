@@ -2,6 +2,7 @@ import copy
 import pickle
 
 import pytest
+
 from outlines_core import Vocabulary
 
 

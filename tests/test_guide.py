@@ -3,6 +3,7 @@ import pickle
 from typing import Dict, List, Union
 
 import pytest
+
 from outlines_core import Guide, Index, Vocabulary
 
 

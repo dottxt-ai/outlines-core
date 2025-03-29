@@ -2,18 +2,14 @@
 
 <img src="./docs/assets/images/logo.png" alt="Outlines-core Logo" width=500></img>
 
-[![Latest Version]][crates.io] [![License]][github] ![MSRV]
+[![Latest Version]][crates.io] [![License]][github] ![MSRV][version]
 
 [Latest Version]: https://img.shields.io/crates/v/outlines-core.svg
 [crates.io]: https://crates.io/crates/outlines-core
 [License]: https://img.shields.io/github/license/dottxt-ai/outlines-core.svg?color=blue&cachedrop
 [github]: https://github.com/dottxt-ai/outlines-core/blob/main/LICENSE
-[MSRV]: https://img.shields.io/badge/MSRV-1.71.1-brightgreen
-
-<!---
-Once it uploaded to crates.io badge could be generated like:
- [version]: https://img.shields.io/crates/msrv/outlines-core.svg?label=msrv&color=lightgrayy
- -->
+[MSRV]: MSRV
+[version]: https://img.shields.io/crates/msrv/outlines-core.svg?label=msrv&color=lightgrayy
 
 *Structured generation (in Rust).*
 

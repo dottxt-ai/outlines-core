@@ -4,10 +4,10 @@ __pycache__
 .coverage
 .direnv
 .env
+.envrc
 .idea
 .pytest_cache
 .venv
-*_version.py
 *.egg-info
 *.gguf
 *.pyd
@@ -16,6 +16,7 @@ benchmarks/results
 benchmarks/env
 build
 Cargo.lock
+dist
 docs/build
 logs
 rust-coverage

@@ -2,6 +2,7 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 
 import psutil
+
 from outlines_core import Guide, Index, Vocabulary
 
 regex_samples = {

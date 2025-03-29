@@ -81,8 +81,8 @@ def apply_token_bitmask_inplace(logits: torch.Tensor, mask: torch.Tensor) -> Non
             - `mask` is not a 2D array
             - `logits` is not a 2D array
             - `mask.shape`shape does not match `logits.shape`
-            
-    Returns: 
+
+    Returns:
         None: Modifies the logits tensor in place
     """
     if mask.dtype != torch.int32:
@@ -95,7 +95,7 @@ def apply_token_bitmask_inplace(logits: torch.Tensor, mask: torch.Tensor) -> Non
         )
     elif logits.dim() != 2:
         raise ValueError(
-            f"Invalid logits dimensions: Expected a 2D array, but got {mask.dim()}D."
+            f"Invalid logits dimensions: Expected a 2D array, but got {logits.dim()}D."
         )
     elif mask.shape[0] != logits.shape[0]:
         raise ValueError(
@@ -106,15 +106,15 @@ def apply_token_bitmask_inplace(logits: torch.Tensor, mask: torch.Tensor) -> Non
 
 def fill_next_token_bitmask(guide: Guide, mask: torch.Tensor) -> None:
     """
-    Writes a bitmask to represent the tokens permissible by the current state of the `guide`. 
-    Each bit in the bitmask corresponds to a token ID, with a bit value of 1 indicating that 
-    the token is allowed and 0 indicating that it is disallowed. This function directly modifies 
+    Writes a bitmask to represent the tokens permissible by the current state of the `guide`.
+    Each bit in the bitmask corresponds to a token ID, with a bit value of 1 indicating that
+    the token is allowed and 0 indicating that it is disallowed. This function directly modifies
     the `mask` tensor in-place.
 
     Arguments:
         guide (Guide): An instance of the `Guide` class that provides the current guidance state.
-        mask (torch.Tensor): A 2D tensor of type `torch.int32` where the bitmask will be written. 
-                             The tensor must be contiguous, have a single batch dimension 
+        mask (torch.Tensor): A 2D tensor of type `torch.int32` where the bitmask will be written.
+                             The tensor must be contiguous, have a single batch dimension
                              (shape[0] == 1), and reside on the CPU.
 
     Raises:

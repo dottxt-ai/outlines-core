@@ -36,6 +36,8 @@ test = [
     "coverage[toml]>=5.1",
     "diff-cover",
     "numpy",
+    "torch",
+    "numba",
     "scipy",
     "asv",
     "psutil",

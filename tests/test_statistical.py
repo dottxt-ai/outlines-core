@@ -1,9 +1,10 @@
 from typing import Callable, List, Optional
 
 import numpy as np
-from outlines_core import Guide, Index, Vocabulary
 from pytest import approx
 from scipy.stats import ks_2samp
+
+from outlines_core import Guide, Index, Vocabulary
 
 
 def test_generate_length():

@@ -2,8 +2,9 @@ import json
 import re
 
 import pytest
-from outlines_core.json_schema import build_regex_from_schema
 from pydantic import BaseModel
+
+from outlines_core.json_schema import build_regex_from_schema
 
 
 def test_build_regex_from_json_schema():

@@ -62,7 +62,7 @@ impl PyGuide {
     fn advance(
         &mut self, 
         token_id: TokenId, 
-        return_tokens: Option<bool>
+        return_tokens: Option<bool>,
     ) -> PyResult<Option<Vec<TokenId>>> {
         match self.index.get_next_state(self.state, token_id) {
             Some(new_state) => {

@@ -87,7 +87,7 @@ def apply_token_bitmask(logits: mx.array, mask_np: np.ndarray) -> mx.array:
         )
     elif len(logits.shape) != 2:
         raise ValueError(
-            f"Invalid logits dimensions: Expected a 2D array, but got {mask.ndim}D."
+            f"Invalid logits dimensions: Expected a 2D array, but got {logits.ndim}D."
         )
     elif mask.shape[0] != logits.shape[0]:
         raise ValueError(

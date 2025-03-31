@@ -24,13 +24,17 @@ regex-automata = "0.4.9"
 version = "=0.4.1"
 features = ["ureq", "rustls-tls"]
 default-features = false
+optional = true
 
 [dependencies.tokenizers]
 version = "=0.21.1"
-features = ["http", "rustls-tls"]
+features = ["onig"]
+default-features = false
 
 [features]
+default = ["hugginface-hub"]
 python-bindings = ["pyo3", "serde-pyobject"]
+hugginface-hub = ["hf-hub", "tokenizers/http",  "tokenizers/rustls-tls"]
 
 [lib]
 name = "outlines_core"

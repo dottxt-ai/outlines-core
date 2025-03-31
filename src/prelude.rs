@@ -1,5 +1,6 @@
 //! Library's interface essentials.
 
+#[cfg(feature = "hugginface-hub")]
 pub use tokenizers::FromPretrainedParameters;
 
 pub use super::index::Index;

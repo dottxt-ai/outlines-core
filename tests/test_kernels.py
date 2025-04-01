@@ -15,6 +15,7 @@ def guide() -> Guide:
     return Guide(Index("\\+?[1-9][0-9]{7,14}", VOCAB))
 
 
+@pytest.mark.no_cover
 def test_interface_torch():
     from outlines_core.kernels.torch import (
         allocate_token_bitmask,
@@ -67,6 +68,7 @@ def test_interface_torch():
         fill_next_token_bitmask(None, mask_batch2)
 
 
+@pytest.mark.no_cover
 def test_interface_numpy():
     from outlines_core.kernels.numpy import (
         allocate_token_bitmask,
@@ -117,6 +119,7 @@ def test_interface_numpy():
         fill_next_token_bitmask(None, mask_batch2)
 
 
+@pytest.mark.no_cover
 @pytest.mark.skipif(
     not importlib.util.find_spec("mlx"), reason="mlx is required to test mlx kernels"  # type: ignore
 )
@@ -173,6 +176,7 @@ def test_interface_mlx():
         fill_next_token_bitmask(None, mask_batch2)
 
 
+@pytest.mark.no_cover
 def test_torch_correctness(guide):
     from outlines_core.kernels.torch import _apply_token_bitmask_inplace_kernel
 
@@ -201,6 +205,7 @@ def test_torch_correctness(guide):
             ), f"Token {j} should be masked but was {logits[0, j].item()}."
 
 
+@pytest.mark.no_cover
 def test_numpy_correctness(guide):
     from outlines_core.kernels.numpy import _apply_token_bitmask_inplace_kernel
 
@@ -228,6 +233,7 @@ def test_numpy_correctness(guide):
             ), f"Token {j} should be masked was got {logits[0, j]}."
 
 
+@pytest.mark.no_cover
 @pytest.mark.skipif(
     not importlib.util.find_spec("mlx"), reason="mlx is required to test mlx kernels"  # type: ignore
 )

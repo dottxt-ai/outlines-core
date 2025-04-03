@@ -200,6 +200,7 @@ jobs:
         if: matrix.platform.target == 'aarch64'
         run: |
           pip install outlines_core --no-index --find-links dist --force-reinstall
+          cd outlines_core
           python -c "import outlines_core"
 
       - uses: actions/upload-artifact@v4

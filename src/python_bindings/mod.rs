@@ -57,12 +57,21 @@ impl PyGuide {
             )))
     }
 
-    /// Guide moves to the next state provided by the token id and returns a list of allowed tokens.
-    fn advance(&mut self, token_id: TokenId) -> PyResult<Vec<TokenId>> {
+    /// Guide moves to the next state provided by the token id and returns a list of allowed tokens, unless return_tokens is False.
+    #[pyo3(signature = (token_id, return_tokens=None))]
+    fn advance(
+        &mut self,
+        token_id: TokenId,
+        return_tokens: Option<bool>,
+    ) -> PyResult<Option<Vec<TokenId>>> {
         match self.index.get_next_state(self.state, token_id) {
             Some(new_state) => {
                 self.state = new_state;
-                self.get_tokens()
+                if return_tokens.unwrap_or(true) {
+                    self.get_tokens().map(Some)
+                } else {
+                    Ok(None)
+                }
             }
             None => Err(PyErr::new::<PyValueError, _>(format!(
                 "No next state found for the current state: {} with token ID: {token_id}",
@@ -74,6 +83,61 @@ impl PyGuide {
     /// Checks if the automaton is in a final state.
     fn is_finished(&self) -> bool {
         self.index.is_final_state(self.state)
+    }
+
+    /// Write the mask of allowed tokens into the memory specified by data_ptr.
+    /// Size of the memory to be written to is indicated by `numel`, and `element_size`.
+    /// `element_size` must be 4.
+    ///
+    /// `data_ptr` should be the data ptr to a `torch.tensor`, or `np.ndarray`, `mx.array` or other
+    /// contiguous memory array.
+    fn write_mask_into(&self, data_ptr: usize, numel: usize, element_size: usize) -> PyResult<()> {
+        let expected_elements = (self.index.0.vocab_size() + 31) / 32;
+        if element_size != 4 {
+            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                format!(
+                    "Invalid element size: got {} bytes per element, expected 4 bytes (32-bit integer).",
+                    element_size
+                ),
+            ));
+        } else if data_ptr == 0 {
+            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                "Invalid data pointer: received a null pointer.",
+            ));
+        } else if data_ptr % 4 != 0 {
+            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
+                "Invalid data pointer alignment: pointer address {} is not a multiple of 4.",
+                data_ptr
+            )));
+        } else if numel < expected_elements {
+            return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
+                format!(
+                    "Invalid buffer size: got {} elements ({} bytes), expected {} elements ({} bytes). \
+                    Ensure that the mask tensor has shape (1, (vocab_size + 31) // 32) and uses 32-bit integers.",
+                    numel,
+                    numel * element_size,
+                    expected_elements,
+                    expected_elements * 4
+                )
+            ));
+        }
+        unsafe {
+            std::ptr::write_bytes(data_ptr as *mut u8, 0, numel * 4);
+        }
+        if let Some(tokens) = self.index.0.allowed_tokens_iter(&self.state) {
+            let slice = unsafe { std::slice::from_raw_parts_mut(data_ptr as *mut u32, numel) };
+            for &token in tokens {
+                let bucket = (token as usize) / 32;
+                if bucket < slice.len() {
+                    slice[bucket] |= 1 << ((token as usize) % 32);
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn reset(&mut self) {
+        self.state = self.index.get_initial_state();
     }
 
     /// Gets the debug string representation of the guide.
@@ -321,7 +385,7 @@ impl PyVocabulary {
 
     /// Returns length of Vocabulary's tokens, excluding EOS token.
     fn __len__(&self) -> usize {
-        self.0.tokens().len()
+        self.0.len()
     }
 
     /// Makes a deep copy of the Vocabulary.

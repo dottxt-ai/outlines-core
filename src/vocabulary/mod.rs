@@ -148,6 +148,15 @@ impl Vocabulary {
         self.tokens.remove(&token);
     }
 
+    pub fn len(&self) -> usize {
+        // +1 for eos_token_id which is not in self.tokens map.
+        self.tokens.values().map(|ids| ids.len()).sum::<usize>() + 1
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.tokens.is_empty()
+    }
+
     /// Filters out `Prepend` kind of tokenizer's normalizers.
     fn filter_prepend_normalizers(tokenizer: &mut Tokenizer) {
         // Main concern is prepend normalizers, for example https://github.com/google/sentencepiece

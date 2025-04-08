@@ -2,6 +2,7 @@ import os
 from concurrent.futures import ThreadPoolExecutor
 
 import psutil
+
 from outlines_core import Guide, Index, Vocabulary
 
 regex_samples = {
@@ -83,3 +84,21 @@ class MemoryStabilityBenchmark:
 
         assert len(objects) == num_guides
         assert final - initial < 5
+
+
+class WriteMaskIntoBenchmark:
+    params = list(regex_samples.keys())
+    param_names = ["regex_key"]
+
+    def setup(self, regex_key):
+        from outlines_core.kernels.torch import allocate_token_bitmask
+
+        self.vocab = Vocabulary.from_pretrained("gpt2")
+        self.mask = allocate_token_bitmask(len(self.vocab))
+        self.index = Index(regex_samples[regex_key], self.vocab)
+        self.guide = Guide(self.index)
+
+    def time_write_mask_into(self, regex_key):
+        self.guide.write_mask_into(
+            self.mask.data_ptr(), self.mask.numel(), self.mask.element_size()
+        )

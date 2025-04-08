@@ -43,7 +43,7 @@ jobs:
         uses: ./.github/actions/bump_version
 
       - name: Dry-run publish to crates.io
-        run: cargo publish --dry-run
+        run: cargo publish --dry-run --allow-dirty
 
       - name: Publish to PyPI
         uses: PyO3/maturin-action@v1

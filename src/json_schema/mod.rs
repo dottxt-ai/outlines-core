@@ -580,10 +580,22 @@ mod tests {
                 r#"(0|1)"#,
                 vec!["0", "1"], vec!["a"],
             ),
+            // Enum array
+            (
+                r#"{"title": "Foo", "enum": [[1,2],[3,4]], "type": "array"}"#,
+                r#"(\[1,2\]|\[3,4\])"#,
+                vec!["[1,2]", "[3,4]"], vec!["1", "[1,3]"],
+            ),
+            // Enum object
+            (
+                r#"{"title": "Foo", "enum": [{"a":"b"}, {"c":"d"}], "type": "object"}"#,
+                r#"(\{"a":"b"\}|\{"c":"d"\})"#,
+                vec![r#"{"a":"b"}"#, r#"{"c":"d"}"#], vec!["a", r#"{"a":"c"}"#],
+            ),
             // Enum mix of types
             (
-                r#"{"title": "Foo", "enum": [6, 5.3, "potato", true, null]}"#,
-                r#"(6|5\.3|"potato"|true|null)"#,
+                r#"{"title": "Foo", "enum": [6, 5.3, "potato", true, null, [1,2], {"a":"b"}]}"#,
+                r#"(6|5\.3|"potato"|true|null|\[1,2\]|\{"a":"b"\})"#,
                 vec!["6", "5.3", r#""potato""#, "true", "null"], vec!["none", "53"],
             ),
             // ==========================================================

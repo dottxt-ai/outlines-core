@@ -237,11 +237,15 @@ impl<'a> Parser<'a> {
                 let choices: Result<Vec<String>> = enum_values
                     .iter()
                     .map(|choice| match choice {
-                        Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => {
+                        Value::Null
+                        | Value::Bool(_)
+                        | Value::Number(_)
+                        | Value::String(_)
+                        | Value::Array(_)
+                        | Value::Object(_) => {
                             let json_string = serde_json::to_string(choice)?;
                             Ok(regex::escape(&json_string))
                         }
-                        _ => Err(Error::UnsupportedEnumDataType(Box::new(choice.clone()))),
                     })
                     .collect();
 

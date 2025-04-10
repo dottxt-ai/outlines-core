@@ -596,7 +596,7 @@ mod tests {
             (
                 r#"{"title": "Foo", "enum": [6, 5.3, "potato", true, null, [1,2], {"a":"b"}]}"#,
                 format!(r#"(6|5\.3|"potato"|true|null|\[{0}1{0},{0}2{0}\]|\{{{0}"a"{0}:{0}"b"{0}\}})"#, WHITESPACE).as_str(),
-                vec!["6", "5.3", r#""potato""#, "true", "null"], vec!["none", "53"],
+                vec!["6", "5.3", r#""potato""#, "true", "null", "[1, 2]", r#"{"a": "b" }"#], vec!["none", "53"],
             ),
             // ==========================================================
             //                      UUID

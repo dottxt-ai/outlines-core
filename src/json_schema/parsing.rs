@@ -236,17 +236,7 @@ impl<'a> Parser<'a> {
             Some(Value::Array(enum_values)) => {
                 let choices: Result<Vec<String>> = enum_values
                     .iter()
-                    .map(|choice| match choice {
-                        Value::Null
-                        | Value::Bool(_)
-                        | Value::Number(_)
-                        | Value::String(_)
-                        | Value::Array(_)
-                        | Value::Object(_) => {
-                            let json_string = serde_json::to_string(choice)?;
-                            Ok(regex::escape(&json_string))
-                        }
-                    })
+                    .map(|choice| self.parse_const_value(choice))
                     .collect();
 
                 let choices = choices?;
@@ -257,17 +247,42 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_const(&mut self, obj: &serde_json::Map<String, Value>) -> Result<String> {
-        match obj.get("const") {
-            Some(const_value) => match const_value {
-                Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => {
-                    let json_string = serde_json::to_string(const_value)?;
-                    Ok(regex::escape(&json_string))
-                }
-                _ => Err(Error::UnsupportedConstDataType(Box::new(
-                    const_value.clone(),
-                ))),
-            },
-            None => Err(Error::ConstKeyNotFound),
+        if let Some(const_value) = obj.get("const") {
+            self.parse_const_value(const_value)
+        } else {
+            Err(Error::ConstKeyNotFound)
+        }
+    }
+
+    fn parse_const_value(&self, value: &Value) -> Result<String> {
+        match value {
+            Value::Array(array_values) => {
+                let inner_regex = array_values
+                    .iter()
+                    .map(|value| self.parse_const_value(value))
+                    .collect::<Result<Vec<String>>>()?
+                    .join(format!("{0},{0}", self.whitespace_pattern).as_str());
+                Ok(format!(r"\[{0}{inner_regex}{0}\]", self.whitespace_pattern))
+            }
+            Value::Object(obj) => {
+                let inner_regex = obj
+                    .iter()
+                    .map(|(key, value)| {
+                        self.parse_const_value(value).map(|value_regex| {
+                            format!(r#""{key}"{0}:{0}{value_regex}"#, self.whitespace_pattern)
+                        })
+                    })
+                    .collect::<Result<Vec<String>>>()?
+                    .join(format!("{0},{0}", self.whitespace_pattern).as_str());
+                Ok(format!(
+                    r"\{{{0}{inner_regex}{0}\}}",
+                    self.whitespace_pattern
+                ))
+            }
+            _ => {
+                let json_string = serde_json::to_string(value)?;
+                Ok(regex::escape(&json_string))
+            }
         }
     }
 

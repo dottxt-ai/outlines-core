@@ -92,7 +92,7 @@ impl PyGuide {
     /// `data_ptr` should be the data ptr to a `torch.tensor`, or `np.ndarray`, `mx.array` or other
     /// contiguous memory array.
     fn write_mask_into(&self, data_ptr: usize, numel: usize, element_size: usize) -> PyResult<()> {
-        let expected_elements = (self.index.0.vocab_size() + 31) / 32;
+        let expected_elements = self.index.0.vocab_size().div_ceil(32);
         if element_size != 4 {
             return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
                 format!(

@@ -1048,16 +1048,16 @@ mod tests {
                 r#"{"title": "Foo", "type": "string", "format": "uri"}"#,
                 URI,
                 vec![
-                    "http://example.com",
-                    "https://example.com/path?query=param#fragment",
-                    "ftp://ftp.example.com/resource",
-                    "urn:isbn:0451450523",
+                    r#""http://example.com""#,
+                    r#""https://example.com/path?query=param#fragment""#,
+                    r#""ftp://ftp.example.com/resource""#,
+                    r#""urn:isbn:0451450523""#,
                 ],
                 vec![
-                    "http:/example.com", // missing slash
-                    "htp://example.com", // invalid scheme
-                    "http://",           // missing host
-                    "example.com",       // missing scheme
+                    r#""http:/example.com""#, // missing slash
+                    r#""htp://example.com""#, // invalid scheme
+                    r#""http://""#,           // missing host
+                    r#""example.com""#,       // missing scheme
                 ]
             ),
             (
@@ -1065,23 +1065,49 @@ mod tests {
                 EMAIL,
                 vec![
                     // Valid emails
-                    "user@example.com",               // valid
-                    "user.name+tag+sorting@example.com", // valid
-                    "user_name@example.co.uk",         // valid
-                    "user-name@sub.example.com",       // valid
+                    r#""user@example.com""#,               // valid
+                    r#""user.name+tag+sorting@example.com""#, // valid
+                    r#""user_name@example.co.uk""#,         // valid
+                    r#""user-name@sub.example.com""#,       // valid
                 ],
                 vec![
                     // Invalid emails
-                    "plainaddress",                   // missing '@' and domain
-                    "@missingusername.com",           // missing username
-                    "username@.com",                  // leading dot in domain
-                    "username@com",                   // TLD must have at least 2 characters
-                    "username@example,com",           // invalid character in domain
-                    "username@.example.com",          // leading dot in domain
-                    "username@-example.com",          // domain cannot start with a hyphen
-                    "username@example-.com",          // domain cannot end with a hyphen
-                    "username@example..com",          // double dot in domain name
-                    "username@.example..com",         // multiple errors in domain
+                    r#""plainaddress""#,                   // missing '@' and domain
+                    r#""@missingusername.com""#,           // missing username
+                    r#""username@.com""#,                  // leading dot in domain
+                    r#""username@com""#,                   // TLD must have at least 2 characters
+                    r#""username@example,com""#,           // invalid character in domain
+                    r#""username@.example.com""#,          // leading dot in domain
+                    r#""username@-example.com""#,          // domain cannot start with a hyphen
+                    r#""username@example-.com""#,          // domain cannot end with a hyphen
+                    r#""username@example..com""#,          // double dot in domain name
+                    r#""username@.example..com""#,         // multiple errors in domain
+                ]
+            ),
+            // Nested URI and email
+            (
+                r#"{
+                    "title": "Test Schema",
+                    "type": "object",
+                    "properties": {
+                        "test_str": {"title": "Test string", "type": "string"},
+                        "test_uri": {"title": "Test URI", "type": "string", "format": "uri"},
+                        "test_email": {"title": "Test email", "type": "string", "format": "email"}
+                    },
+                    "required": ["test_str", "test_uri", "test_email"]
+                }"#,
+                format!(
+                    r#"\{{{0}"test_str"{0}:{0}{STRING}{0},{0}"test_uri"{0}:{0}{URI}{0},{0}"test_email"{0}:{0}{EMAIL}{0}\}}"#,
+                    WHITESPACE
+                ).as_str(),
+                vec![
+                    r#"{ "test_str": "cat", "test_uri": "http://example.com", "test_email": "user@example.com" }"#,
+                ],
+                vec![
+                    // Invalid URI
+                    r#"{ "test_str": "cat", "test_uri": "http:/example.com", "test_email": "user@example.com" }"#,
+                    // Invalid email
+                    r#"{ "test_str": "cat", "test_uri": "http://example.com", "test_email": "username@.com" }"#,
                 ]
             ),
 

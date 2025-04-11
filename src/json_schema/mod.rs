@@ -1084,6 +1084,32 @@ mod tests {
                     r#""username@.example..com""#,         // multiple errors in domain
                 ]
             ),
+            // Nested URI and email
+            (
+                r#"{
+                    "title": "Test Schema",
+                    "type": "object",
+                    "properties": {
+                        "test_str": {"title": "Test string", "type": "string"},
+                        "test_uri": {"title": "Test URI", "type": "string", "format": "uri"},
+                        "test_email": {"title": "Test email", "type": "string", "format": "email"}
+                    },
+                    "required": ["test_str", "test_uri", "test_email"]
+                }"#,
+                format!(
+                    r#"\{{{0}"test_str"{0}:{0}{STRING}{0},{0}"test_uri"{0}:{0}{URI}{0},{0}"test_email"{0}:{0}{EMAIL}{0}\}}"#,
+                    WHITESPACE
+                ).as_str(),
+                vec![
+                    r#"{ "test_str": "cat", "test_uri": "http://example.com", "test_email": "user@example.com" }"#,
+                ],
+                vec![
+                    // Invalid URI
+                    r#"{ "test_str": "cat", "test_uri": "http:/example.com", "test_email": "user@example.com" }"#,
+                    // Invalid email
+                    r#"{ "test_str": "cat", "test_uri": "http://example.com", "test_email": "username@.com" }"#,
+                ]
+            ),
 
             // ==========================================================
             //                      Multiple types

@@ -2,14 +2,22 @@
   inputs = {
     flake-utils.url = "github:numtide/flake-utils";
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
-    rust-overlay.url = "github:oxalica/rust-overlay";
   };
-  outputs = { flake-utils, nixpkgs, rust-overlay, ... }:
+  outputs = { flake-utils, nixpkgs, ... }:
     flake-utils.lib.eachDefaultSystem (system:
       let
-        overlays = [ (import rust-overlay) ];
-        pkgs = import nixpkgs { inherit system overlays; };
+        pkgs = import nixpkgs { inherit system; };
       in {
-        devShell = import ./shell.nix { inherit pkgs system; };
+        devShell = pkgs.mkShell {
+          buildInputs = [
+            pkgs.pre-commit
+            pkgs.python3
+            pkgs.rustup
+          ];
+          shellHook = ''
+            FLAKE_DIR=$(dirname $(dirname $out))
+            source $FLAKE_DIR/.venv/bin/activate
+          '';
+        };
       });
 }

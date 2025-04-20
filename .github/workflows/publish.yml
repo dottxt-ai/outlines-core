@@ -45,13 +45,17 @@ jobs:
       - name: Dry-run publish to crates.io
         run: cargo publish --dry-run --allow-dirty
 
-      - name: Publish to PyPI
-        uses: PyO3/maturin-action@v1
-        env:
-          MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_SECRET}}
+      - name: Print directory information
+        run: |
+          pwd
+          ls -la
+          ls -la dist
+
+      - name: Publish to PyPi
+        uses: pypa/gh-action-pypi-publish@v1.4.2
         with:
-          command: upload
-          args: --non-interactive --skip-existing dist/*
+          user: __token__
+          password: ${{ secrets.PYPI_SECRET }}
 
       - name: Publish to crates.io
         env:

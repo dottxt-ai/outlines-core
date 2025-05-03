@@ -190,7 +190,7 @@ def test_rollback(index):
     guide.advance(1)
 
     # Roll back one token to initial state
-    guide.rollback(1)
+    guide.rollback_state(1)
     assert not guide.is_finished()
     # we should now be in the initial state
     assert guide.get_state() == first_state
@@ -201,7 +201,7 @@ def test_rollback_interface(index):
 
     # Rolling back more than recorded history must raise
     with pytest.raises(ValueError, match="Cannot rollback"):
-        guide.rollback(5)
+        guide.rollback_state(5)
 
 
 @pytest.mark.parametrize(

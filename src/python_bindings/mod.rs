@@ -1,7 +1,7 @@
 //! Provides tools and interfaces to integrate the crate's functionality with Python.
 
-use std::sync::Arc;
 use std::collections::VecDeque;
+use std::sync::Arc;
 
 use bincode::{config, Decode, Encode};
 use pyo3::exceptions::PyValueError;
@@ -28,19 +28,19 @@ macro_rules! type_name {
 pub struct PyGuide {
     state: StateId,
     index: PyIndex,
-    prior_states: VecDeque<StateId>
+    state_cache: VecDeque<StateId>,
 }
 
 #[pymethods]
 impl PyGuide {
     /// Creates a Guide object based on Index.
     #[new]
-    #[pyo3(signature = (index, max_rollback_tokens=32))]
-    fn __new__(index: PyIndex, max_rollback_tokens: usize) -> Self {
+    #[pyo3(signature = (index, max_rollback=32))]
+    fn __new__(index: PyIndex, max_rollback: usize) -> Self {
         PyGuide {
             state: index.get_initial_state(),
             index,
-            prior_states: VecDeque::with_capacity(max_rollback_tokens)
+            state_cache: VecDeque::with_capacity(max_rollback)
         }
     }
 
@@ -61,6 +61,11 @@ impl PyGuide {
             )))
     }
 
+    /// Get the number of rollback steps available.
+    fn get_allowed_rollback(&self) -> usize {
+        self.state_cache.len()
+    }
+
     /// Guide moves to the next state provided by the token id and returns a list of allowed tokens, unless return_tokens is False.
     #[pyo3(signature = (token_id, return_tokens=None))]
     fn advance(
@@ -70,13 +75,11 @@ impl PyGuide {
     ) -> PyResult<Option<Vec<TokenId>>> {
         match self.index.get_next_state(self.state, token_id) {
             Some(new_state) => {
-                // Free up space in prior_states if needed.
-                if self.prior_states.len() == self.prior_states.capacity() {
-                    self.prior_states.pop_front();
+                // Free up space in state_cache if needed.
+                if self.state_cache.len() == self.state_cache.capacity() {
+                    self.state_cache.pop_front();
                 }
-                self.prior_states.push_back(
-                    self.state
-                );
+                self.state_cache.push_back(self.state);
                 self.state = new_state;
                 if return_tokens.unwrap_or(true) {
                     self.get_tokens().map(Some)
@@ -93,40 +96,42 @@ impl PyGuide {
 
     /// Rollback the Guide state `n` tokens (states).
     /// Fails if `n` is greater than stored prior states.
-    fn rollback(
-        &mut self,
-        n: u32
-    ) -> PyResult<()> {
+    fn rollback_state(&mut self, n: usize) -> PyResult<()> {
         if n == 0 {
             return Ok(());
         }
 
-        if (n as usize) > self.prior_states.len() {
-            return Err(
-                PyErr::new::<PyValueError, _>(format!(
-                    "Cannot rollback {} states. Make sure you have advanced through at least \
-                    {} states since the last rollback or object initialization",
-                    n,
-                    n
-                ))
-            );
-        }
+        let cap = self.state_cache.capacity();
+        let available = self.state_cache.len();
+
+        if n > available {
+            return Err(PyErr::new::<PyValueError, _>(format!(
+                "Cannot roll back {n} state(s). You have moved forward only {cap} state(s) \
+                 since the Guide was created or last rolled back, and you can never roll back more \
+                 steps than that (nor more than the configured `max_rollback` of {available}). \
+                 You can get the allowed rollback steps with the `get_allowed_rollback` method"
+            )));
+        } 
 
         let mut new_state: u32 = self.state;
         for _ in 0..n {
-            new_state = self.prior_states
-                .pop_back()
-                .expect("length checked above");
+            match self.state_cache.pop_back() {
+                Some(prev) => new_state = prev,
+                // This should never happen because length is checked above,
+                // but we need to unwrap the Option here so raise if somehow
+                // the Option is not Some(prev)
+                None => return Err(PyErr::new::<PyValueError, _>(format!(
+                    "Attempted to roll back {n} step(s) but only {available} \
+                     step(s) are currently cached (max_rollback = {cap})."
+                )))
+            }
         }
         self.state = new_state;
         return Ok(());
     }
 
     // Returns a boolean indicating if the sequence leads to a valid state in the DFA
-    fn accepts_tokens(
-        &mut self,
-        sequence: Vec<u32>,
-    ) -> bool {
+    fn accepts_tokens(&self, sequence: Vec<u32>) -> bool {
         let mut state = self.state;
         for t in sequence {
             match self.index.get_next_state(state, t) {

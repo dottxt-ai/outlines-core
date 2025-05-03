@@ -1,6 +1,7 @@
 //! Provides tools and interfaces to integrate the crate's functionality with Python.
 
 use std::sync::Arc;
+use std::collections::VecDeque;
 
 use bincode::{config, Decode, Encode};
 use pyo3::exceptions::PyValueError;
@@ -27,16 +28,19 @@ macro_rules! type_name {
 pub struct PyGuide {
     state: StateId,
     index: PyIndex,
+    prior_states: VecDeque<StateId>
 }
 
 #[pymethods]
 impl PyGuide {
     /// Creates a Guide object based on Index.
     #[new]
-    fn __new__(index: PyIndex) -> Self {
+    #[pyo3(signature = (index, max_rollback_tokens=32))]
+    fn __new__(index: PyIndex, max_rollback_tokens: usize) -> Self {
         PyGuide {
             state: index.get_initial_state(),
             index,
+            prior_states: VecDeque::with_capacity(max_rollback_tokens)
         }
     }
 
@@ -66,6 +70,13 @@ impl PyGuide {
     ) -> PyResult<Option<Vec<TokenId>>> {
         match self.index.get_next_state(self.state, token_id) {
             Some(new_state) => {
+                // Free up space in prior_states if needed.
+                if self.prior_states.len() == self.prior_states.capacity() {
+                    self.prior_states.pop_front();
+                }
+                self.prior_states.push_back(
+                    self.state
+                );
                 self.state = new_state;
                 if return_tokens.unwrap_or(true) {
                     self.get_tokens().map(Some)
@@ -78,6 +89,52 @@ impl PyGuide {
                 self.state
             ))),
         }
+    }
+
+    /// Rollback the Guide state `n` tokens (states).
+    /// Fails if `n` is greater than stored prior states.
+    fn rollback(
+        &mut self,
+        n: u32
+    ) -> PyResult<()> {
+        if n == 0 {
+            return Ok(());
+        }
+
+        if (n as usize) > self.prior_states.len() {
+            return Err(
+                PyErr::new::<PyValueError, _>(format!(
+                    "Cannot rollback {} states. Make sure you have advanced through at least \
+                    {} states since the last rollback or object initialization",
+                    n,
+                    n
+                ))
+            );
+        }
+
+        let mut new_state: u32 = self.state;
+        for _ in 0..n {
+            new_state = self.prior_states
+                .pop_back()
+                .expect("length checked above");
+        }
+        self.state = new_state;
+        return Ok(());
+    }
+
+    // Returns a boolean indicating if the sequence leads to a valid state in the DFA
+    fn accepts_tokens(
+        &mut self,
+        sequence: Vec<u32>,
+    ) -> bool {
+        let mut state = self.state;
+        for t in sequence {
+            match self.index.get_next_state(state, t) {
+                Some(s) => state = s,
+                None => return false,
+            }
+        }
+        true
     }
 
     /// Checks if the automaton is in a final state.

@@ -40,7 +40,7 @@ impl PyGuide {
         PyGuide {
             state: index.get_initial_state(),
             index,
-            state_cache: VecDeque::with_capacity(max_rollback)
+            state_cache: VecDeque::with_capacity(max_rollback),
         }
     }
 
@@ -111,7 +111,7 @@ impl PyGuide {
                  steps than that (nor more than the configured `max_rollback` of {available}). \
                  You can get the allowed rollback steps with the `get_allowed_rollback` method"
             )));
-        } 
+        }
 
         let mut new_state: u32 = self.state;
         for _ in 0..n {
@@ -120,10 +120,12 @@ impl PyGuide {
                 // This should never happen because length is checked above,
                 // but we need to unwrap the Option here so raise if somehow
                 // the Option is not Some(prev)
-                None => return Err(PyErr::new::<PyValueError, _>(format!(
-                    "Attempted to roll back {n} step(s) but only {available} \
-                     step(s) are currently cached (max_rollback = {cap})."
-                )))
+                None => {
+                    return Err(PyErr::new::<PyValueError, _>(format!(
+                        "Attempted to roll back {n} step(s) but only {available} \
+                        step(s) are currently cached (max_rollback = {cap})."
+                    )))
+                }
             }
         }
         self.state = new_state;

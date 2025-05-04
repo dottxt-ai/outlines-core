@@ -101,35 +101,22 @@ impl PyGuide {
             return Ok(());
         }
 
-        let cap = self.state_cache.capacity();
-        let available = self.state_cache.len();
-
-        if n > available {
-            return Err(PyErr::new::<PyValueError, _>(format!(
-                "Cannot roll back {n} state(s). You have moved forward only {cap} state(s) \
-                 since the Guide was created or last rolled back, and you can never roll back more \
-                 steps than that (nor more than the configured `max_rollback` of {available}). \
-                 You can get the allowed rollback steps with the `get_allowed_rollback` method"
-            )));
-        }
-
         let mut new_state: u32 = self.state;
         for _ in 0..n {
             match self.state_cache.pop_back() {
                 Some(prev) => new_state = prev,
-                // This should never happen because length is checked above,
-                // but we need to unwrap the Option here so raise if somehow
-                // the Option is not Some(prev)
                 None => {
-                    return Err(PyErr::new::<PyValueError, _>(format!(
-                        "Attempted to roll back {n} step(s) but only {available} \
-                        step(s) are currently cached (max_rollback = {cap})."
-                    )))
-                }
+                    return Err(PyValueError::new_err(format!(
+                        "Cannot roll back {n} step(s): only {available} states stored (max_rollback = {cap}). \
+                         You must advance through at least {n} state(s) before rolling back {n} step(s).",
+                        available = self.state_cache.len(),
+                        cap = self.state_cache.capacity(),
+                    )));
+                }                
             }
         }
         self.state = new_state;
-        return Ok(());
+        Ok(())
     }
 
     // Returns a boolean indicating if the sequence leads to a valid state in the DFA

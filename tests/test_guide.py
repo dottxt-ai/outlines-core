@@ -184,7 +184,7 @@ def test_write_mask_into_interface(index):
 
 
 def test_rollback(index):
-    guide = Guide(index, max_rollback_tokens=3)
+    guide = Guide(index, max_rollback=3)
 
     first_state = guide.get_state()
     guide.advance(1)
@@ -197,7 +197,7 @@ def test_rollback(index):
 
 
 def test_rollback_interface(index):
-    guide = Guide(index, max_rollback_tokens=3)
+    guide = Guide(index, max_rollback=3)
 
     # Rolling back more than recorded history must raise
     with pytest.raises(ValueError, match="Cannot rollback"):

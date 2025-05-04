@@ -200,7 +200,7 @@ def test_rollback_interface(index):
     guide = Guide(index, max_rollback=3)
 
     # Rolling back more than recorded history must raise
-    with pytest.raises(ValueError, match="Cannot rollback"):
+    with pytest.raises(ValueError, match="Cannot roll back"):
         guide.rollback_state(5)
 
 

@@ -112,7 +112,7 @@ impl PyGuide {
                         available = self.state_cache.len(),
                         cap = self.state_cache.capacity(),
                     )));
-                }                
+                }
             }
         }
         self.state = new_state;

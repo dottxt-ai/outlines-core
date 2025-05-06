@@ -111,7 +111,7 @@ impl PyGuide {
         let mut new_state: u32 = self.state;
         for _ in 0..n {
             // unwrap is safe because length is checked above
-            self.state_cache.pop_back().unwrap()
+            new_state = self.state_cache.pop_back().unwrap();
         }
         self.state = new_state;
         Ok(())

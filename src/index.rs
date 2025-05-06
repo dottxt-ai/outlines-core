@@ -55,6 +55,8 @@ pub struct Index {
     transitions: HashMap<StateId, HashMap<TokenId, StateId>>,
     /// The token ID reserved for the "end-of-sequence" token.
     eos_token_id: TokenId,
+    /// The size of the vocabulary used to build the index.
+    vocab_size: usize,
 }
 /// The `Index` structure is designed to efficiently map tokens from a given vocabulary
 /// to state transitions within a finite-state automaton.
@@ -99,6 +101,7 @@ pub struct Index {
 impl Index {
     /// Builds an `Index` from regular expression and vocabulary tokens.
     pub fn new(regex: &str, vocabulary: &Vocabulary) -> Result<Self> {
+        let vocab_size = vocabulary.len();
         let eos_token_id = vocabulary.eos_token_id();
         let dfa = DFA::new(regex).map_err(Box::new)?;
         let start_state = match dfa.universal_start_state(Anchored::Yes) {
@@ -160,6 +163,7 @@ impl Index {
             final_states,
             transitions,
             eos_token_id,
+            vocab_size,
         })
     }
 
@@ -190,12 +194,20 @@ impl Index {
             .map(|res| res.keys().cloned().collect())
     }
 
+    pub fn allowed_tokens_iter(&self, state: &StateId) -> Option<impl Iterator<Item = &TokenId>> {
+        self.transitions.get(state).map(|map| map.keys())
+    }
+
     /// Returns transition state for a given state and token id or `None` otherwise.
     pub fn next_state(&self, state: &StateId, token_id: &TokenId) -> Option<StateId> {
         if token_id == &self.eos_token_id {
             return None;
         }
         Some(*self.transitions.get(state)?.get(token_id)?)
+    }
+
+    pub fn vocab_size(&self) -> usize {
+        self.vocab_size
     }
 }
 

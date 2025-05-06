@@ -1,0 +1,28 @@
+# This action is called from PyPi and Rust release workflows to update Cargo.toml with release version.
+# It will only be successfull, if release tag, which triggered the workflow will match
+# package version in Cargo.toml (sanity check).
+name: 'Update package version to release version'
+description: 'This action bumps package version in Cargo.toml file, matching the release tag.'
+
+runs:
+  using: 'composite'
+  steps:
+    - uses: actions/checkout@v4
+      # To fetch all the tags and history
+      with:
+        fetch-depth: 0
+        clean: false
+
+    - name: Bump version in Cargo.toml
+      run: |
+        python .github/actions/bump_version/bump_version.py --target Cargo.toml "${{ github.ref_name }}"
+      shell: bash
+
+    - name: Check version in Cargo.toml matches Release tag
+      run: |
+        VERSION=$(cargo metadata --format-version=1 --no-deps | jq -r '.packages[0].version')
+        if [ "${GITHUB_REF#refs/tags/}" != "$VERSION" ]; then
+          echo "Version mismatch: Cargo.toml ($VERSION) doesn't match Release tag (${GITHUB_REF#refs/tags/})"
+          exit 1
+        fi
+      shell: bash

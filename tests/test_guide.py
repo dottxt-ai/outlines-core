@@ -3,6 +3,7 @@ import pickle
 from typing import Dict, List, Union
 
 import pytest
+
 from outlines_core import Guide, Index, Vocabulary
 
 
@@ -148,3 +149,35 @@ def test_equality(index):
     guide1.advance(guide1.get_tokens()[-1])
     assert guide1 != guide2
     assert guide3 == guide2
+
+
+def test_write_mask_into(index):
+    import torch
+
+    guide = Guide(index)
+    mask = torch.tensor(torch.tensor([-1], dtype=torch.uint32))
+    guide.write_mask_into(mask.data_ptr(), mask.numel(), mask.element_size())
+
+    expected_mask = 0
+    for token in guide.get_tokens():
+        expected_mask |= 1 << (token % 32)
+
+    assert (
+        mask[0] == expected_mask
+    ), f"mask and expected mask do not match. Mask: {mask[0]}, Expected: {expected_mask}"
+
+
+def test_write_mask_into_interface(index):
+    import torch
+
+    guide = Guide(index)
+    mask = torch.tensor(torch.tensor([-1], dtype=torch.uint32))
+
+    with pytest.raises(ValueError, match="Invalid buffer size"):
+        guide.write_mask_into(mask.data_ptr(), 0, mask.element_size())
+    with pytest.raises(ValueError, match="Invalid element size"):
+        guide.write_mask_into(mask.data_ptr(), mask.numel(), 5)
+    with pytest.raises(ValueError, match="Invalid data pointer"):
+        guide.write_mask_into(0, mask.numel(), mask.element_size())
+    with pytest.raises(ValueError, match="Invalid data pointer alignment"):
+        guide.write_mask_into(5, mask.numel(), mask.element_size())

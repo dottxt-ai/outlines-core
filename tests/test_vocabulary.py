@@ -2,6 +2,7 @@ import copy
 import pickle
 
 import pytest
+
 from outlines_core import Vocabulary
 
 
@@ -15,15 +16,15 @@ def vocabulary():
 def test_basic_vocabulary_interface(vocabulary):
     assert vocabulary.get_eos_token_id() == 3
     assert vocabulary.get("1") == vocabulary.get(b"1") == [1]
-    assert len(vocabulary) == 2
+    assert len(vocabulary) == 3
 
     vocabulary.insert("b", 4)
     assert vocabulary.get("b") == [4]
-    assert len(vocabulary) == 3
+    assert len(vocabulary) == 4
 
     vocabulary.insert(b"b", 5)
     assert vocabulary.get("b") == vocabulary.get(b"b") == [4, 5]
-    assert len(vocabulary) == 3
+    assert len(vocabulary) == 5
 
     vocabulary.remove("b")
     assert vocabulary.get("b") is None
@@ -49,7 +50,7 @@ def test_string_and_bytes_as_tokens():
     )
     assert vocabulary.get(b"1") == vocabulary.get("1") == [1]
     assert bvocabulary.get(b"1") == bvocabulary.get("1") == [1]
-    assert len(vocabulary) == len(bvocabulary) == 2
+    assert len(vocabulary) == len(bvocabulary) == 3
 
 
 def test_do_not_supports_other_types():

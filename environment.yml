@@ -12,7 +12,6 @@ dependencies:
   - pydantic
   - pytest
   - pre-commit
-  - jsonschema
   - pip
   - pip:
     - -e ".[test]"

@@ -1,0 +1,39 @@
+name: Dry-run Publish
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  build_wheels:
+    uses: dottxt-ai/outlines-core/.github/workflows/build_wheels.yml@main
+
+  dry_run:
+    needs: build_wheels
+    name: Dry-run for publishing to PyPI and crates.io
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: wheels-*
+          merge-multiple: true
+          path: dist
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: sdist
+          path: dist
+
+      - name: List downloaded artifacts
+        run: ls -lh dist/
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Dry-run publish to crates.io
+        run: cargo publish --dry-run --allow-dirty

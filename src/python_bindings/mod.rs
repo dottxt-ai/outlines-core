@@ -100,20 +100,18 @@ impl PyGuide {
         if n == 0 {
             return Ok(());
         }
-
+        if n > self.get_allowed_rollback() {
+            return Err(PyValueError::new_err(format!(
+                "Cannot roll back {n} step(s): only {available} states stored (max_rollback = {cap}). \
+                 You must advance through at least {n} state(s) before rolling back {n} step(s).",
+                 cap = self.state_cache.capacity(),
+                 available = self.get_allowed_rollback(),
+            )));
+        }
         let mut new_state: u32 = self.state;
         for _ in 0..n {
-            match self.state_cache.pop_back() {
-                Some(prev) => new_state = prev,
-                None => {
-                    return Err(PyValueError::new_err(format!(
-                        "Cannot roll back {n} step(s): only {available} states stored (max_rollback = {cap}). \
-                         You must advance through at least {n} state(s) before rolling back {n} step(s).",
-                        available = self.state_cache.len(),
-                        cap = self.state_cache.capacity(),
-                    )));
-                }
-            }
+            // unwrap is safe because length is checked above
+            self.state_cache.pop_back().unwrap()
         }
         self.state = new_state;
         Ok(())

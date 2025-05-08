@@ -9,6 +9,7 @@ use pyo3::prelude::*;
 use pyo3::types::{PyAny, PyDict};
 use pyo3::wrap_pyfunction;
 use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
+#[cfg(feature = "hugginface-hub")]
 use tokenizers::FromPretrainedParameters;
 
 use crate::index::Index;
@@ -352,6 +353,7 @@ impl PyVocabulary {
     /// Creates the vocabulary of a pre-trained model.
     #[staticmethod]
     #[pyo3(signature = (model, revision=None, token=None))]
+    #[cfg(feature = "hugginface-hub")]
     fn from_pretrained(
         model: String,
         revision: Option<String>,

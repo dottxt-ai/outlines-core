@@ -49,6 +49,15 @@ impl<'a> Parser<'a> {
 
     #[allow(clippy::wrong_self_convention)]
     pub fn to_regex(&mut self, json: &Value) -> Result<String> {
+        // TODO: the current design of this parser is conceptually limited and should be reworked!
+        //
+        // It branch in the following `match` for specific keys in the JSON schema (e.g., "allOf", "anyOf", etc.).
+        // This approach makes these keys mutually exclusive, meaning that if a JSON schema contains multiple keys
+        // that should be combined, the parser will just silently take the first one and ignore the others.
+        //
+        // To address this, the parser should retain some state while parsing, using a data structure that, e.g.,
+        // can contain one option per possible key. This would allow the parser to handle more complex cases by
+        // combining constraints appropriately.
         match json {
             Value::Object(obj) if obj.is_empty() => self.parse_empty_object(),
             Value::Object(obj) if obj.contains_key("properties") => self.parse_properties(obj),
@@ -62,6 +71,15 @@ impl<'a> Parser<'a> {
             Value::Object(obj) if obj.contains_key("type") => self.parse_type(obj),
             json => Err(Error::UnsupportedJsonSchema(Box::new(json.clone()))),
         }
+        // Each function in this recursive descent parser generates a regex as a `String`, eventually patching
+        // JSONSchema on the fly and calling `.to_regex()`, which is then combined using simple string formatting.
+        // This approach is extremely fragile and not expressive. It is prone to errors and difficult to maintain
+        // or debug.
+        //
+        // The right way to implement this is to design the parser like a small compiler with an intermediate
+        // representation (IR). This IR would be a higher-level representation of regex that can be combined and
+        // mutated more easily. The code generation step could then be a default `Display` string formatter
+        // version of the IR. This approach would be more robust, easier to debug, and maintainable.
     }
 
     fn parse_empty_object(&mut self) -> Result<String> {
@@ -162,6 +180,15 @@ impl<'a> Parser<'a> {
             }
 
             regex += &format!("({})?", possible_patterns.join("|"));
+        }
+
+        // FIXME: the following lines broke `with_whitespace_patterns`,
+        // `indirect_recursion_with_recursion_level_regex_match` and
+        // `direct_recursion_in_array_and_default_behaviour`
+        if obj.contains_key("type") {
+            // This is a hack to quickly fix issue #150
+            let s = self.parse_type(obj)?;
+            regex += &format!(",{}", &s[2..s.len() - 2]);
         }
 
         regex += &format!("{}\\}}", self.whitespace_pattern);
@@ -500,10 +527,16 @@ impl<'a> Parser<'a> {
             ""
         };
 
+        // Note: it would be nice to move the following code outside of this function and create a
+        // `.parse_additional_properties()` that's called in `.to_regex()`, but the following code is currently
+        // too tightly coupled to the "type" constraint logic (if you think about it, they work quite similarly),
+        // so my previous attempts to do it failed...
         let additional_properties = obj.get("additionalProperties");
 
         let value_pattern = match additional_properties {
-            None | Some(&Value::Bool(true)) => {
+            // FIXME: the following lines broke `test_unconstrained_others` and `test_schema_matches_regex`
+            None | Some(&Value::Bool(false)) => "".to_string(),
+            Some(&Value::Bool(true)) => {
                 let mut legal_types = vec![
                     json!({"type": "string"}),
                     json!({"type": "number"}),

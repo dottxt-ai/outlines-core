@@ -138,9 +138,13 @@ use crate::Result;
 /// #   Ok(())
 /// }
 /// ```
-pub fn regex_from_str(json: &str, whitespace_pattern: Option<&str>) -> Result<String> {
+pub fn regex_from_str(
+    json: &str,
+    whitespace_pattern: Option<&str>,
+    max_recursion_depth: Option<usize>,
+) -> Result<String> {
     let json_value: Value = serde_json::from_str(json)?;
-    regex_from_value(&json_value, whitespace_pattern)
+    regex_from_value(&json_value, whitespace_pattern, max_recursion_depth)
 }
 
 /// Generates a regular expression string from `serde_json::Value` type of JSON schema.
@@ -178,10 +182,17 @@ pub fn regex_from_str(json: &str, whitespace_pattern: Option<&str>) -> Result<St
 /// #   Ok(())
 /// }
 /// ```
-pub fn regex_from_value(json: &Value, whitespace_pattern: Option<&str>) -> Result<String> {
+pub fn regex_from_value(
+    json: &Value,
+    whitespace_pattern: Option<&str>,
+    max_recursion_depth: Option<usize>,
+) -> Result<String> {
     let mut parser = parsing::Parser::new(json);
     if let Some(pattern) = whitespace_pattern {
         parser = parser.with_whitespace_pattern(pattern)
+    }
+    if let Some(depth) = max_recursion_depth {
+        parser = parser.with_max_recursion_depth(depth)
     }
     parser.to_regex(json)
 }
@@ -1213,7 +1224,7 @@ mod tests {
                 ],
             ),
         ] {
-            let result = regex_from_str(schema, None).expect("To regex failed");
+            let result = regex_from_str(schema, None, None).expect("To regex failed");
             assert_eq!(result, regex, "JSON Schema {} didn't match", schema);
 
             let re = Regex::new(&result).expect("Regex failed");
@@ -1269,7 +1280,7 @@ mod tests {
                 ],
             ),
         ] {
-            let regex = regex_from_str(schema, None).expect("To regex failed");
+            let regex = regex_from_str(schema, None, None).expect("To regex failed");
             let re = Regex::new(&regex).expect("Regex failed");
             for m in a_match {
                 should_match(&re, m);
@@ -1322,7 +1333,7 @@ mod tests {
                 vec![r#"{SPACE"date"SPACE:SPACE"2018-11-13"SPACE}"#],
             ),
         ] {
-            let regex = regex_from_str(schema, whitespace_pattern).expect("To regex failed");
+            let regex = regex_from_str(schema, whitespace_pattern, None).expect("To regex failed");
             assert_eq!(regex, expected_regex);
 
             let re = Regex::new(&regex).expect("Regex failed");
@@ -1346,7 +1357,7 @@ mod tests {
             }
         }"##;
 
-        let regex = regex_from_str(schema, None);
+        let regex = regex_from_str(schema, None, None);
         assert!(regex.is_ok(), "{:?}", regex);
 
         // Confirm the depth of 3 recursion levels by default, recursion level starts
@@ -1479,7 +1490,123 @@ mod tests {
           "$ref": "#/definitions/typeA"
         }"##;
 
-        let regex = regex_from_str(schema, None);
+        let regex = regex_from_str(schema, None, None);
         assert!(regex.is_ok(), "{:?}", regex);
+    }
+
+    #[test]
+    fn quadruple_recursion_doesnt_include_leaf() {
+        let schema = r##"
+        {
+            "definitions": {
+                "typeA": {
+                "type": "object",
+                "properties": {
+                    "data": { "type": "string" },
+                    "typeB": { "$ref": "#/definitions/typeB" }
+                },
+                "required": ["data", "typeB"]
+                },
+                "typeB": {
+                "type": "object",
+                "properties": {
+                    "data": { "type": "string" },
+                    "typeC": { "$ref": "#/definitions/typeC" }
+                },
+                "required": ["data", "typeC"]
+                },
+                "typeC": {
+                "type": "object",
+                "properties": {
+                    "data": { "type": "string" },
+                    "typeD": { "$ref": "#/definitions/typeD" }
+                },
+                "required": ["data", "typeD"]
+                },
+                "typeD": {
+                "type": "object",
+                "properties": {
+                    "data": { "type": "string" },
+                    "typeE": { "$ref": "#/definitions/typeE" }
+                },
+                "required": ["data", "typeE"]
+                },
+                "typeE": {
+                "type": "object",
+                "properties": {
+                    "data": { "type": "string" },
+                    "typeA": { "$ref": "#/definitions/typeA" }
+                },
+                "required": ["data", "typeA"]
+                }
+            },
+            "$ref": "#/definitions/typeA"
+        }"##;
+
+        let regex = regex_from_str(schema, None, None);
+        assert!(regex.is_ok(), "{:?}", regex);
+        let regex_str = regex.unwrap();
+        assert!(
+            !regex_str.contains("typeE"),
+            "Regex should not contain typeE when max_recursion_depth is not specified"
+        );
+    }
+
+    #[test]
+    fn quadruple_recursion_includes_leaf_when_max_recursion_depth_is_specified() {
+        let schema = r##"
+        {
+            "definitions": {
+                "typeA": {
+                "type": "object",
+                "properties": {
+                    "data": { "type": "string" },
+                    "typeB": { "$ref": "#/definitions/typeB" }
+                },
+                "required": ["data", "typeB"]
+                },
+                "typeB": {
+                "type": "object",
+                "properties": {
+                    "data": { "type": "string" },
+                    "typeC": { "$ref": "#/definitions/typeC" }
+                },
+                "required": ["data", "typeC"]
+                },
+                "typeC": {
+                "type": "object",
+                "properties": {
+                    "data": { "type": "string" },
+                    "typeD": { "$ref": "#/definitions/typeD" }
+                },
+                "required": ["data", "typeD"]
+                },
+                "typeD": {
+                "type": "object",
+                "properties": {
+                    "data": { "type": "string" },
+                    "typeE": { "$ref": "#/definitions/typeE" }
+                },
+                "required": ["data", "typeE"]
+                },
+                "typeE": {
+                "type": "object",
+                "properties": {
+                    "data": { "type": "string" },
+                    "typeA": { "$ref": "#/definitions/typeA" }
+                },
+                "required": ["data", "typeA"]
+                }
+            },
+            "$ref": "#/definitions/typeA"
+        }"##;
+
+        let regex = regex_from_str(schema, None, Some(4));
+        assert!(regex.is_ok(), "{:?}", regex);
+        let regex_str = regex.unwrap();
+        assert!(
+            regex_str.contains("typeE"),
+            "Regex should contain typeE when max_recursion_depth is specified"
+        );
     }
 }

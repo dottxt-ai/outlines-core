@@ -16,7 +16,7 @@ pub(crate) struct Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
-    // Max recursion depth is defined at level 3.
+    // Max recursion depth defaults at level 3.
     // Defining recursion depth higher than that should be done cautiously, since
     // each +1 step on the depth blows up regex's size exponentially.
     //
@@ -39,7 +39,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    #[allow(dead_code)]
     pub fn with_max_recursion_depth(self, max_recursion_depth: usize) -> Self {
         Self {
             max_recursion_depth,

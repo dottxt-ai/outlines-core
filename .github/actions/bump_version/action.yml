@@ -11,6 +11,7 @@ runs:
       # To fetch all the tags and history
       with:
         fetch-depth: 0
+        clean: false
 
     - name: Bump version in Cargo.toml
       run: |

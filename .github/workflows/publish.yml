@@ -37,13 +37,20 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable
+
       - uses: Swatinem/rust-cache@v2
 
       - name: Bump version in Cargo.toml
         uses: ./.github/actions/bump_version
 
       - name: Dry-run publish to crates.io
-        run: cargo publish --dry-run
+        run: cargo publish --dry-run --allow-dirty
+
+      - name: Print directory information
+        run: |
+          pwd
+          ls -la
+          ls -la dist
 
       - name: Publish to PyPI
         uses: PyO3/maturin-action@v1

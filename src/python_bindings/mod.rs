@@ -1,5 +1,6 @@
 //! Provides tools and interfaces to integrate the crate's functionality with Python.
 
+use std::collections::VecDeque;
 use std::sync::Arc;
 
 use bincode::{config, Decode, Encode};
@@ -28,16 +29,19 @@ macro_rules! type_name {
 pub struct PyGuide {
     state: StateId,
     index: PyIndex,
+    state_cache: VecDeque<StateId>,
 }
 
 #[pymethods]
 impl PyGuide {
     /// Creates a Guide object based on Index.
     #[new]
-    fn __new__(index: PyIndex) -> Self {
+    #[pyo3(signature = (index, max_rollback=32))]
+    fn __new__(index: PyIndex, max_rollback: usize) -> Self {
         PyGuide {
             state: index.get_initial_state(),
             index,
+            state_cache: VecDeque::with_capacity(max_rollback),
         }
     }
 
@@ -58,6 +62,11 @@ impl PyGuide {
             )))
     }
 
+    /// Get the number of rollback steps available.
+    fn get_allowed_rollback(&self) -> usize {
+        self.state_cache.len()
+    }
+
     /// Guide moves to the next state provided by the token id and returns a list of allowed tokens, unless return_tokens is False.
     #[pyo3(signature = (token_id, return_tokens=None))]
     fn advance(
@@ -67,6 +76,11 @@ impl PyGuide {
     ) -> PyResult<Option<Vec<TokenId>>> {
         match self.index.get_next_state(self.state, token_id) {
             Some(new_state) => {
+                // Free up space in state_cache if needed.
+                if self.state_cache.len() == self.state_cache.capacity() {
+                    self.state_cache.pop_front();
+                }
+                self.state_cache.push_back(self.state);
                 self.state = new_state;
                 if return_tokens.unwrap_or(true) {
                     self.get_tokens().map(Some)
@@ -81,6 +95,41 @@ impl PyGuide {
         }
     }
 
+    /// Rollback the Guide state `n` tokens (states).
+    /// Fails if `n` is greater than stored prior states.
+    fn rollback_state(&mut self, n: usize) -> PyResult<()> {
+        if n == 0 {
+            return Ok(());
+        }
+        if n > self.get_allowed_rollback() {
+            return Err(PyValueError::new_err(format!(
+                "Cannot roll back {n} step(s): only {available} states stored (max_rollback = {cap}). \
+                 You must advance through at least {n} state(s) before rolling back {n} step(s).",
+                 cap = self.state_cache.capacity(),
+                 available = self.get_allowed_rollback(),
+            )));
+        }
+        let mut new_state: u32 = self.state;
+        for _ in 0..n {
+            // unwrap is safe because length is checked above
+            new_state = self.state_cache.pop_back().unwrap();
+        }
+        self.state = new_state;
+        Ok(())
+    }
+
+    // Returns a boolean indicating if the sequence leads to a valid state in the DFA
+    fn accepts_tokens(&self, sequence: Vec<u32>) -> bool {
+        let mut state = self.state;
+        for t in sequence {
+            match self.index.get_next_state(state, t) {
+                Some(s) => state = s,
+                None => return false,
+            }
+        }
+        true
+    }
+
     /// Checks if the automaton is in a final state.
     fn is_finished(&self) -> bool {
         self.index.is_final_state(self.state)
@@ -93,7 +142,7 @@ impl PyGuide {
     /// `data_ptr` should be the data ptr to a `torch.tensor`, or `np.ndarray`, `mx.array` or other
     /// contiguous memory array.
     fn write_mask_into(&self, data_ptr: usize, numel: usize, element_size: usize) -> PyResult<()> {
-        let expected_elements = (self.index.0.vocab_size() + 31) / 32;
+        let expected_elements = self.index.0.vocab_size().div_ceil(32);
         if element_size != 4 {
             return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(
                 format!(

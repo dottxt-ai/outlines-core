@@ -181,3 +181,38 @@ def test_write_mask_into_interface(index):
         guide.write_mask_into(0, mask.numel(), mask.element_size())
     with pytest.raises(ValueError, match="Invalid data pointer alignment"):
         guide.write_mask_into(5, mask.numel(), mask.element_size())
+
+
+def test_rollback(index):
+    guide = Guide(index, max_rollback=3)
+
+    first_state = guide.get_state()
+    guide.advance(1)
+
+    # Roll back one token to initial state
+    guide.rollback_state(1)
+    assert not guide.is_finished()
+    # we should now be in the initial state
+    assert guide.get_state() == first_state
+
+
+def test_rollback_interface(index):
+    guide = Guide(index, max_rollback=3)
+
+    # Rolling back more than recorded history must raise
+    with pytest.raises(ValueError, match="Cannot roll back"):
+        guide.rollback_state(5)
+
+
+@pytest.mark.parametrize(
+    "seq, expected",
+    [
+        ([1], True),  # single allowed token: accept
+        ([2], True),  # different allowed token: accept
+        ([1, 1], False),  # too long for r"[1-9]": reject
+        ([2, 3], False),  # extra token: reject
+    ],
+)
+def test_accepts_tokens_correctness(index, seq, expected):
+    guide = Guide(index)
+    assert guide.accepts_tokens(seq) is expected

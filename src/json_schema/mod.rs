@@ -127,12 +127,12 @@ use crate::Result;
 ///     }"#;
 ///
 ///     // Generate regex from schema
-///     let regex = json_schema::regex_from_str(&schema, None)?;
+///     let regex = json_schema::regex_from_str(&schema, None, None)?;
 ///     println!("Generated regex: {}", regex);
 ///
 ///     // Custom whitespace pattern could be passed as well
 ///     let whitespace_pattern = Some(r#"[\n ]*"#);
-///     let regex = json_schema::regex_from_str(&schema, whitespace_pattern)?;
+///     let regex = json_schema::regex_from_str(&schema, whitespace_pattern, None)?;
 ///     println!("Generated regex with custom whitespace pattern: {}", regex);
 ///
 /// #   Ok(())
@@ -171,12 +171,12 @@ pub fn regex_from_str(
 ///     let schema_value: Value = serde_json::from_str(schema)?;
 ///
 ///     // It's possible to generate a regex from schema value
-///     let regex = json_schema::regex_from_value(&schema_value, None)?;
+///     let regex = json_schema::regex_from_value(&schema_value, None, None)?;
 ///     println!("Generated regex: {}", regex);
 ///
 ///     // Custom whitespace pattern could be passed as well
 ///     let whitespace_pattern = Some(r#"[\n ]*"#);
-///     let regex = json_schema::regex_from_value(&schema_value, whitespace_pattern)?;
+///     let regex = json_schema::regex_from_value(&schema_value, whitespace_pattern, None)?;
 ///     println!("Generated regex with custom whitespace pattern: {}", regex);
 ///
 /// #   Ok(())

@@ -57,7 +57,7 @@
 //! }"#;
 //!
 //! // Generate a regular expression from it
-//! let regex = json_schema::regex_from_str(&schema, None)?;
+//! let regex = json_schema::regex_from_str(&schema, None, None)?;
 //! println!("Generated regex: {}", regex);
 //!
 //! // Create `Vocabulary` from pretrained large language model (but manually is also possible)

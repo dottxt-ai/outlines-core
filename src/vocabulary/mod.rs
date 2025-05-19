@@ -23,7 +23,9 @@ mod processor;
 ///
 /// ## Examples
 ///
-#[cfg_attr(feature = "hugginface-hub", doc = r##"
+#[cfg_attr(
+    feature = "hugginface-hub",
+    doc = r##"
 /// ### Create a vocabulary from a pretrained model.
 /// ```rust
 /// use outlines_core::prelude::*;
@@ -58,7 +60,8 @@ mod processor;
 /// vocabulary.remove("token");
 /// assert_eq!(vocabulary.token_ids("token"), None);
 /// ```
-"##)]
+"##
+)]
 #[derive(Clone, Debug, Default, PartialEq, Encode, Decode)]
 pub struct Vocabulary {
     eos_token_id: TokenId,

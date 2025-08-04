@@ -57,6 +57,52 @@ let next_state = index.next_state(&initial_state, token_id);
 let final_states = index.final_states();
 ```
 
+### Vocabulary
+
+You can create a `Vocabulary` in three ways:
+
+1. **`Vocabulary::from_pretrained(model, parameters)`** - Loads from a pretrained model (as in the example above)
+
+2. **Manual creation** - You can create a vocabulary from token mappings:
+
+    1. **`Vocabulary::new(eos_token_id)`** - Creates an empty vocabulary, then add tokens with `try_insert()`:
+
+        ```rust
+        let mut vocabulary = Vocabulary::new(50256);
+        vocabulary.try_insert("hello", 0)?;
+        vocabulary.try_insert(vec![32], 1)?;
+        ```
+
+    2. **`Vocabulary::try_from((eos_token_id, tokens))`** - Creates a vocabulary by directly providing the token mappings.
+
+        - It can be done either with the tokens as strings:
+
+            ```rust
+            use rustc_hash::FxHashMap as HashMap;
+
+            let eos_token_id: u32 = 50256;
+            let mut tokens: HashMap<String, Vec<u32>> = HashMap::default();
+            tokens.insert("hello".to_string(), vec![0]);
+            tokens.insert("world".to_string(), vec![1]);
+
+            let vocabulary = Vocabulary::try_from((eos_token_id, tokens))?;
+            ```
+
+        - Or with the tokens as byte vector keys:
+
+            ```rust
+            use rustc_hash::FxHashMap as HashMap;
+
+            let eos_token_id: u32 = 50256;
+            let mut tokens: HashMap<Vec<u8>, Vec<u32>> = HashMap::default();
+            tokens.insert(b"hello".to_vec(), vec![0]);
+            tokens.insert(b"world".to_vec(), vec![1]);
+
+            let vocabulary = Vocabulary::try_from((eos_token_id, tokens))?;
+            ```
+
+**Important**: When creating a `Vocabulary` manually from tokenizer data, ensure tokens are converted to their string representations to replace special tokens that wouldn't be recognized by the DFA.
+
 ## Python Bindings
 
 Additionally, project provides interfaces to integrate the crate's functionality with Python.

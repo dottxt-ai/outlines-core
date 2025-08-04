@@ -116,8 +116,11 @@ impl Index {
         let mut next_states: Vec<AutomataStateId> = vec![start_state];
 
         while let Some(current_state) = next_states.pop() {
+            let mut has_valid_transitions = false;
+
             if dfa.is_match_state(dfa.next_eoi_state(current_state)) {
                 final_states.insert(current_state.as_u32());
+                has_valid_transitions = true;
             }
 
             'token_loop: for (token, ids) in vocabulary.tokens().iter() {
@@ -136,6 +139,7 @@ impl Index {
                 let is_intermediate_state = !dfa.is_match_state(next_state);
                 let is_full_match_state = dfa.is_match_state(dfa.next_eoi_state(next_state));
                 if is_intermediate_state || is_full_match_state {
+                    has_valid_transitions = true;
                     for token_id in ids {
                         transitions
                             .entry(current_state.as_u32())
@@ -147,6 +151,28 @@ impl Index {
                     seen.insert(next_state);
                     next_states.push(next_state);
                 }
+            }
+
+            // If the current state has no valid transitions and is not a match state,
+            // it means the vocabulary is incompatible with the regex.
+            if !has_valid_transitions && !dfa.is_match_state(current_state) {
+                let mut valid_characters = Vec::new();
+                for byte in 0..=255u8 {
+                    let test_state = dfa.next_state(current_state, byte);
+                    if !dfa.is_dead_state(test_state) && !dfa.is_quit_state(test_state) {
+                        if byte.is_ascii() {
+                            valid_characters.push(char::from(byte).to_string());
+                        } else {
+                            valid_characters.push(format!("\\x{:02x}", byte));
+                        }
+                    }
+                }
+
+                return Err(Error::IncompatibleVocabulary {
+                    regex: regex.to_string(),
+                    error_state: current_state.as_u32(),
+                    missing_tokens: valid_characters,
+                });
             }
         }
 
@@ -290,7 +316,7 @@ mod tests {
                 .expect("Insert failed");
         }
         for (token, token_id) in [
-            (vec![32, 240, 159, 152], 7),
+            (vec![32, 240, 159, 152, 136], 7),
             (vec![32, 240, 159, 152, 141], 6),
             (vec![240, 159, 152, 141], 4),
         ] {
@@ -309,10 +335,60 @@ mod tests {
             ),
             (
                 80,
-                HashMap::from_iter([(2, 128), (7, 192), (5, 208), (6, 208)]),
+                HashMap::from_iter([(2, 128), (7, 208), (5, 208), (6, 208)]),
             ),
             (128, HashMap::from_iter([(8, 128)])),
         ]);
         assert_eq!(index.transitions(), &expected);
+    }
+
+    #[test]
+    fn index_incompatible_vocabulary_error() {
+        let regex = "0 1";
+        let mut vocabulary = Vocabulary::new(3);
+        for (token, token_id) in [("0", 0), ("0 ", 1), ("1", 2)] {
+            vocabulary
+                .try_insert(token, token_id as u32)
+                .expect("Insert failed");
+        }
+
+        let result = Index::new(regex, &vocabulary);
+        assert!(result.is_err());
+
+        if let Err(Error::IncompatibleVocabulary {
+            regex: _,
+            missing_tokens,
+            ..
+        }) = result
+        {
+            assert!(missing_tokens.contains(&" ".to_string()));
+        } else {
+            panic!("Expected IncompatibleVocabulary error");
+        }
+    }
+
+    #[test]
+    fn index_incompatible_vocabulary_error_non_ascii() {
+        let regex = "😈😍";
+        let mut vocabulary = Vocabulary::new(3);
+        for (token, token_id) in [("😈", 0), (" ", 1), ("b", 2)] {
+            vocabulary
+                .try_insert(token, token_id as u32)
+                .expect("Insert failed");
+        }
+
+        let result = Index::new(regex, &vocabulary);
+        assert!(result.is_err());
+
+        if let Err(Error::IncompatibleVocabulary {
+            regex: _,
+            missing_tokens,
+            ..
+        }) = result
+        {
+            assert!(missing_tokens.contains(&"\\xf0".to_string()));
+        } else {
+            panic!("Expected IncompatibleVocabulary error");
+        }
     }
 }

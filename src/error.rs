@@ -69,6 +69,12 @@ pub enum Error {
     InvalidRefecencePath(Box<str>),
     #[error("Ref recusion limit reached: {0}")]
     RefRecursionLimitReached(usize),
+    #[error("The vocabulary provided is incompatible with the regex '{regex}'. Found no transitions from state {error_state}, missing tokens corresponding to at least one of the following characters: {missing_tokens:?}. This may be due to an encoding issue in your vocabulary.")]
+    IncompatibleVocabulary {
+        regex: String,
+        error_state: u32,
+        missing_tokens: Vec<String>,
+    },
 }
 
 impl Error {

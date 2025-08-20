@@ -36,11 +36,11 @@ _KERNEL = mx.fast.metal_kernel(
     output_names=["out"],
     source=_KERNEL_SOURCE,
 )
-neg_inf = mx.array([-float("inf")], dtype=mx.dtype)
 
 
 @mx.compile
 def _apply_token_bitmask_kernel(data: mx.array, mask: mx.array) -> mx.array:
+    neg_inf = mx.array([-float("inf")], dtype=data.dtype)
     return _KERNEL(
         inputs=[data, mask, neg_inf],
         template=[("T", data.dtype)],

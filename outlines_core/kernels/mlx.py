@@ -24,10 +24,10 @@ uint batch = thread_position_in_grid.y;
 // Element index
 uint elem = thread_position_in_grid.x;
 
-uint bit = ((elem >> 5) < mask_shape[1]) &&
+uint bit = ((elem >> 5) < static_cast<uint>(mask_shape[1])) &&
             ((mask[batch * mask_shape[1] + (elem >> 5)] >> (elem & 31)) & 1);
 
-out[batch * inp_shape[1] + elem] = bit ? inp[batch * inp_shape[1] + elem] : -INFINITY;
+out[batch * inp_shape[1] + elem] = bit ? inp[batch * inp_shape[1] + elem] : static_cast<T>(-INFINITY);
 """
 
 _KERNEL = mx.fast.metal_kernel(

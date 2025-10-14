@@ -2,8 +2,8 @@
 //! in generating a regular expression string based on a given JSON schema.
 
 // allow `\"`, `\\`, or any character which isn't a control sequence
-pub static STRING_INNER: &str = r#"([^"\\\x00-\x1F\x7F-\x9F]|\\["\\])"#;
-pub static STRING: &str = r#""([^"\\\x00-\x1F\x7F-\x9F]|\\["\\])*""#;
+pub static STRING_INNER: &str = r#"([^"\\\x00-\x1F\x7F-\x9F]|\\["\\/bfnrt])"#;
+pub static STRING: &str = r#""([^"\\\x00-\x1F\x7F-\x9F]|\\["\\/bfnrt])*""#;
 pub static INTEGER: &str = r#"(-)?(0|[1-9][0-9]*)"#;
 pub static NUMBER: &str = r#"((-)?(0|[1-9][0-9]*))(\.[0-9]+)?([eE][+-][0-9]+)?"#;
 pub static BOOLEAN: &str = r#"(true|false)"#;

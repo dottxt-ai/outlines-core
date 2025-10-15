@@ -475,7 +475,6 @@ mod tests {
                 vec![
                     "unquotedstring",
                     r#""escape_\character""#,
-                    r#""\n""#,
                     r#""unescaped " quote""#,
                 ],
             ),

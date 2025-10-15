@@ -33,7 +33,7 @@ default-features = false
 
 [features]
 default = ["hugginface-hub"]
-python-bindings = ["pyo3", "serde-pyobject"]
+python-bindings = ["pyo3", "pyo3/generate-import-lib", "serde-pyobject"]
 hugginface-hub = ["hf-hub", "tokenizers/http",  "tokenizers/rustls-tls"]
 
 [lib]

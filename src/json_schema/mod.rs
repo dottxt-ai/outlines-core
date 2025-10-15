@@ -472,6 +472,11 @@ mod tests {
                     r#""\\n""#,
                     r#""escaped \" quote""#,
                     r#""\n""#,
+                    r#""\/""#,
+                    r#""\b""#,
+                    r#""\f""#,
+                    r#""\r""#,
+                    r#""\t""#
                 ],
                 vec![
                     "unquotedstring",

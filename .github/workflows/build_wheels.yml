@@ -23,11 +23,11 @@ jobs:
           - runner: ubuntu-22.04
             target: x86_64
             manylinux: auto
-            interpreter: "3.9 3.10 3.11 3.12 3.13"
+            interpreter: "3.9 3.10 3.11 3.12 3.13 3.14"
           - runner: ubuntu-22.04
             target: aarch64
             manylinux: manylinux_2_28
-            interpreter: "3.9 3.10 3.11 3.12 3.13"
+            interpreter: "3.9 3.10 3.11 3.12 3.13 3.14"
 
     steps:
       - uses: actions/checkout@v3
@@ -35,7 +35,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
+          python-version: "3.14"
 
       - run: pip install -U twine
 
@@ -86,11 +86,11 @@ jobs:
           - runner: windows-latest
             target: x86
             alias-target: i686-pc-windows-msvc
-            interpreter: "3.9 3.10 3.11 3.12 3.13"
+            interpreter: "3.9 3.10 3.11 3.12 3.13 3.14"
           - runner: windows-latest
             target: x64
             alias-target: x86_64-pc-windows-msvc
-            interpreter: "3.9 3.10 3.11 3.12 3.13"
+            interpreter: "3.9 3.10 3.11 3.12 3.13 3.14"
 
     steps:
       - uses: actions/checkout@v3
@@ -98,7 +98,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
+          python-version: "3.14"
           architecture: ${{ matrix.platform.target }}
 
       - run: pip install -U twine
@@ -150,19 +150,19 @@ jobs:
           - runner: macos-14
             target: x86_64
             macos_version: "14.0"
-            interpreter: "3.9 3.10 3.11 3.12 3.13"
+            interpreter: "3.9 3.10 3.11 3.12 3.13 3.14"
           - runner: macos-14
             target: aarch64
             macos_version: "14.0"
-            interpreter: "3.9 3.10 3.11 3.12 3.13"
+            interpreter: "3.9 3.10 3.11 3.12 3.13 3.14"
           - runner: macos-15
             target: x86_64
             macos_version: "15.0"
-            interpreter: "3.9 3.10 3.11 3.12 3.13"
+            interpreter: "3.9 3.10 3.11 3.12 3.13 3.14"
           - runner: macos-15
             target: aarch64
             macos_version: "15.0"
-            interpreter: "3.9 3.10 3.11 3.12 3.13"
+            interpreter: "3.9 3.10 3.11 3.12 3.13 3.14"
 
     steps:
       - uses: actions/checkout@v3
@@ -170,7 +170,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
+          python-version: "3.14"
 
       - run: pip install -U twine
 

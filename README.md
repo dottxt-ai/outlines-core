@@ -135,9 +135,6 @@ next_allowed_tokens = guide.advance(allowed_tokens[-1])
 
 # To check if Guide is finished:
 guide.is_finished()
-
-# If it's finished then this assertion holds:
-assert guide.get_tokens() == [vocabulary.get_eos_token_id()]
 ```
 
 ## How to contribute?

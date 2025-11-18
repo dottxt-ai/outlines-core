@@ -506,7 +506,7 @@ fn register_child_module(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(build_regex_from_schema_py, &m)?)?;
 
     let sys = PyModule::import(m.py(), "sys")?;
-    let sys_modules_bind = sys.as_ref().getattr("modules")?;
+    let sys_modules_bind = (sys.as_ref() as &Bound<PyAny>).getattr("modules")?;
     let sys_modules = sys_modules_bind.downcast::<PyDict>()?;
     sys_modules.set_item("outlines_core.json_schema", &m)?;
 

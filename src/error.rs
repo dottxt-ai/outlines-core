@@ -75,6 +75,8 @@ pub enum Error {
         error_state: u32,
         missing_tokens: Vec<String>,
     },
+    #[error("IO error: {0}")]
+    IOError(String),
 }
 
 impl Error {

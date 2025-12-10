@@ -193,6 +193,142 @@ impl Index {
         })
     }
 
+    pub fn save<P: AsRef<std::path::Path>>(&self, path: P) -> Result<()> {
+        use std::io::Write;
+        let mut buffer = Vec::new();
+        
+        // Write vocab_size (32 bits)
+        buffer.extend_from_slice(&(self.vocab_size as u32).to_le_bytes());
+        
+        // Write eos_token_id (32 bits)
+        buffer.extend_from_slice(&self.eos_token_id.to_le_bytes());
+        
+        // Write initial_state_id (32 bits)
+        buffer.extend_from_slice(&self.initial_state.to_le_bytes());
+        
+        // Write number of final states (32 bits)
+        buffer.extend_from_slice(&(self.final_states.len() as u32).to_le_bytes());
+        
+        // Write final states (32 bits each)
+        for &final_state in &self.final_states {
+            buffer.extend_from_slice(&final_state.to_le_bytes());
+        }
+        
+        // Write index type (8 bits) - Type 1 for now
+        buffer.push(1u8);
+        
+        // Write number of states with transitions (32 bits)
+        buffer.extend_from_slice(&(self.transitions.len() as u32).to_le_bytes());
+        
+        // Write transitions for each state
+        for (&state_id, transitions_map) in &self.transitions {
+            // Write state ID (32 bits)
+            buffer.extend_from_slice(&state_id.to_le_bytes());
+            
+            // Write number of transitions (32 bits)
+            buffer.extend_from_slice(&(transitions_map.len() as u32).to_le_bytes());
+            
+            // Write each transition (TokenId -> StateId)
+            for (&token_id, &next_state_id) in transitions_map {
+                buffer.extend_from_slice(&token_id.to_le_bytes());
+                buffer.extend_from_slice(&next_state_id.to_le_bytes());
+            }
+        }
+        
+        // Write compressed data to file
+        let compressed = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
+        let mut encoder = compressed;
+        encoder.write_all(&buffer).map_err(|e| Error::IOError(e.to_string()))?;
+        let compressed_data = encoder.finish().map_err(|e| Error::IOError(e.to_string()))?;
+        
+        std::fs::write(path, compressed_data).map_err(|e| Error::IOError(e.to_string()))?;
+        
+        Ok(())
+    }
+
+    pub fn load<P: AsRef<std::path::Path>>(path: P) -> Result<Self> {
+        use std::io::Read;
+        
+        // Read and decompress file
+        let compressed_data = std::fs::read(path).map_err(|e| Error::IOError(e.to_string()))?;
+        let mut decoder = flate2::read::GzDecoder::new(&compressed_data[..]);
+        let mut buffer = Vec::new();
+        decoder.read_to_end(&mut buffer).map_err(|e| Error::IOError(e.to_string()))?;
+        
+        let mut cursor = 0;
+        
+        // Helper to read u32
+        let read_u32 = |buf: &[u8], pos: &mut usize| -> Result<u32> {
+            if *pos + 4 > buf.len() {
+                return Err(Error::IOError("Unexpected end of buffer".to_string()));
+            }
+            let value = u32::from_le_bytes([buf[*pos], buf[*pos + 1], buf[*pos + 2], buf[*pos + 3]]);
+            *pos += 4;
+            Ok(value)
+        };
+        
+        // Read vocab_size (32 bits)
+        let vocab_size = read_u32(&buffer, &mut cursor)? as usize;
+        
+        // Read eos_token_id (32 bits)
+        let eos_token_id = read_u32(&buffer, &mut cursor)?;
+        
+        // Read initial_state_id (32 bits)
+        let initial_state = read_u32(&buffer, &mut cursor)?;
+        
+        // Read number of final states (32 bits)
+        let num_final_states = read_u32(&buffer, &mut cursor)? as usize;
+        
+        // Read final states
+        let mut final_states = HashSet::default();
+        for _ in 0..num_final_states {
+            let final_state = read_u32(&buffer, &mut cursor)?;
+            final_states.insert(final_state);
+        }
+        
+        // Read index type (8 bits)
+        if cursor >= buffer.len() {
+            return Err(Error::IOError("Unexpected end of buffer".to_string()));
+        }
+        let index_type = buffer[cursor];
+        cursor += 1;
+        
+        if index_type != 1 {
+            return Err(Error::IOError(format!("Unsupported index type: {}", index_type)));
+        }
+        
+        // Read number of states with transitions (32 bits)
+        let num_states = read_u32(&buffer, &mut cursor)? as usize;
+        
+        // Read transitions
+        let mut transitions: HashMap<StateId, HashMap<TokenId, StateId>> = HashMap::default();
+        for _ in 0..num_states {
+            // Read state ID (32 bits)
+            let state_id = read_u32(&buffer, &mut cursor)?;
+            
+            // Read number of transitions (32 bits)
+            let num_transitions = read_u32(&buffer, &mut cursor)? as usize;
+            
+            // Read each transition
+            let mut state_transitions = HashMap::default();
+            for _ in 0..num_transitions {
+                let token_id = read_u32(&buffer, &mut cursor)?;
+                let next_state_id = read_u32(&buffer, &mut cursor)?;
+                state_transitions.insert(token_id, next_state_id);
+            }
+            
+            transitions.insert(state_id, state_transitions);
+        }
+        
+        Ok(Self {
+            initial_state,
+            final_states,
+            transitions,
+            eos_token_id,
+            vocab_size,
+        })
+    }
+
     /// Returns the ID of the initial state in the automaton.
     pub fn initial_state(&self) -> StateId {
         self.initial_state
@@ -390,5 +526,109 @@ mod tests {
         } else {
             panic!("Expected IncompatibleVocabulary error");
         }
+    }
+
+    #[test]
+    fn test_save_and_load() {
+        let regex = "0|[1-9][0-9]*";
+        let eos_token_id = 4;
+        let mut vocabulary = Vocabulary::new(eos_token_id);
+        for (token, token_id) in [("blah", 0), ("1a", 1), ("2", 2), ("0", 3)] {
+            vocabulary
+                .try_insert(token, token_id as u32)
+                .expect("Insert failed");
+        }
+        
+        let original_index = Index::new(regex, &vocabulary).expect("Index failed");
+        
+        // Save to temporary file
+        let temp_path = std::env::temp_dir().join("test_index.bin");
+        original_index.save(&temp_path).expect("Save failed");
+        
+        // Load from file
+        let loaded_index = Index::load(&temp_path).expect("Load failed");
+        
+        // Cleanup
+        std::fs::remove_file(&temp_path).ok();
+        
+        // Verify equality
+        assert_eq!(original_index, loaded_index);
+        assert_eq!(original_index.initial_state(), loaded_index.initial_state());
+        assert_eq!(original_index.final_states(), loaded_index.final_states());
+        assert_eq!(original_index.transitions(), loaded_index.transitions());
+        assert_eq!(original_index.vocab_size(), loaded_index.vocab_size());
+    }
+
+    #[test]
+    fn test_save_and_load_multibyte() {
+        let regex = "😇| [😈-😍][😇-😎]*";
+        let mut vocabulary = Vocabulary::new(8);
+        for (token, token_id) in [(" 😍", 5), ("blah", 0), ("😇", 2), ("😈a", 1), ("😍", 3)] {
+            vocabulary
+                .try_insert(token, token_id as u32)
+                .expect("Insert failed");
+        }
+        for (token, token_id) in [
+            (vec![32, 240, 159, 152, 136], 7),
+            (vec![32, 240, 159, 152, 141], 6),
+            (vec![240, 159, 152, 141], 4),
+        ] {
+            vocabulary
+                .try_insert(token, token_id as u32)
+                .expect("Insert failed");
+        }
+
+        let original_index = Index::new(regex, &vocabulary).expect("Index failed");
+        
+        let temp_path = std::env::temp_dir().join("test_index_multibyte.bin");
+        original_index.save(&temp_path).expect("Save failed");
+        let loaded_index = Index::load(&temp_path).expect("Load failed");
+        std::fs::remove_file(&temp_path).ok();
+        
+        assert_eq!(original_index, loaded_index);
+    }
+
+    #[test]
+    fn test_load_nonexistent_file() {
+        let result = Index::load("/nonexistent/path/index.bin");
+        assert!(result.is_err());
+        assert!(matches!(result, Err(Error::IOError(_))));
+    }
+
+    #[test]
+    fn test_load_corrupted_file() {
+        let temp_path = std::env::temp_dir().join("test_corrupted.bin");
+        std::fs::write(&temp_path, b"corrupted data").expect("Write failed");
+        
+        let result = Index::load(&temp_path);
+        std::fs::remove_file(&temp_path).ok();
+        
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_save_preserves_file_size() {
+        let regex = "0|[1-9][0-9]*";
+        let mut vocabulary = Vocabulary::new(4);
+        for (token, token_id) in [("blah", 0), ("1a", 1), ("2", 2), ("0", 3)] {
+            vocabulary
+                .try_insert(token, token_id as u32)
+                .expect("Insert failed");
+        }
+        
+        let index = Index::new(regex, &vocabulary).expect("Index failed");
+        let temp_path = std::env::temp_dir().join("test_size.bin");
+        
+        index.save(&temp_path).expect("Save failed");
+        let metadata = std::fs::metadata(&temp_path).expect("Metadata failed");
+        
+        // File should exist and be non-empty
+        assert!(metadata.len() > 0);
+        
+        // Gzip compression should make it smaller than raw data
+        // Rough estimate: at least 5 * 4 bytes for basic fields + transitions
+        assert!(metadata.len() < 10000); // Should be much smaller for this simple case
+        
+        std::fs::remove_file(&temp_path).ok();
     }
 }

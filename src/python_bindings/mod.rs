@@ -279,6 +279,16 @@ impl PyIndex {
         self.0.initial_state()
     }
 
+    fn save(&self, path: String) -> PyResult<()> {
+        self.0.save(path).map_err(Into::into)
+    }
+    #[staticmethod]
+    fn load(path: String) -> PyResult<Self> {
+        Index::load(path)
+            .map(|x| PyIndex(Arc::new(x)))
+            .map_err(Into::into)
+    }
+
     /// Gets the debug string representation of the index.
     fn __repr__(&self) -> String {
         format!("{:#?}", self.0)

@@ -27,7 +27,7 @@ default-features = false
 optional = true
 
 [dependencies.tokenizers]
-version = "=0.21.1"
+version = "0.22.2"
 features = ["onig"]
 default-features = false
 

@@ -65,7 +65,7 @@ impl<'a> Parser<'a> {
 
     fn parse_empty_object(&mut self) -> Result<String> {
         // JSON Schema Spec: Empty object means unconstrained, any json type is legal
-        let types = vec![
+        let types = [
             json!({"type": "boolean"}),
             json!({"type": "null"}),
             json!({"type": "number"}),

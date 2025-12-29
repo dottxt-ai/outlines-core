@@ -114,6 +114,7 @@ impl Index {
 
         let mut seen: HashSet<AutomataStateId> = HashSet::from_iter([start_state]);
         let mut next_states: Vec<AutomataStateId> = vec![start_state];
+        let mut is_useful_state_cache: HashMap<AutomataStateId, bool> = HashMap::default();
 
         while let Some(current_state) = next_states.pop() {
             let mut has_valid_transitions = false;
@@ -136,9 +137,26 @@ impl Index {
                     }
                 }
 
-                let is_intermediate_state = !dfa.is_match_state(next_state);
-                let is_full_match_state = dfa.is_match_state(dfa.next_eoi_state(next_state));
-                if is_intermediate_state || is_full_match_state {
+                // Determine if the `next_state` is a useful state to keep in the index.
+                // We use a cache to avoid re-evaluating the same state multiple times.
+                let is_useful_state =
+                    *is_useful_state_cache.entry(next_state).or_insert_with(|| {
+                        let check_is_intermediate_state = || {
+                            (0..=255u8).any(|b| {
+                                let s = dfa.next_state(next_state, b);
+                                !dfa.is_dead_state(s) && !dfa.is_quit_state(s)
+                            })
+                        };
+                        let is_full_match_state =
+                            dfa.is_match_state(dfa.next_eoi_state(next_state));
+
+                        // A state is useful if it is a match state OR it can transition further.
+                        // Performance: We use short-circuiting here. `check_is_intermediate_state()` is
+                        // computationally expensive but is ONLY executed if `is_full_match_state` is false.
+                        is_full_match_state || check_is_intermediate_state()
+                    });
+
+                if is_useful_state {
                     has_valid_transitions = true;
                     for token_id in ids {
                         transitions
@@ -146,10 +164,10 @@ impl Index {
                             .or_default()
                             .insert(*token_id, next_state.as_u32());
                     }
-                }
-                if !seen.contains(&next_state) {
-                    seen.insert(next_state);
-                    next_states.push(next_state);
+                    if !seen.contains(&next_state) {
+                        seen.insert(next_state);
+                        next_states.push(next_state);
+                    }
                 }
             }
 
@@ -390,5 +408,26 @@ mod tests {
         } else {
             panic!("Expected IncompatibleVocabulary error");
         }
+    }
+
+    #[test]
+    fn index_from_regex_completeness() {
+        let regex = "(ac|[^a])+";
+        let eos_token_id = 3;
+        let mut vocabulary = Vocabulary::new(eos_token_id);
+        for (token, token_id) in [("a", 0), ("b", 1), ("c", 2)] {
+            vocabulary
+                .try_insert(token, token_id as u32)
+                .expect("Insert failed");
+        }
+
+        let index = Index::new(regex, &vocabulary).expect("Index failed");
+        let mut state = index.initial_state();
+
+        // "acac" should be accepted
+        for token_id in [0, 2, 0, 2] {
+            state = index.next_state(&state, &token_id).expect("Transit failed");
+        }
+        assert!(index.is_final_state(&state));
     }
 }

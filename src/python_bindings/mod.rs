@@ -211,8 +211,8 @@ impl PyGuide {
         self == other
     }
 
-    fn __reduce__(&self) -> PyResult<(PyObject, (Vec<u8>,))> {
-        Python::with_gil(|py| {
+    fn __reduce__(&self) -> PyResult<(Py<PyAny>, (Vec<u8>,))> {
+        Python::attach(|py| {
             let cls = PyModule::import(py, "outlines_core")?.getattr("Guide")?;
             let binary_data: Vec<u8> =
                 bincode::encode_to_vec(self, config::standard()).map_err(|e| {
@@ -242,7 +242,7 @@ impl PyIndex {
     /// Creates an index from a regex and vocabulary.
     #[new]
     fn __new__(py: Python<'_>, regex: &str, vocabulary: &PyVocabulary) -> PyResult<Self> {
-        py.allow_threads(|| {
+        py.detach(|| {
             Index::new(regex, &vocabulary.0)
                 .map(|x| PyIndex(Arc::new(x)))
                 .map_err(Into::into)
@@ -299,8 +299,8 @@ impl PyIndex {
         PyIndex(Arc::new((*self.0).clone()))
     }
 
-    fn __reduce__(&self) -> PyResult<(PyObject, (Vec<u8>,))> {
-        Python::with_gil(|py| {
+    fn __reduce__(&self) -> PyResult<(Py<PyAny>, (Vec<u8>,))> {
+        Python::attach(|py| {
             let cls = PyModule::import(py, "outlines_core")?.getattr("Index")?;
             let binary_data: Vec<u8> = bincode::encode_to_vec(&self.0, config::standard())
                 .map_err(|e| {
@@ -444,8 +444,8 @@ impl PyVocabulary {
         PyVocabulary(self.0.clone())
     }
 
-    fn __reduce__(&self) -> PyResult<(PyObject, (Vec<u8>,))> {
-        Python::with_gil(|py| {
+    fn __reduce__(&self) -> PyResult<(Py<PyAny>, (Vec<u8>,))> {
+        Python::attach(|py| {
             let cls = PyModule::import(py, "outlines_core")?.getattr("Vocabulary")?;
             let binary_data: Vec<u8> =
                 bincode::encode_to_vec(self, config::standard()).map_err(|e| {
@@ -506,8 +506,8 @@ fn register_child_module(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(build_regex_from_schema_py, &m)?)?;
 
     let sys = PyModule::import(m.py(), "sys")?;
-    let sys_modules_bind = sys.as_ref().getattr("modules")?;
-    let sys_modules = sys_modules_bind.downcast::<PyDict>()?;
+    let sys_modules_bind = (sys.as_ref() as &Bound<PyAny>).getattr("modules")?;
+    let sys_modules = sys_modules_bind.cast::<PyDict>()?;
     sys_modules.set_item("outlines_core.json_schema", &m)?;
 
     Ok(())

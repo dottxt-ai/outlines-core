@@ -142,9 +142,13 @@ impl Index {
                 let is_useful_state =
                     *is_useful_state_cache.entry(next_state).or_insert_with(|| {
                         let check_is_intermediate_state = || {
-                            (0..=255u8).any(|b| {
-                                let s = dfa.next_state(next_state, b);
-                                !dfa.is_dead_state(s) && !dfa.is_quit_state(s)
+                            dfa.byte_classes().representatives(..).any(|repr| {
+                                if let Some(byte) = repr.as_u8() {
+                                    let s = dfa.next_state(next_state, byte);
+                                    !dfa.is_dead_state(s) && !dfa.is_quit_state(s)
+                                } else {
+                                    false
+                                }
                             })
                         };
                         let is_full_match_state =

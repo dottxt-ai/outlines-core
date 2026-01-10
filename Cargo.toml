@@ -18,6 +18,7 @@ serde = {version = "1.0", features = ["derive"]}
 bincode = "2.0.1"
 rustc-hash = "2.1.0"
 regex-automata = "0.4.9"
+flate2 = "1.1.5"
 
 # Below are fragile dependencies, even minor updates of which often break the code
 [dependencies.hf-hub]

@@ -34,7 +34,7 @@ jobs:
         ]
     steps:
     - uses: actions/checkout@v6
-    - name: Set up Python ${{ matrix.python-version }}
+    - name: Set up Python ${{ matrix.python-version[0] }}
       uses: actions/setup-python@v6
       with:
         python-version: ${{ matrix.python-version[0] }}
@@ -43,7 +43,7 @@ jobs:
         python -m venv .venv
         source .venv/bin/activate
         python -m pip install --upgrade pip
-        pip install .[${{ matrix.python_version[1] }}]
+        pip install .[${{ matrix.python-version[1] }}]
         maturin develop
     - name: Create matrix id
       id: matrix-id

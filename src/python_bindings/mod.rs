@@ -518,7 +518,7 @@ fn register_child_module(parent_module: &Bound<'_, PyModule>) -> PyResult<()> {
 /// - build regular expressions from JSON schemas
 ///
 /// - construct an Index object by combining a Vocabulary and regular expression to efficiently map tokens from a given Vocabulary to state transitions in a finite-state automation
-#[pymodule]
+#[pymodule(gil_used = false)]
 fn outlines_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     let version = env!("CARGO_PKG_VERSION");
     m.add("__version__", version)?;

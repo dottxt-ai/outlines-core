@@ -20,7 +20,7 @@ def guide() -> Guide:
 
 @pytest.mark.skipif(
     FREE_THREADED_BUILD,
-    reason="torch.compile does not yet support the free-threaded build"
+    reason="torch.compile does not yet support the free-threaded build",
 )
 @pytest.mark.no_cover
 def test_interface_torch():
@@ -186,7 +186,7 @@ def test_interface_mlx():
 
 @pytest.mark.skipif(
     FREE_THREADED_BUILD,
-    reason="torch.compile does not yet support the free-threaded build"
+    reason="torch.compile does not yet support the free-threaded build",
 )
 @pytest.mark.no_cover
 def test_torch_correctness(guide):

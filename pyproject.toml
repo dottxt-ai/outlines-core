@@ -26,6 +26,7 @@ classifiers = [
 dynamic = ["version"]
 
 [project.optional-dependencies]
+# TODO: remove when numba is supported on the free-threaded build
 test-without-numba = [
     "pre-commit",
     "pydantic",
@@ -44,7 +45,7 @@ test-without-numba = [
 ]
 
 test = [
-    "test-without-numba",
+    "outlines_core[test-without-numba]",
     "numba",
 ]
 

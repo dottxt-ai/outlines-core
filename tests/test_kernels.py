@@ -219,9 +219,9 @@ def test_torch_correctness(guide):
 
 @pytest.mark.no_cover
 def test_numpy_correctness(guide):
-    from outlines_core.kernels.numpy import _apply_token_bitmask_inplace_kernel
-
     pytest.importorskip("numba", exc_type=ModuleNotFoundError)
+
+    from outlines_core.kernels.numpy import _apply_token_bitmask_inplace_kernel
 
     allowed_tokens = set(guide.get_tokens())
 

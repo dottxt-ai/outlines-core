@@ -1,4 +1,5 @@
 import importlib
+import sysconfig
 
 import numpy as np
 import pytest
@@ -9,12 +10,18 @@ from outlines_core import Guide, Index, Vocabulary
 VOCAB = Vocabulary.from_pretrained("gpt2", None, None)
 VOCAB_LEN = len(VOCAB)
 
+FREE_THREADED_BUILD = bool(sysconfig.get_config_var("Py_GIL_DISABLED"))
+
 
 @pytest.fixture(scope="session")
 def guide() -> Guide:
     return Guide(Index("\\+?[1-9][0-9]{7,14}", VOCAB))
 
 
+@pytest.mark.skipif(
+    FREE_THREADED_BUILD,
+    reason="torch.compile does not yet support the free-threaded build"
+)
 @pytest.mark.no_cover
 def test_interface_torch():
     from outlines_core.kernels.torch import (
@@ -70,6 +77,7 @@ def test_interface_torch():
 
 @pytest.mark.no_cover
 def test_interface_numpy():
+    pytest.importorskip("numba", exc_type=ModuleNotFoundError)
     from outlines_core.kernels.numpy import (
         allocate_token_bitmask,
         apply_token_bitmask_inplace,
@@ -176,6 +184,10 @@ def test_interface_mlx():
         fill_next_token_bitmask(None, mask_batch2)
 
 
+@pytest.mark.skipif(
+    FREE_THREADED_BUILD,
+    reason="torch.compile does not yet support the free-threaded build"
+)
 @pytest.mark.no_cover
 def test_torch_correctness(guide):
     from outlines_core.kernels.torch import _apply_token_bitmask_inplace_kernel
@@ -208,6 +220,8 @@ def test_torch_correctness(guide):
 @pytest.mark.no_cover
 def test_numpy_correctness(guide):
     from outlines_core.kernels.numpy import _apply_token_bitmask_inplace_kernel
+
+    pytest.importorskip("numba", exc_type=ModuleNotFoundError)
 
     allowed_tokens = set(guide.get_tokens())
 

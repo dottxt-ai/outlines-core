@@ -26,7 +26,7 @@ classifiers = [
 dynamic = ["version"]
 
 [project.optional-dependencies]
-test = [
+test-without-numba = [
     "pre-commit",
     "pydantic",
     "pytest",
@@ -37,11 +37,15 @@ test = [
     "diff-cover",
     "numpy",
     "torch",
-    "numba",
     "scipy",
     "asv",
     "psutil",
     "maturin[patchelf]",
+]
+
+test = [
+    "test-without-numba",
+    "numba",
 ]
 
 [project.urls]

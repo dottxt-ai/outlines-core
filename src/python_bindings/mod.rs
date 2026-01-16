@@ -233,7 +233,7 @@ impl PyGuide {
 }
 
 /// Index object based on regex and vocabulary.
-#[pyclass(name = "Index", module = "outlines_core")]
+#[pyclass(name = "Index", module = "outlines_core", frozen)]
 #[derive(Clone, Debug, PartialEq, Encode, Decode)]
 pub struct PyIndex(Arc<Index>);
 

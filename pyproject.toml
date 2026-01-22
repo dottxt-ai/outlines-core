@@ -69,6 +69,8 @@ filterwarnings = [
 addopts = [
     "--import-mode=importlib"
 ]
+# provided by pytest-run-parallel but added here because
+# pytest-run-parallel isn't a required test dependency
 markers = [
     "thread_unsafe: Mark a test as thread-unsafe under pytest-run-parallel",
 ]

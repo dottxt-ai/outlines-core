@@ -59,6 +59,11 @@ jobs:
         .venv/bin/python -m pytest --cov=outlines_core -vv
       env:
         COVERAGE_FILE: .coverage.${{ steps.matrix-id.outputs.id }}
+    - name: Run tests under pytest-run-parallel
+      if: ${{ matrix.python-version[0] }} == "3.14t"
+      run: |
+        .venv/bin/python -m pip install pytest-run-parallel
+        .venv/bin/python -m pytest -vv --parallel-threads=auto
     - name: Upload coverage data
       uses: actions/upload-artifact@v4
       with:

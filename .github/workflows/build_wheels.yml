@@ -23,11 +23,11 @@ jobs:
           - runner: ubuntu-22.04
             target: x86_64
             manylinux: auto
-            interpreter: "3.9 3.10 3.11 3.12 3.13 3.14"
+            interpreter: "3.9 3.10 3.11 3.12 3.13 3.14 3.14t"
           - runner: ubuntu-22.04
             target: aarch64
             manylinux: manylinux_2_28
-            interpreter: "3.9 3.10 3.11 3.12 3.13 3.14"
+            interpreter: "3.9 3.10 3.11 3.12 3.13 3.14 3.14t"
 
     steps:
       - uses: actions/checkout@v3
@@ -86,11 +86,11 @@ jobs:
           - runner: windows-latest
             target: x86
             alias-target: i686-pc-windows-msvc
-            interpreter: "3.9 3.10 3.11 3.12 3.13 3.14"
+            interpreter: "3.9 3.10 3.11 3.12 3.13 3.14 3.14t"
           - runner: windows-latest
             target: x64
             alias-target: x86_64-pc-windows-msvc
-            interpreter: "3.9 3.10 3.11 3.12 3.13 3.14"
+            interpreter: "3.9 3.10 3.11 3.12 3.13 3.14 3.14t"
 
     steps:
       - uses: actions/checkout@v3
@@ -150,19 +150,19 @@ jobs:
           - runner: macos-14
             target: x86_64
             macos_version: "14.0"
-            interpreter: "3.9 3.10 3.11 3.12 3.13 3.14"
+            interpreter: "3.9 3.10 3.11 3.12 3.13 3.14 3.14t"
           - runner: macos-14
             target: aarch64
             macos_version: "14.0"
-            interpreter: "3.9 3.10 3.11 3.12 3.13 3.14"
+            interpreter: "3.9 3.10 3.11 3.12 3.13 3.14 3.14t"
           - runner: macos-15
             target: x86_64
             macos_version: "15.0"
-            interpreter: "3.9 3.10 3.11 3.12 3.13 3.14"
+            interpreter: "3.9 3.10 3.11 3.12 3.13 3.14 3.14t"
           - runner: macos-15
             target: aarch64
             macos_version: "15.0"
-            interpreter: "3.9 3.10 3.11 3.12 3.13 3.14"
+            interpreter: "3.9 3.10 3.11 3.12 3.13 3.14 3.14t"
 
     steps:
       - uses: actions/checkout@v3

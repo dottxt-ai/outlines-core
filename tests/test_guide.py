@@ -110,6 +110,7 @@ def test_pickling(index):
     assert sorted(deserialized.get_tokens()) == sorted(guide.get_tokens())
 
 
+@pytest.mark.thread_unsafe(reason="resource-intensive in parallel")
 @pytest.mark.parametrize(
     "model, revision",
     [

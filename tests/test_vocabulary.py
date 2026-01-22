@@ -13,6 +13,7 @@ def vocabulary():
     return Vocabulary(eos_token_id, tokens)
 
 
+@pytest.mark.thread_unsafe(reason="mutably borrows a shared Vocabulary")
 def test_basic_vocabulary_interface(vocabulary):
     assert vocabulary.get_eos_token_id() == 3
     assert vocabulary.get("1") == vocabulary.get(b"1") == [1]
@@ -77,6 +78,7 @@ def test_get_bad_type(vocabulary):
         vocabulary.get(1)
 
 
+@pytest.mark.thread_unsafe(reason="mutably borrows a shared Vocabulary")
 def test_insert_bad_type(vocabulary):
     with pytest.raises(
         TypeError,
@@ -85,6 +87,7 @@ def test_insert_bad_type(vocabulary):
         vocabulary.insert(1, 6)
 
 
+@pytest.mark.thread_unsafe(reason="mutably borrows a shared Vocabulary")
 def test_insert_eos_token(vocabulary):
     with pytest.raises(
         ValueError, match="EOS token should not be inserted into Vocabulary"

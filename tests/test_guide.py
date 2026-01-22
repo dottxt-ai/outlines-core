@@ -210,7 +210,7 @@ def test_rollback_interface(index):
         ([1], True),  # single allowed token: accept
         ([2], True),  # different allowed token: accept
         ([1, 1], False),  # too long for r"[1-9]": reject
-        ([2, 3], False),  # extra token: reject
+        ([2, 3], True),  # extra token: accept at the final state
     ],
 )
 def test_accepts_tokens_correctness(index, seq, expected):

@@ -21,11 +21,13 @@ jobs:
           # All programs built against an older glibc work on a system with a newer glibc than
           # it was built with. The reverse is not true.
           - runner: ubuntu-22.04
-            target: x86_64
+            arch: x86_64
+            target: x86_64-unknown-linux-gnu
             manylinux: auto
             interpreter: "3.9 3.10 3.11 3.12 3.13 3.14 3.14t"
           - runner: ubuntu-22.04
-            target: aarch64
+            arch: aarch64
+            target: aarch64-unknown-linux-gnu
             manylinux: manylinux_2_28
             interpreter: "3.9 3.10 3.11 3.12 3.13 3.14 3.14t"
 
@@ -42,12 +44,12 @@ jobs:
       - name: Install required packages
         run: |
           sudo apt update
-          sudo apt install pkg-config gcc-aarch64-linux-gnu g++-aarch64-linux-gnu -qy
+          sudo apt install pkg-config gcc-aarch64-linux-gnu gcc-riscv64-linux-gnu g++-aarch64-linux-gnu g++-riscv64-linux-gnu -qy
 
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable
-          target: ${{ matrix.platform.target}}-unknown-linux-gnu
+          target: ${{ matrix.platform.target}}
       - uses: Swatinem/rust-cache@v2
 
       - name: Bump version in Cargo.toml
@@ -75,7 +77,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           path: dist/*.whl
-          name: wheels-linux-${{ matrix.platform.target }}
+          name: wheels-linux-${{ matrix.platform.arch }}
 
   windows:
     name: Build ${{ matrix.platform.runner}} ${{ matrix.platform.target }}

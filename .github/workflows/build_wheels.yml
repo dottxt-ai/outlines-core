@@ -30,6 +30,11 @@ jobs:
             target: aarch64-unknown-linux-gnu
             manylinux: manylinux_2_28
             interpreter: "3.9 3.10 3.11 3.12 3.13 3.14 3.14t"
+          - runner: ubuntu-22.04
+            arch: riscv64
+            target: riscv64gc-unknown-linux-gnu
+            manylinux: manylinux_2_39
+            interpreter: "3.9 3.10 3.11 3.12 3.13 3.14 3.14t"
 
     steps:
       - uses: actions/checkout@v3

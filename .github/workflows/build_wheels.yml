@@ -68,7 +68,7 @@ jobs:
         run: twine check --strict dist/*
 
       - name: Install built wheel
-        if: matrix.platform.target == 'x86_64'
+        if: contains(matrix.platform.target, 'x86_64')
         run: |
           pip install outlines_core --no-index --find-links dist --force-reinstall
           cd outlines_core

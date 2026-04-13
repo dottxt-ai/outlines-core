@@ -10,6 +10,7 @@
 [github]: https://github.com/dottxt-ai/outlines-core/blob/main/LICENSE
 [MSRV]: MSRV
 [version]: https://img.shields.io/crates/msrv/outlines-core.svg?label=msrv&color=lightgrayy
+[downloads-badge]: https://img.shields.io/pypi/dm/outlines-core?color=A6B4A3&logo=python&logoColor=white&style=flat-square
 
 *Structured generation (in Rust).*
 

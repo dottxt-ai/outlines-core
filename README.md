@@ -2,7 +2,7 @@
 
 <img src="./docs/assets/images/logo.png" alt="Outlines-core Logo" width=500></img>
 
-[![Latest Version]][crates.io] [![License]][github] ![MSRV][version]
+[![Latest Version]][crates.io] [![License]][github] ![MSRV][version] ![downloads-badge]
 
 [Latest Version]: https://img.shields.io/crates/v/outlines-core.svg
 [crates.io]: https://crates.io/crates/outlines-core

@@ -35,6 +35,11 @@ jobs:
             target: riscv64gc-unknown-linux-gnu
             manylinux: manylinux_2_39
             interpreter: "3.9 3.10 3.11 3.12 3.13 3.14 3.14t"
+          - runner: ubuntu-22.04
+            arch: s390x
+            target: s390x-unknown-linux-gnu
+            manylinux: manylinux_2_28
+            interpreter: "3.9 3.10 3.11 3.12 3.13 3.14 3.14t"
 
     steps:
       - uses: actions/checkout@v3
@@ -49,7 +54,7 @@ jobs:
       - name: Install required packages
         run: |
           sudo apt update
-          sudo apt install pkg-config gcc-aarch64-linux-gnu gcc-riscv64-linux-gnu g++-aarch64-linux-gnu g++-riscv64-linux-gnu -qy
+          sudo apt install pkg-config gcc-aarch64-linux-gnu gcc-riscv64-linux-gnu gcc-s390x-linux-gnu g++-aarch64-linux-gnu g++-riscv64-linux-gnu g++-s390x-linux-gnu -qy
 
       - uses: dtolnay/rust-toolchain@master
         with:

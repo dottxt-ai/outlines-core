@@ -66,6 +66,10 @@ jobs:
         if: ${{ inputs.auto_bump }}
         uses: ./.github/actions/bump_version
 
+      - name: Set up QEMU
+        if: ${{ !contains(matrix.platform.target, 'x86_64') }}
+        uses: docker/setup-qemu-action@v3
+
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
@@ -83,6 +87,17 @@ jobs:
           pip install outlines_core --no-index --find-links dist --force-reinstall
           cd outlines_core
           python -c "import outlines_core"
+
+      - name: Smoke-test built wheel under QEMU
+        if: contains(matrix.platform.target, 'aarch64') || contains(matrix.platform.target, 's390x')
+        run: |
+          docker run --rm --platform linux/${{ matrix.platform.arch == 'aarch64' && 'arm64' || matrix.platform.arch }} \
+            -v "$PWD:/io" -w /io \
+            python:3.12-slim bash -c "
+              pip install --quiet pytest &&
+              pip install --quiet outlines_core --no-index --find-links dist --force-reinstall &&
+              pytest tests/test_imports.py tests/test_vocabulary.py -v --override-ini='filterwarnings='
+            "
 
       - uses: actions/upload-artifact@v4
         with:

@@ -112,7 +112,7 @@ Additionally, project provides interfaces to integrate the crate's functionality
 import json
 
 from outlines_core.json_schema import build_regex_from_schema
-from outlines_core.guide import Guide, Index, Vocabulary
+from outlines_core import Guide, Index, Vocabulary
 
 schema =  {
   "title": "Foo",

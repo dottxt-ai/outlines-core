@@ -39,7 +39,11 @@ impl JsonType {
 }
 
 // https://www.iso.org/obp/ui/#iso:std:iso:8601:-1:ed-1:v1:en and https://stackoverflow.com/questions/3143070/regex-to-match-an-iso-8601-datetime-string
-pub static DATE_TIME: &str = r#""(-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12][0-9])T(2[0-3]|[01][0-9]):([0-5][0-9]):([0-5][0-9])(\.[0-9]{3})?(Z)?""#;
+// The time offset accepts either `Z` or a numeric `(+|-)HH:MM` offset per
+// RFC3339 section 5.6 (https://datatracker.ietf.org/doc/html/rfc3339#section-5.6).
+// The offset is kept optional so that previously-accepted offset-less strings
+// such as `2021-01-01T00:00:00` continue to match.
+pub static DATE_TIME: &str = r#""(-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12][0-9])T(2[0-3]|[01][0-9]):([0-5][0-9]):([0-5][0-9])(\.[0-9]{3})?(Z|[+-](2[0-3]|[01][0-9]):[0-5][0-9])?""#;
 // The day range is constrained per-month so that impossible dates such as
 // `2022-02-31` or `2022-04-31` cannot be generated. Leap years are intentionally
 // not validated: February always allows up to the 29th, so `2021-02-29` (not a

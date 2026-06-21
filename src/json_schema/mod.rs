@@ -667,12 +667,21 @@ mod tests {
                     r#""2018-11-13""#,
                     r#""2016-09-18""#,
                     r#""2008-05-11""#,
+                    r#""2020-01-31""#, // last day of a 31-day month
+                    r#""2020-04-30""#, // last day of a 30-day month
+                    r#""2020-02-29""#, // Feb 29 is allowed (leap year not validated)
                 ],
                 vec![
                     "2018-11-13",
                     r#""2015-13-01""#, // incorrect month
                     r#""2022-01""#, // missing day
                     r#""2022/12/01""#, // incorrect separator
+                    r#""2022-02-31""#, // Feb never has 31 days
+                    r#""2022-02-30""#, // Feb never has 30 days
+                    r#""2022-04-31""#, // April has only 30 days
+                    r#""2022-06-31""#, // June has only 30 days
+                    r#""2022-00-10""#, // month 0 is invalid
+                    r#""2022-12-00""#, // day 0 is invalid
                 ],
             ),
             // TIME

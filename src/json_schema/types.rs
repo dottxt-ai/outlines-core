@@ -40,7 +40,14 @@ impl JsonType {
 
 // https://www.iso.org/obp/ui/#iso:std:iso:8601:-1:ed-1:v1:en and https://stackoverflow.com/questions/3143070/regex-to-match-an-iso-8601-datetime-string
 pub static DATE_TIME: &str = r#""(-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3[01]|0[1-9]|[12][0-9])T(2[0-3]|[01][0-9]):([0-5][0-9]):([0-5][0-9])(\.[0-9]{3})?(Z)?""#;
-pub static DATE: &str = r#""(?:\d{4})-(?:0[1-9]|1[0-2])-(?:0[1-9]|[1-2][0-9]|3[0-1])""#;
+// The day range is constrained per-month so that impossible dates such as
+// `2022-02-31` or `2022-04-31` cannot be generated. Leap years are intentionally
+// not validated: February always allows up to the 29th, so `2021-02-29` (not a
+// leap year) is still accepted. Full leap-year handling would require a much
+// larger regex (and longer compilation), so that distinction is left to the model.
+// RFC3339 is itself ambiguous on this point, see
+// https://datatracker.ietf.org/doc/html/rfc3339#section-5.6
+pub static DATE: &str = r#""(?:\d{4})-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12][0-9]|3[01])|(?:0[469]|11)-(?:0[1-9]|[12][0-9]|30)|02-(?:0[1-9]|1[0-9]|2[0-9]))""#;
 pub static TIME: &str = r#""(2[0-3]|[01][0-9]):([0-5][0-9]):([0-5][0-9])(\\.[0-9]+)?(Z)?""#;
 // https://datatracker.ietf.org/doc/html/rfc9562 and https://stackoverflow.com/questions/136505/searching-for-uuids-in-text-with-regex
 pub static UUID: &str = r#""[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}""#;

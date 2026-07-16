@@ -418,7 +418,17 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn unsupported_numeric_bound(obj: &serde_json::Map<String, Value>) -> Option<&'static str> {
+        ["minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum"]
+            .into_iter()
+            .find(|&key| obj.contains_key(key))
+    }
+
     fn parse_number_type(&mut self, obj: &serde_json::Map<String, Value>) -> Result<String> {
+        if let Some(keyword) = Self::unsupported_numeric_bound(obj) {
+            return Err(Error::UnsupportedNumericBound(Box::from(keyword)));
+        }
+
         let bounds = [
             "minDigitsInteger",
             "maxDigitsInteger",
@@ -481,6 +491,10 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_integer_type(&mut self, obj: &serde_json::Map<String, Value>) -> Result<String> {
+        if let Some(keyword) = Self::unsupported_numeric_bound(obj) {
+            return Err(Error::UnsupportedNumericBound(Box::from(keyword)));
+        }
+
         if obj.contains_key("minDigits") || obj.contains_key("maxDigits") {
             let (min_digits, max_digits) = Self::validate_quantifiers(
                 obj.get("minDigits").and_then(Value::as_u64),

@@ -1635,4 +1635,21 @@ mod tests {
             "Regex should contain typeE when max_recursion_depth is specified"
         );
     }
+
+    #[test]
+    fn numeric_bounds_are_unsupported() {
+        for keyword in ["minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum"] {
+            for instance_type in ["integer", "number"] {
+                let schema = format!(r#"{{"type": "{}", "{}": 5}}"#, instance_type, keyword);
+                match regex_from_str(&schema, None, None) {
+                    Err(crate::Error::UnsupportedNumericBound(bound))
+                        if bound.as_ref() == keyword => {}
+                    other => panic!(
+                        "Expected UnsupportedNumericBound('{}') on '{}', got {:?}",
+                        keyword, instance_type, other
+                    ),
+                }
+            }
+        }
+    }
 }

@@ -63,6 +63,8 @@ pub enum Error {
     UnsupportedType(Box<str>),
     #[error("maxLength must be greater than or equal to minLength")]
     MaxBoundError,
+    #[error("Numeric bound '{0}' is not supported by Outlines")]
+    UnsupportedNumericBound(Box<str>),
     #[error("Format {0} is not supported by Outlines")]
     StringTypeUnsupportedFormat(Box<str>),
     #[error("Invalid reference path: {0}")]

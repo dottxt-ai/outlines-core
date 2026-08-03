@@ -24,7 +24,7 @@ macro_rules! type_name {
 }
 
 /// Guide object based on Index.
-#[pyclass(name = "Guide", module = "outlines_core")]
+#[pyclass(name = "Guide", module = "outlines_core", from_py_object)]
 #[derive(Clone, Debug, PartialEq, Encode, Decode)]
 pub struct PyGuide {
     state: StateId,
@@ -233,7 +233,7 @@ impl PyGuide {
 }
 
 /// Index object based on regex and vocabulary.
-#[pyclass(name = "Index", module = "outlines_core", frozen)]
+#[pyclass(name = "Index", module = "outlines_core", frozen, from_py_object)]
 #[derive(Clone, Debug, PartialEq, Encode, Decode)]
 pub struct PyIndex(Arc<Index>);
 
@@ -321,7 +321,7 @@ impl PyIndex {
 }
 
 /// LLM vocabulary.
-#[pyclass(name = "Vocabulary", module = "outlines_core")]
+#[pyclass(name = "Vocabulary", module = "outlines_core", from_py_object)]
 #[derive(Clone, Debug, Encode, Decode)]
 pub struct PyVocabulary(Vocabulary);
 

@@ -42,10 +42,10 @@ jobs:
             interpreter: "3.9 3.10 3.11 3.12 3.13 3.14 3.14t"
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.14"
 
@@ -56,11 +56,11 @@ jobs:
           sudo apt update
           sudo apt install pkg-config gcc-aarch64-linux-gnu gcc-riscv64-linux-gnu gcc-s390x-linux-gnu g++-aarch64-linux-gnu g++-riscv64-linux-gnu g++-s390x-linux-gnu -qy
 
-      - uses: dtolnay/rust-toolchain@master
+      - uses: dtolnay/rust-toolchain@2c7215f132e9ebf062739d9130488b56d53c060c # master
         with:
           toolchain: stable
           target: ${{ matrix.platform.target}}
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
 
       - name: Bump version in Cargo.toml
         if: ${{ inputs.auto_bump }}
@@ -68,10 +68,10 @@ jobs:
 
       - name: Set up QEMU
         if: ${{ !contains(matrix.platform.target, 'x86_64') }}
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
 
       - name: Build wheels
-        uses: PyO3/maturin-action@v1
+        uses: PyO3/maturin-action@e83996d129638aa358a18fbd1dfb82f0b0fb5d3b # v1
         with:
           target: ${{ matrix.platform.target }}
           args: --release --out dist --interpreter ${{ matrix.platform.interpreter }}
@@ -99,7 +99,7 @@ jobs:
               pytest tests/test_imports.py tests/test_vocabulary.py -v --override-ini='filterwarnings='
             "
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           path: dist/*.whl
           name: wheels-linux-${{ matrix.platform.arch }}
@@ -120,10 +120,10 @@ jobs:
             interpreter: "3.9 3.10 3.11 3.12 3.13 3.14 3.14t"
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.14"
           architecture: ${{ matrix.platform.target }}
@@ -136,18 +136,18 @@ jobs:
         run: |
           choco install nasm
 
-      - uses: dtolnay/rust-toolchain@master
+      - uses: dtolnay/rust-toolchain@2c7215f132e9ebf062739d9130488b56d53c060c # master
         with:
           toolchain: stable
           target: ${{ matrix.platform.alias-target}}
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
 
       - name: Bump version in Cargo.toml
         if: ${{ inputs.auto_bump }}
         uses: ./.github/actions/bump_version
 
       - name: Build wheels
-        uses: PyO3/maturin-action@v1
+        uses: PyO3/maturin-action@e83996d129638aa358a18fbd1dfb82f0b0fb5d3b # v1
         with:
           target: ${{ matrix.platform.target }}
           args: --release --out dist --interpreter ${{ matrix.platform.interpreter }}
@@ -163,7 +163,7 @@ jobs:
           cd outlines_core
           python -c "import outlines_core"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           path: dist/*.whl
           name: wheels-windows-${{ matrix.platform.target }}
@@ -192,10 +192,10 @@ jobs:
             interpreter: "3.9 3.10 3.11 3.12 3.13 3.14 3.14t"
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.14"
 
@@ -204,18 +204,18 @@ jobs:
       - name: Set macOS version
         run: echo "MACOSX_DEPLOYMENT_TARGET=${{ matrix.platform.macos_version }}" >> $GITHUB_ENV
 
-      - uses: dtolnay/rust-toolchain@master
+      - uses: dtolnay/rust-toolchain@2c7215f132e9ebf062739d9130488b56d53c060c # master
         with:
           toolchain: stable
           target: ${{ matrix.platform.target}}-apple-darwin
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
 
       - name: Bump version in Cargo.toml
         if: ${{ inputs.auto_bump }}
         uses: ./.github/actions/bump_version
 
       - name: Build wheels
-        uses: PyO3/maturin-action@v1
+        uses: PyO3/maturin-action@e83996d129638aa358a18fbd1dfb82f0b0fb5d3b # v1
         with:
           target: ${{ matrix.platform.target }}
           args: --release --out dist --interpreter ${{ matrix.platform.interpreter }}
@@ -232,7 +232,7 @@ jobs:
           cd outlines_core
           python -c "import outlines_core"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           path: dist/*.whl
           name: wheels-${{ matrix.platform.runner }}-${{ matrix.platform.target }}
@@ -242,10 +242,10 @@ jobs:
     name: Build source distribution
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.10'
 
@@ -254,12 +254,12 @@ jobs:
         uses: ./.github/actions/bump_version
 
       - name: Build sdist with Maturin
-        uses: PyO3/maturin-action@v1
+        uses: PyO3/maturin-action@e83996d129638aa358a18fbd1dfb82f0b0fb5d3b # v1
         with:
           command: sdist
           args: --out dist
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           path: dist/*.tar.gz
           name: sdist

@@ -80,7 +80,7 @@ def apply_token_bitmask_inplace(logits: torch.Tensor, mask: torch.Tensor) -> Non
             - `mask.dtype` is not `torch.int32`
             - `mask` is not a 2D array
             - `logits` is not a 2D array
-            - `mask.shape`shape does not match `logits.shape`
+            - `mask.shape[0]` (batch size) does not match `logits.shape[0]`
 
     Returns:
         None: Modifies the logits tensor in place

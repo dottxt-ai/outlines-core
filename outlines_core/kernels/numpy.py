@@ -59,10 +59,10 @@ def apply_token_bitmask_inplace(logits: np.ndarray, mask: np.ndarray) -> None:
             - `mask.dtype` is not `np.int32`
             - `mask` is not a 2D array
             - `logits` is not a 2D array
-            - `mask.shape`shape does not match `logits.shape`
+            - `mask.shape[0]` (batch size) does not match `logits.shape[0]`
 
     Returns:
-        None: Modifies the mask array in place.
+        None: Modifies the logits array in place.
     """
     logits = logits if logits.ndim != 1 else np.expand_dims(logits, axis=0)
     mask = mask if mask.ndim != 1 else np.expand_dims(mask, axis=0)
@@ -95,17 +95,16 @@ def fill_next_token_bitmask(guide: Guide, mask: np.ndarray) -> None:
 
     Arguments:
         guide (Guide): An instance of the `Guide` class that provides the current guidance state.
-        mask (np.ndarray): A 2D tensor of type `torch.int32` where the bitmask will be written.
-                             The tensor must be contiguous, have a single batch dimension
-                             (shape[0] == 1), and reside on the CPU.
+        mask (np.ndarray): A 2D array of type `np.int32` where the bitmask will be written.
+                           The array must be contiguous and have a single batch
+                           dimension (shape[0] == 1).
 
     Raises:
         ValueError: If any of the following conditions are not met:
-                    - `mask.dtype` is not `torch.int32`
-                    - `mask` is not a 2D tensor
+                    - `mask.dtype` is not `np.int32`
+                    - `mask` is not a 2D array
                     - `mask` does not have a single batch dimension (shape[0] != 1)
                     - `mask` is not contiguous in memory
-                    - `mask` is not on the CPU device
 
     Returns:
         None: Modifies the `mask` array in-place.

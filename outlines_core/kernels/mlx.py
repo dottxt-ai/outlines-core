@@ -52,24 +52,24 @@ def _apply_token_bitmask_kernel(data: mx.array, mask: mx.array) -> mx.array:
 
 def apply_token_bitmask(logits: mx.array, mask_np: np.ndarray) -> mx.array:
     """
-    Apply a logits bitmask inplace, setting the probability of invalid tokens
+    Apply a logits bitmask, setting the probability of invalid tokens
     to -infinity.
 
     Arguments:
         logits (mx.array): The logits tensor.
 
-        mask (mx.array): The token bitmask representing the validity of each
-          token in the logits tensor.
+        mask_np (np.ndarray): The token bitmask representing the validity of
+          each token in the logits tensor.
 
     Raises:
         ValueError: If any of the following conditions are not met:
             - `mask.dtype` is not `mx.int32`
             - `mask` is not a 2D array
             - `logits` is not a 2D array
-            - `mask.shape`shape does not match `logits.shape`
+            - `mask.shape[0]` (batch size) does not match `logits.shape[0]`
 
     Returns:
-        None: Modifies the mask array in place.
+        mx.array: A new tensor with invalid tokens set to -infinity.
     """
     # makes a copy - non consuming
     mask = mx.array(mask_np)
@@ -105,20 +105,19 @@ def fill_next_token_bitmask(guide: Guide, mask: np.ndarray) -> None:
 
     Arguments:
         guide (Guide): An instance of the `Guide` class that provides the current guidance state.
-        mask (torch.Tensor): A 2D tensor of type `torch.int32` where the bitmask will be written.
-                             The tensor must be contiguous, have a single batch dimension
-                             (shape[0] == 1), and reside on the CPU.
+        mask (np.ndarray): A 2D array of type `np.int32` where the bitmask will be written.
+                           The array must be contiguous and have a single batch
+                           dimension (shape[0] == 1).
 
     Raises:
         ValueError: If any of the following conditions are not met:
                     - `mask.dtype` is not `np.int32`
-                    - `mask` is not a 2D tensor
+                    - `mask` is not a 2D array
                     - `mask` does not have a single batch dimension (shape[0] != 1)
                     - `mask` is not contiguous in memory
-                    - `mask` is not on the CPU device
 
     Returns:
-        None: Modifies the `mask` tensor in-place.
+        None: Modifies the `mask` array in-place.
     """
     if mask.dtype != np.int32:
         raise ValueError(

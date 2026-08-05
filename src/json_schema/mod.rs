@@ -71,6 +71,10 @@
 //!     - Defines the minimum number of digits.
 //! - `maxDigits`
 //!     - Defines the maximum number of digits.
+//! - `minimum` / `exclusiveMinimum`
+//!     - Defines the minimum allowed value.
+//! - `maximum` / `exclusiveMaximum`
+//!     - Defines the maximum allowed value.
 //!
 //! #### Logical
 //! - `allOf`
@@ -1642,18 +1646,132 @@ mod tests {
     }
 
     #[test]
-    fn numeric_bounds_are_unsupported() {
+    fn numeric_bounds_are_unsupported_for_number() {
         for keyword in ["minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum"] {
-            for instance_type in ["integer", "number"] {
-                let schema = format!(r#"{{"type": "{}", "{}": 5}}"#, instance_type, keyword);
-                match regex_from_str(&schema, None, None) {
-                    Err(crate::Error::UnsupportedNumericBound(bound))
-                        if bound.as_ref() == keyword => {}
-                    other => panic!(
-                        "Expected UnsupportedNumericBound('{}') on '{}', got {:?}",
-                        keyword, instance_type, other
-                    ),
-                }
+            let schema = format!(r#"{{"type": "number", "{}": 5}}"#, keyword);
+            match regex_from_str(&schema, None, None) {
+                Err(crate::Error::UnsupportedNumericBound(bound)) if bound.as_ref() == keyword => {}
+                other => panic!(
+                    "Expected UnsupportedNumericBound('{}'), got {:?}",
+                    keyword, other
+                ),
+            }
+        }
+    }
+
+    #[test]
+    fn integer_bounds() {
+        let schema = r#"{"type": "integer", "minimum": 0, "maximum": 10}"#;
+        let regex = regex_from_str(schema, None, None).expect("To regex failed");
+        assert_eq!(regex, "(10|[0-9])");
+
+        for (schema, a_match, not_a_match) in [
+            (
+                r#"{"type": "integer", "minimum": 0, "maximum": 100}"#,
+                vec!["0", "5", "42", "99", "100"],
+                vec!["-1", "101", "007", "3.5"],
+            ),
+            (
+                r#"{"type": "integer", "minimum": -27, "maximum": 4}"#,
+                vec!["-27", "-10", "-1", "0", "4"],
+                vec!["-28", "5", "-0"],
+            ),
+            (
+                r#"{"type": "integer", "exclusiveMinimum": 3, "exclusiveMaximum": 10}"#,
+                vec!["4", "9"],
+                vec!["3", "10"],
+            ),
+            (
+                r#"{"type": "integer", "minimum": 1.5, "maximum": 4.0}"#,
+                vec!["2", "3", "4"],
+                vec!["1", "5"],
+            ),
+            (
+                r#"{"type": "integer", "minimum": 250}"#,
+                vec!["250", "999", "1000", "123456"],
+                vec!["249", "-5", "0250"],
+            ),
+            (
+                r#"{"type": "integer", "maximum": -3}"#,
+                vec!["-3", "-99", "-1000"],
+                vec!["-2", "0", "3"],
+            ),
+            // Bounds above i64::MAX take the u64 path.
+            (
+                r#"{"type": "integer", "minimum": 9223372036854775808}"#,
+                vec!["9223372036854775808", "18446744073709551616"],
+                vec!["9223372036854775807", "42"],
+            ),
+        ] {
+            let regex = regex_from_str(schema, None, None).expect("To regex failed");
+            let re = Regex::new(&regex).expect("Regex failed");
+            for m in a_match {
+                should_match(&re, m);
+            }
+            for not_m in not_a_match {
+                should_not_match(&re, not_m);
+            }
+        }
+    }
+
+    #[test]
+    fn integer_bounds_exhaustive() {
+        for (min, max) in [
+            (0, 0),
+            (0, 9),
+            (7, 1035),
+            (-99, -12),
+            (-250, 187),
+            (-1, 1),
+            (999, 1000),
+            (-1200, -1000),
+        ] {
+            let schema = format!(
+                r#"{{"type": "integer", "minimum": {}, "maximum": {}}}"#,
+                min, max
+            );
+            let regex = regex_from_str(&schema, None, None).expect("To regex failed");
+            let re = Regex::new(&format!("^{}$", regex)).expect("Regex failed");
+            for n in -1500..=1500 {
+                assert_eq!(
+                    re.is_match(&n.to_string()),
+                    (min..=max).contains(&n),
+                    "n={} range=[{},{}] regex={}",
+                    n,
+                    min,
+                    max,
+                    regex
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn invalid_integer_bounds() {
+        for schema in [
+            r#"{"type": "integer", "minimum": 5, "maximum": 3}"#,
+            r#"{"type": "integer", "minimum": 5, "maxDigits": 3}"#,
+        ] {
+            match regex_from_str(schema, None, None) {
+                Err(crate::Error::InvalidNumericBounds(_)) => {}
+                other => panic!(
+                    "Expected InvalidNumericBounds on {}, got {:?}",
+                    schema, other
+                ),
+            }
+        }
+        // Draft-4 boolean form of exclusive bounds and floats beyond the i64
+        // range are not supported.
+        for schema in [
+            r#"{"type": "integer", "minimum": 5, "exclusiveMinimum": true}"#,
+            r#"{"type": "integer", "minimum": 1e300}"#,
+        ] {
+            match regex_from_str(schema, None, None) {
+                Err(crate::Error::UnsupportedNumericBound(_)) => {}
+                other => panic!(
+                    "Expected UnsupportedNumericBound on {}, got {:?}",
+                    schema, other
+                ),
             }
         }
     }

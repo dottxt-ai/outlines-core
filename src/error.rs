@@ -65,6 +65,8 @@ pub enum Error {
     MaxBoundError,
     #[error("Numeric bound '{0}' is not supported by Outlines")]
     UnsupportedNumericBound(Box<str>),
+    #[error("Invalid numeric bounds: {0}")]
+    InvalidNumericBounds(Box<str>),
     #[error("Format {0} is not supported by Outlines")]
     StringTypeUnsupportedFormat(Box<str>),
     #[error("Invalid reference path: {0}")]

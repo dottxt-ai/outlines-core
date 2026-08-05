@@ -418,14 +418,51 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn unsupported_numeric_bound(obj: &serde_json::Map<String, Value>) -> Option<&'static str> {
+    fn numeric_bound_keyword(obj: &serde_json::Map<String, Value>) -> Option<&'static str> {
         ["minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum"]
             .into_iter()
             .find(|&key| obj.contains_key(key))
     }
 
+    /// Reads a numeric bound keyword as an integer, rounding non-integral
+    /// values toward the interior of the range and applying the +/-1 shift of
+    /// exclusive bounds. Draft-4 boolean exclusive bounds are unsupported.
+    fn integer_bound(
+        obj: &serde_json::Map<String, Value>,
+        key: &str,
+        round_up: bool,
+        exclusive: bool,
+    ) -> Result<Option<i128>> {
+        let Some(value) = obj.get(key) else {
+            return Ok(None);
+        };
+        let unsupported = || Error::UnsupportedNumericBound(Box::from(key));
+        let integral = if let Some(i) = value.as_i64() {
+            i as i128
+        } else if let Some(u) = value.as_u64() {
+            u as i128
+        } else if let Some(f) = value.as_f64() {
+            if !(f.is_finite() && f.abs() <= i64::MAX as f64) {
+                return Err(unsupported());
+            }
+            if f.fract() != 0.0 {
+                let rounded = if round_up { f.ceil() } else { f.floor() };
+                return Ok(Some(rounded as i128));
+            }
+            f as i128
+        } else {
+            return Err(unsupported());
+        };
+        let shift = match (exclusive, round_up) {
+            (false, _) => 0,
+            (true, true) => 1,
+            (true, false) => -1,
+        };
+        Ok(Some(integral + shift))
+    }
+
     fn parse_number_type(&mut self, obj: &serde_json::Map<String, Value>) -> Result<String> {
-        if let Some(keyword) = Self::unsupported_numeric_bound(obj) {
+        if let Some(keyword) = Self::numeric_bound_keyword(obj) {
             return Err(Error::UnsupportedNumericBound(Box::from(keyword)));
         }
 
@@ -491,8 +528,27 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_integer_type(&mut self, obj: &serde_json::Map<String, Value>) -> Result<String> {
-        if let Some(keyword) = Self::unsupported_numeric_bound(obj) {
-            return Err(Error::UnsupportedNumericBound(Box::from(keyword)));
+        if Self::numeric_bound_keyword(obj).is_some() {
+            if obj.contains_key("minDigits") || obj.contains_key("maxDigits") {
+                return Err(Error::InvalidNumericBounds(Box::from(
+                    "numeric bounds cannot be combined with minDigits/maxDigits",
+                )));
+            }
+            let min = [
+                Self::integer_bound(obj, "minimum", true, false)?,
+                Self::integer_bound(obj, "exclusiveMinimum", true, true)?,
+            ]
+            .into_iter()
+            .flatten()
+            .max();
+            let max = [
+                Self::integer_bound(obj, "maximum", false, false)?,
+                Self::integer_bound(obj, "exclusiveMaximum", false, true)?,
+            ]
+            .into_iter()
+            .flatten()
+            .min();
+            return regex_for_integer_range(min, max);
         }
 
         if obj.contains_key("minDigits") || obj.contains_key("maxDigits") {
@@ -670,4 +726,94 @@ impl<'a> Parser<'a> {
             }
         }
     }
+}
+
+/// Builds a regex matching the decimal representations of all integers in the
+/// given range, where `None` means unbounded on that side.
+fn regex_for_integer_range(min: Option<i128>, max: Option<i128>) -> Result<String> {
+    if let (Some(min), Some(max)) = (min, max) {
+        if min > max {
+            return Err(Error::InvalidNumericBounds(Box::from(
+                "minimum is greater than maximum",
+            )));
+        }
+    }
+    let mut alternatives = Vec::new();
+    // Negative integers, expressed through their magnitudes.
+    if min.is_none_or(|m| m < 0) {
+        let lo_magnitude = max.map_or(1, |m| if m < 0 { -m } else { 1 });
+        let hi_magnitude = min.map(|m| -m);
+        for pattern in patterns_for_magnitude_range(lo_magnitude, hi_magnitude) {
+            alternatives.push(format!("-{}", pattern));
+        }
+    }
+    if max.is_none_or(|m| m >= 0) {
+        let lo = min.map_or(0, |m| m.max(0));
+        alternatives.extend(patterns_for_magnitude_range(lo, max));
+    }
+    Ok(format!("({})", alternatives.join("|")))
+}
+
+/// Patterns jointly matching all integers in `[lo, hi]` (`0 <= lo`, `None`
+/// meaning unbounded) without leading zeros. Ordered by descending magnitude
+/// so that no alternative shadows a longer one under leftmost-first matching.
+fn patterns_for_magnitude_range(lo: i128, hi: Option<i128>) -> Vec<String> {
+    let Some(hi) = hi else {
+        // Integers longer than `lo`, then those of the same length.
+        let digits = lo.to_string().len() as u32;
+        let nine_filled = 10i128.pow(digits) - 1;
+        let mut patterns = vec![format!("[1-9][0-9]{{{},}}", digits)];
+        patterns.extend(patterns_for_magnitude_range(lo, Some(nine_filled)));
+        return patterns;
+    };
+    // Split `[lo, hi]` at the boundaries where digits stop varying freely, so
+    // that each sub-range reduces to `prefix [a-b] [0-9]{n}`.
+    let mut stops = std::collections::BTreeSet::from([hi]);
+    for nines in 1.. {
+        let power = 10i128.pow(nines);
+        let stop = lo - lo % power + power - 1;
+        if !(lo <= stop && stop < hi) {
+            break;
+        }
+        stops.insert(stop);
+    }
+    for zeros in 1.. {
+        let power = 10i128.pow(zeros);
+        let stop = (hi + 1) - (hi + 1) % power - 1;
+        if !(lo < stop && stop < hi) {
+            break;
+        }
+        stops.insert(stop);
+    }
+    let mut patterns = Vec::new();
+    let mut start = lo;
+    for stop in stops {
+        patterns.push(pattern_for_aligned_range(start, stop));
+        start = stop + 1;
+    }
+    patterns.reverse();
+    patterns
+}
+
+/// Pattern for a sub-range whose bounds have the same number of digits and
+/// whose freely-varying digits are all trailing.
+fn pattern_for_aligned_range(start: i128, stop: i128) -> String {
+    let mut pattern = String::new();
+    let mut free_digits = 0;
+    for (a, b) in start.to_string().chars().zip(stop.to_string().chars()) {
+        if a == b {
+            pattern.push(a);
+        } else if a != '0' || b != '9' {
+            pattern.push_str(&format!("[{}-{}]", a, b));
+        } else {
+            free_digits += 1;
+        }
+    }
+    if free_digits > 0 {
+        pattern.push_str("[0-9]");
+    }
+    if free_digits > 1 {
+        pattern.push_str(&format!("{{{}}}", free_digits));
+    }
+    pattern
 }

@@ -124,7 +124,7 @@ jobs:
             target: aarch64-pc-windows-msvc
             alias-target: aarch64-pc-windows-msvc
             python-architecture: arm64
-            interpreter: "3.12 3.13 3.14 3.14t"
+            interpreter: "3.11 3.12 3.13 3.14 3.14t"
 
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4

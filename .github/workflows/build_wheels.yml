@@ -113,11 +113,18 @@ jobs:
           - runner: windows-latest
             target: x86
             alias-target: i686-pc-windows-msvc
+            python-architecture: x86
             interpreter: "3.9 3.10 3.11 3.12 3.13 3.14 3.14t"
           - runner: windows-latest
             target: x64
             alias-target: x86_64-pc-windows-msvc
+            python-architecture: x64
             interpreter: "3.9 3.10 3.11 3.12 3.13 3.14 3.14t"
+          - runner: windows-11-arm
+            target: aarch64-pc-windows-msvc
+            alias-target: aarch64-pc-windows-msvc
+            python-architecture: arm64
+            interpreter: "3.12 3.13 3.14 3.14t"
 
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
@@ -126,15 +133,27 @@ jobs:
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.14"
-          architecture: ${{ matrix.platform.target }}
+          architecture: ${{ matrix.platform.python-architecture }}
 
       - run: pip install -U twine
 
       - name: Install required packages
+        if: matrix.platform.target != 'aarch64-pc-windows-msvc'
         # rustls requires aws-lc-sys, which FFI bindings to AWS-LC (AWS Libcrypto)
         # aws-lc-sys requires nasm for compilation on windows
         run: |
           choco install nasm
+
+      - name: Configure native Clang
+        if: matrix.platform.target == 'aarch64-pc-windows-msvc'
+        shell: pwsh
+        run: |
+          $clangVersion = clang --version
+          if ($LASTEXITCODE -ne 0 -or ($clangVersion -join "`n") -notmatch "Target: aarch64-pc-windows-msvc") {
+            throw "A native aarch64-pc-windows-msvc Clang toolchain is required"
+          }
+          "CC_aarch64_pc_windows_msvc=clang" >> $env:GITHUB_ENV
+          "CXX_aarch64_pc_windows_msvc=clang++" >> $env:GITHUB_ENV
 
       - uses: dtolnay/rust-toolchain@2c7215f132e9ebf062739d9130488b56d53c060c # master
         with:

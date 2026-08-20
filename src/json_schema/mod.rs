@@ -517,7 +517,7 @@ mod tests {
             // String defined by a regular expression
             (
                 r#"{"title": "Foo", "type": "string", "pattern": "^[a-z]$"}"#,
-                r#"("[a-z]")"#,
+                r#"("(?:[a-z])")"#,
                 vec![r#""a""#], vec![r#""1""#],
             ),
             // Make sure strings are escaped with regex escaping
@@ -1263,6 +1263,54 @@ mod tests {
                 should_match(&re, m);
             }
             for not_m in not_a_match {
+                should_not_match(&re, not_m);
+            }
+        }
+    }
+
+    #[test]
+    fn string_pattern_alternations_stay_inside_json_quotes() {
+        for (pattern, grouped_pattern, matches, non_matches) in [
+            (
+                "cat|dog",
+                "cat|dog",
+                vec![r#"{"v": "cat"}"#, r#"{"v": "dog"}"#],
+                vec![r#"{"v": "cat}"#, r#"{"v": dog"}"#],
+            ),
+            (
+                "^GET|POST$",
+                "GET|POST",
+                vec![r#"{"v": "GET"}"#, r#"{"v": "POST"}"#],
+                vec![r#"{"v": "GET}"#, r#"{"v": POST"}"#],
+            ),
+            (
+                "[a-z]+",
+                "[a-z]+",
+                vec![r#"{"v": "cat"}"#],
+                vec![r#"{"v": "123"}"#],
+            ),
+            (
+                "^(cat|dog)$",
+                "(cat|dog)",
+                vec![r#"{"v": "cat"}"#, r#"{"v": "dog"}"#],
+                vec![r#"{"v": "bird"}"#],
+            ),
+        ] {
+            let schema = format!(
+                r#"{{"type":"object","properties":{{"v":{{"type":"string","pattern":"{}"}}}},"required":["v"],"additionalProperties":false}}"#,
+                pattern
+            );
+            let result = regex_from_str(&schema, None, None).expect("To regex failed");
+            assert!(
+                result.contains(&format!(r#""(?:{})""#, grouped_pattern)),
+                "Pattern should be grouped inside JSON quotes: {result}"
+            );
+
+            let re = Regex::new(&result).expect("Regex failed");
+            for m in matches {
+                should_match(&re, m);
+            }
+            for not_m in non_matches {
                 should_not_match(&re, not_m);
             }
         }

@@ -1657,4 +1657,77 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn empty_combinator_and_enum_arrays_are_rejected() {
+        let keywords = ["allOf", "anyOf", "oneOf", "enum"];
+
+        // 1. Bare top-level empty combinators
+        for keyword in keywords {
+            let schema = format!(r#"{{"{}": []}}"#, keyword);
+            match regex_from_str(&schema, None, None) {
+                Err(crate::Error::MustBeNonEmptyArray(k)) if k.as_ref() == keyword => {}
+                other => panic!(
+                    "Expected MustBeNonEmptyArray('{}') on top-level, got {:?}",
+                    keyword, other
+                ),
+            }
+        }
+
+        // 2. Scalar types with empty combinator
+        for keyword in keywords {
+            for instance_type in ["string", "integer", "boolean", "number"] {
+                let schema = format!(r#"{{"type": "{}", "{}": []}}"#, instance_type, keyword);
+                match regex_from_str(&schema, None, None) {
+                    Err(crate::Error::MustBeNonEmptyArray(k)) if k.as_ref() == keyword => {}
+                    other => panic!(
+                        "Expected MustBeNonEmptyArray('{}') on '{}', got {:?}",
+                        keyword, instance_type, other
+                    ),
+                }
+            }
+        }
+
+        // 3. Nested inside object properties (Issue #261 reproduction)
+        for keyword in keywords {
+            let schema = format!(
+                r#"{{"type": "object", "properties": {{"a": {{"type": "string", "{}": []}}}}, "required": ["a"]}}"#,
+                keyword
+            );
+            match regex_from_str(&schema, None, None) {
+                Err(crate::Error::MustBeNonEmptyArray(k)) if k.as_ref() == keyword => {}
+                other => panic!(
+                    "Expected MustBeNonEmptyArray('{}') in property schema, got {:?}",
+                    keyword, other
+                ),
+            }
+        }
+
+        // 4. Beside object properties
+        for keyword in keywords {
+            let schema = format!(
+                r#"{{"type": "object", "properties": {{"a": {{"type": "string"}}}}, "{}": []}}"#,
+                keyword
+            );
+            match regex_from_str(&schema, None, None) {
+                Err(crate::Error::MustBeNonEmptyArray(k)) if k.as_ref() == keyword => {}
+                other => panic!(
+                    "Expected MustBeNonEmptyArray('{}') beside properties, got {:?}",
+                    keyword, other
+                ),
+            }
+        }
+
+        // 5. Inside array items
+        for keyword in keywords {
+            let schema = format!(r#"{{"type": "array", "items": {{"{}": []}}}}"#, keyword);
+            match regex_from_str(&schema, None, None) {
+                Err(crate::Error::MustBeNonEmptyArray(k)) if k.as_ref() == keyword => {}
+                other => panic!(
+                    "Expected MustBeNonEmptyArray('{}') inside array items, got {:?}",
+                    keyword, other
+                ),
+            }
+        }
+    }
 }

@@ -47,6 +47,8 @@ pub enum Error {
     UnsupportedEnumDataType(Box<serde_json::Value>),
     #[error("'enum' must be an array")]
     EnumMustBeAnArray,
+    #[error("'{0}' must be a non-empty array")]
+    MustBeNonEmptyArray(Box<str>),
     #[error("Unsupported data type in const: {0}")]
     UnsupportedConstDataType(Box<serde_json::Value>),
     #[error("'const' key not found in object")]

@@ -32,6 +32,22 @@ def test_invalid_json():
         build_regex_from_schema("{'name':")
 
 
+@pytest.mark.parametrize("keyword", ["allOf", "anyOf", "oneOf", "enum"])
+def test_empty_combinators_rejected(keyword):
+    # Top-level empty combinator
+    with pytest.raises(ValueError, match=f"'{keyword}' must be a non-empty array"):
+        build_regex_from_schema(json.dumps({keyword: []}))
+
+    # Inside property schema (regression test for #261)
+    schema = {
+        "type": "object",
+        "properties": {"a": {"type": "string", keyword: []}},
+        "required": ["a"],
+    }
+    with pytest.raises(ValueError, match=f"'{keyword}' must be a non-empty array"):
+        build_regex_from_schema(json.dumps(schema))
+
+
 def test_types_presence_and_not_emptyness():
     from outlines_core.json_schema import (
         BOOLEAN,

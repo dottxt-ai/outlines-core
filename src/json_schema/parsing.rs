@@ -48,6 +48,16 @@ impl<'a> Parser<'a> {
 
     #[allow(clippy::wrong_self_convention)]
     pub fn to_regex(&mut self, json: &Value) -> Result<String> {
+        if let Value::Object(obj) = json {
+            for &keyword in &["allOf", "anyOf", "oneOf", "enum"] {
+                if let Some(Value::Array(arr)) = obj.get(keyword) {
+                    if arr.is_empty() {
+                        return Err(Error::MustBeNonEmptyArray(Box::from(keyword)));
+                    }
+                }
+            }
+        }
+
         match json {
             Value::Object(obj) if obj.is_empty() => self.parse_empty_object(),
             Value::Object(obj) if obj.contains_key("properties") => self.parse_properties(obj),
@@ -170,6 +180,9 @@ impl<'a> Parser<'a> {
     fn parse_all_of(&mut self, obj: &serde_json::Map<String, Value>) -> Result<String> {
         match obj.get("allOf") {
             Some(Value::Array(all_of)) => {
+                if all_of.is_empty() {
+                    return Err(Error::MustBeNonEmptyArray(Box::from("allOf")));
+                }
                 let subregexes: Result<Vec<String>> =
                     all_of.iter().map(|t| self.to_regex(t)).collect();
 
@@ -185,6 +198,9 @@ impl<'a> Parser<'a> {
     fn parse_any_of(&mut self, obj: &serde_json::Map<String, Value>) -> Result<String> {
         match obj.get("anyOf") {
             Some(Value::Array(any_of)) => {
+                if any_of.is_empty() {
+                    return Err(Error::MustBeNonEmptyArray(Box::from("anyOf")));
+                }
                 let subregexes: Result<Vec<String>> =
                     any_of.iter().map(|t| self.to_regex(t)).collect();
 
@@ -199,6 +215,9 @@ impl<'a> Parser<'a> {
     fn parse_one_of(&mut self, obj: &serde_json::Map<String, Value>) -> Result<String> {
         match obj.get("oneOf") {
             Some(Value::Array(one_of)) => {
+                if one_of.is_empty() {
+                    return Err(Error::MustBeNonEmptyArray(Box::from("oneOf")));
+                }
                 let subregexes: Result<Vec<String>> =
                     one_of.iter().map(|t| self.to_regex(t)).collect();
 
@@ -234,6 +253,9 @@ impl<'a> Parser<'a> {
     fn parse_enum(&mut self, obj: &serde_json::Map<String, Value>) -> Result<String> {
         match obj.get("enum") {
             Some(Value::Array(enum_values)) => {
+                if enum_values.is_empty() {
+                    return Err(Error::MustBeNonEmptyArray(Box::from("enum")));
+                }
                 let choices: Result<Vec<String>> = enum_values
                     .iter()
                     .map(|choice| self.parse_const_value(choice))

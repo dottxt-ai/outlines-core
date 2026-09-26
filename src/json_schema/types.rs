@@ -52,7 +52,7 @@ pub static DATE_TIME: &str = r#""(-?(?:[1-9][0-9]*)?[0-9]{4})-(1[0-2]|0[1-9])-(3
 // RFC3339 is itself ambiguous on this point, see
 // https://datatracker.ietf.org/doc/html/rfc3339#section-5.6
 pub static DATE: &str = r#""(?:\d{4})-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12][0-9]|3[01])|(?:0[469]|11)-(?:0[1-9]|[12][0-9]|30)|02-(?:0[1-9]|1[0-9]|2[0-9]))""#;
-pub static TIME: &str = r#""(2[0-3]|[01][0-9]):([0-5][0-9]):([0-5][0-9])(\\.[0-9]+)?(Z)?""#;
+pub static TIME: &str = r#""(2[0-3]|[01][0-9]):([0-5][0-9]):([0-5][0-9])(\.[0-9]+)?(Z)?""#;
 // https://datatracker.ietf.org/doc/html/rfc9562 and https://stackoverflow.com/questions/136505/searching-for-uuids-in-text-with-regex
 pub static UUID: &str = r#""[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}""#;
 // https://datatracker.ietf.org/doc/html/rfc3986#appendix-B

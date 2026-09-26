@@ -696,12 +696,15 @@ mod tests {
                 vec![
                     r#""20:20:39Z""#,
                     r#""15:30:00Z""#,
+                    // RFC3339 time-secfrac; the offset stays optional, as it
+                    // is for DATE_TIME
+                    r#""15:30:00.000Z""#,
+                    r#""15:30:00.000""#,
                 ],
                 vec![
                     "20:20:39Z",
                     r#""25:30:00""#, // incorrect hour
                     r#""15:30""#, // missing seconds
-                    r#""15:30:00.000""#, // missing Z
                     r#""15-30-00""#, // incorrect separator
                     r#""15:30:00+01:00""#, // incorrect separator
                 ],
@@ -758,11 +761,11 @@ mod tests {
                 vec![
                     r#"{"time": "20:20:39Z"}"#,
                     r#"{"time":"15:30:00Z"}"#,
+                    r#"{"time":"15:30:00.000Z"}"#,
                 ],
                 vec![
                     r#"{"time":"25:30:00"}"#, // incorrect hour
                     r#"{"time":"15:30"}"#, // missing seconds
-                    r#"{"time":"15:30:00.000"}"#, // missing Z
                     r#"{"time":"15-30-00"}"#, // incorrect separator
                     r#"{"time":"15:30:00+01:00"}"#, // incorrect separator
                     r#"{"time":20:20:39Z}"#, // missing quotes for value

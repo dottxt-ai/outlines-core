@@ -156,10 +156,23 @@ impl TokenProcessor {
                     level: TokenProcessorLevel::Byte,
                 }),
                 DecoderWrapper::Sequence(decoding_sequence) => {
+                    let decoders = decoding_sequence.get_decoders();
+
+                    // A sequence that contains exactly one `ByteLevel` decoder and nothing
+                    // else decodes identically to a bare top-level `ByteLevel` decoder, so
+                    // it's handled the same way here. Anything else in the sequence could
+                    // alter decoding semantics (e.g. stripping or remapping bytes), so we
+                    // stay conservative and don't special-case those combinations.
+                    if decoders.len() == 1 && matches!(decoders[0], DecoderWrapper::ByteLevel(_)) {
+                        return Ok(Self {
+                            level: TokenProcessorLevel::Byte,
+                        });
+                    }
+
                     let mut is_byte_fallback = false;
                     let mut spacechar = ' '.to_string();
 
-                    for decoder in decoding_sequence.get_decoders() {
+                    for decoder in decoders {
                         match decoder {
                             DecoderWrapper::ByteFallback(_) => {
                                 is_byte_fallback = true;
@@ -385,6 +398,22 @@ mod tests {
             Err(Error::UnsupportedByTokenProcessor) => {}
             _ => unreachable!(),
         }
+    }
+
+    #[test]
+    fn byte_level_decoder_in_sequence_is_supported() {
+        use tokenizers::decoders::byte_level::ByteLevel;
+        use tokenizers::decoders::sequence::Sequence;
+        use tokenizers::models::bpe::BPE;
+
+        let mut tokenizer = Tokenizer::new(BPE::default());
+        let decoder = ByteLevel::default();
+        let sequence = Sequence::new(vec![DecoderWrapper::ByteLevel(decoder)]);
+        let decoder_sequence = DecoderWrapper::Sequence(sequence);
+        tokenizer.with_decoder(Some(decoder_sequence));
+
+        let processor = TokenProcessor::new(&tokenizer).expect("Processor failed");
+        assert_eq!(processor.level, TokenProcessorLevel::Byte);
     }
 
     #[test]

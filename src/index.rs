@@ -4,7 +4,7 @@ use bincode::{Decode, Encode};
 use regex_automata::dfa::dense::DFA;
 use regex_automata::dfa::Automaton;
 use regex_automata::util::primitives::StateID as AutomataStateId;
-use regex_automata::Anchored;
+use regex_automata::{Anchored, MatchKind};
 use rustc_hash::{FxHashMap as HashMap, FxHashSet as HashSet};
 
 use crate::prelude::*;
@@ -103,7 +103,13 @@ impl Index {
     pub fn new(regex: &str, vocabulary: &Vocabulary) -> Result<Self> {
         let vocab_size = vocabulary.len();
         let eos_token_id = vocabulary.eos_token_id();
-        let dfa = DFA::new(regex).map_err(Box::new)?;
+        // `MatchKind::All` keeps every branch of an alternation. The default,
+        // leftmost-first, stops at the first branch that matches, so for `1|10`
+        // the automaton could never continue from "1" to "10".
+        let dfa = DFA::builder()
+            .configure(DFA::config().match_kind(MatchKind::All))
+            .build(regex)
+            .map_err(Box::new)?;
         let start_state = match dfa.universal_start_state(Anchored::Yes) {
             Some(s) => s,
             None => return Err(Error::DfaHasNoStartState),
@@ -285,15 +291,15 @@ mod tests {
         }
         let index = Index::new(regex, &vocabulary).expect("Index failed");
         let initial_state = index.initial_state();
-        assert_eq!(initial_state, 40);
-        assert_eq!(index.final_states(), &HashSet::from_iter([24, 48, 56]));
+        assert_eq!(initial_state, 56);
+        assert_eq!(index.final_states(), &HashSet::from_iter([24, 80, 88]));
         assert!(!index.is_final_state(&initial_state));
 
         let expected = HashMap::from_iter([
             (24, HashMap::from_iter([(3, 24), (4, 24), (2, 24)])),
-            (48, HashMap::from_iter([(4, 48)])),
-            (40, HashMap::from_iter([(3, 48), (2, 56)])),
-            (56, HashMap::from_iter([(3, 24), (4, 56), (2, 24)])),
+            (80, HashMap::from_iter([(4, 80)])),
+            (56, HashMap::from_iter([(3, 80), (2, 88)])),
+            (88, HashMap::from_iter([(3, 24), (4, 88), (2, 24)])),
         ]);
         assert_eq!(index.transitions(), &expected);
 
@@ -302,7 +308,7 @@ mod tests {
             .expect("No allowed tokens");
         let token_id = allowed_tokens.first().expect("No first tokens");
 
-        let state = 48;
+        let state = 80;
         assert_eq!(index.next_state(&initial_state, token_id), Some(state));
         assert!(index.is_final_state(&state));
 
@@ -348,7 +354,7 @@ mod tests {
         }
 
         let index = Index::new(regex, &vocabulary).expect("Index failed");
-        assert_eq!(index.final_states(), &HashSet::from_iter([208, 128]));
+        assert_eq!(index.final_states(), &HashSet::from_iter([208, 224]));
 
         let expected = HashMap::from_iter([
             (
@@ -356,10 +362,10 @@ mod tests {
                 HashMap::from_iter([(3, 208), (8, 208), (4, 208), (2, 208)]),
             ),
             (
-                80,
-                HashMap::from_iter([(2, 128), (7, 208), (5, 208), (6, 208)]),
+                144,
+                HashMap::from_iter([(2, 224), (7, 208), (5, 208), (6, 208)]),
             ),
-            (128, HashMap::from_iter([(8, 128)])),
+            (224, HashMap::from_iter([(8, 224)])),
         ]);
         assert_eq!(index.transitions(), &expected);
     }
@@ -433,5 +439,32 @@ mod tests {
             state = index.next_state(&state, &token_id).expect("Transit failed");
         }
         assert!(index.is_final_state(&state));
+    }
+
+    #[test]
+    fn index_keeps_alternation_branches_with_a_shared_prefix() {
+        let eos_token_id = 2;
+        let mut vocabulary = Vocabulary::new(eos_token_id);
+        for (token, token_id) in [("1", 0), ("0", 1)] {
+            vocabulary
+                .try_insert(token, token_id as u32)
+                .expect("Insert failed");
+        }
+
+        for regex in ["1|10", "10|1", "(1|10)"] {
+            let index = Index::new(regex, &vocabulary).expect("Index failed");
+            for tokens in [vec![0], vec![0, 1]] {
+                let mut state = index.initial_state();
+                for token_id in &tokens {
+                    state = index
+                        .next_state(&state, token_id)
+                        .unwrap_or_else(|| panic!("{regex}: no transition for {tokens:?}"));
+                }
+                assert!(
+                    index.is_final_state(&state),
+                    "{regex}: {tokens:?} not final"
+                );
+            }
+        }
     }
 }

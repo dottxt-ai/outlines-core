@@ -27,12 +27,12 @@ def test_interface():
     index = Index(regex, vocabulary)
     guide = Guide(index)
 
-    assert guide.get_state() == index.get_initial_state() == 12
+    assert guide.get_state() == index.get_initial_state() == 24
     assert guide.get_tokens() == [1]
 
     assert guide.advance(1) == [vocabulary.get_eos_token_id()]
     assert guide.is_finished()
-    assert guide.get_state() == 20
+    assert guide.get_state() == 32
     assert guide.get_tokens() == [eos_token_id]
 
     with pytest.raises(
@@ -128,7 +128,7 @@ def test_pickling_from_pretrained_with_revision(model, revision):
 
     vocabulary = Vocabulary.from_pretrained(model, revision=revision)
     index = Index(regex, vocabulary)
-    assert len(index.get_transitions()) == 810
+    assert len(index.get_transitions()) == 836
 
     guide = Guide(index)
     serialized = pickle.dumps(guide)

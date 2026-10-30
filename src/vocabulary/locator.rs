@@ -147,12 +147,17 @@ impl EosTokenLocation {
         }
     }
 
-    /// Downloads related config file from Hugging Face Hub.
+    /// Resolves a local config file or downloads it from Hugging Face Hub.
     fn download_config(
         project: &str,
         file: &str,
         parameters: &Option<FromPretrainedParameters>,
     ) -> tokenizers::Result<std::path::PathBuf> {
+        let directory = std::path::Path::new(project);
+        if directory.is_dir() {
+            return Ok(directory.join(file));
+        }
+
         // Adapted from
         // https://github.com/huggingface/tokenizers/blob/9b77c054ef4297c7057fa8db875368c7c02f1bfc/tokenizers/src/utils/from_pretrained.rs#L26
 

@@ -350,7 +350,8 @@ impl PyVocabulary {
         }
     }
 
-    /// Creates the vocabulary of a pre-trained model.
+    /// Creates the vocabulary from a Hub model or a local directory containing
+    /// tokenizer.json and EOS metadata. Revision and token apply only to Hub models.
     #[staticmethod]
     #[pyo3(signature = (model, revision=None, token=None))]
     #[cfg(feature = "hugginface-hub")]

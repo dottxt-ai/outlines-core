@@ -1,4 +1,5 @@
 import copy
+import json
 import pickle
 
 import pytest
@@ -98,6 +99,76 @@ def test_insert_eos_token(vocabulary):
 def test_from_pretrained():
     vocabulary = Vocabulary.from_pretrained("gpt2")
     assert vocabulary.get_eos_token_id() == 50256
+
+
+@pytest.fixture
+def local_tokenizer(tmp_path):
+    directory = tmp_path / "local tokenizer"
+    directory.mkdir()
+    tokenizer = {
+        "version": "1.0",
+        "truncation": None,
+        "padding": None,
+        "added_tokens": [],
+        "normalizer": None,
+        "pre_tokenizer": None,
+        "post_processor": None,
+        "decoder": {
+            "type": "ByteLevel",
+            "add_prefix_space": False,
+            "trim_offsets": True,
+            "use_regex": True,
+        },
+        "model": {
+            "type": "BPE",
+            "vocab": {"<eos>": 0, "a": 1, "Ġ": 2},
+            "merges": [],
+        },
+    }
+    (directory / "tokenizer.json").write_text(json.dumps(tokenizer), encoding="utf-8")
+    return directory
+
+
+@pytest.mark.parametrize("eos_token", ["<eos>", {"content": "<eos>"}])
+def test_from_local_tokenizer_config(local_tokenizer, eos_token):
+    (local_tokenizer / "tokenizer_config.json").write_text(
+        json.dumps({"eos_token": eos_token}), encoding="utf-8"
+    )
+    vocabulary = Vocabulary.from_pretrained(str(local_tokenizer))
+    assert vocabulary.get_eos_token_id() == 0
+    assert vocabulary.get("<eos>") is None
+    assert vocabulary.get("a") == [1]
+    assert vocabulary.get(" ") == [2]
+
+
+def test_local_generation_config_has_priority(local_tokenizer):
+    (local_tokenizer / "generation_config.json").write_text(
+        json.dumps({"eos_token_id": 0}), encoding="utf-8"
+    )
+    (local_tokenizer / "tokenizer_config.json").write_text(
+        json.dumps({"eos_token": "a"}), encoding="utf-8"
+    )
+    vocabulary = Vocabulary.from_pretrained(str(local_tokenizer), revision="local only")
+    assert vocabulary.get_eos_token_id() == 0
+    assert vocabulary.get("a") == [1]
+
+
+def test_local_tokenizer_without_eos_metadata(local_tokenizer):
+    with pytest.raises(ValueError, match="EOS token id"):
+        Vocabulary.from_pretrained(str(local_tokenizer))
+
+
+def test_local_invalid_generation_config_falls_back(local_tokenizer):
+    (local_tokenizer / "generation_config.json").write_text("{", encoding="utf-8")
+    (local_tokenizer / "tokenizer_config.json").write_text(
+        json.dumps({"eos_token": "<eos>"}), encoding="utf-8"
+    )
+    assert Vocabulary.from_pretrained(str(local_tokenizer)).get_eos_token_id() == 0
+
+
+def test_local_directory_without_tokenizer(tmp_path):
+    with pytest.raises(ValueError):
+        Vocabulary.from_pretrained(str(tmp_path))
 
 
 def test_pickling(vocabulary):

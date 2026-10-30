@@ -62,7 +62,7 @@ let final_states = index.final_states();
 
 You can create a `Vocabulary` in three ways:
 
-1. **`Vocabulary::from_pretrained(model, parameters)`** - Loads from a pretrained model (as in the example above)
+1. **`Vocabulary::from_pretrained(model, parameters)`** - Loads from a Hub model or a local model directory (as in the example above)
 
 2. **Manual creation** - You can create a vocabulary from token mappings:
 
@@ -140,6 +140,17 @@ guide.is_finished()
 # If it's finished then this assertion holds:
 assert guide.get_tokens() == [vocabulary.get_eos_token_id()]
 ```
+
+To load a tokenizer without contacting the Hub, pass an existing local directory:
+
+```python
+vocabulary = Vocabulary.from_pretrained("./my-model")
+```
+
+The directory must contain `tokenizer.json` and EOS metadata. The loader first
+checks `generation_config.json` for `eos_token_id`, then `tokenizer_config.json`
+for `eos_token` (a string or an object with a `content` field). The Rust API accepts
+the same directory path. `revision` and `token` are used only for Hub models.
 
 ## How to contribute?
 

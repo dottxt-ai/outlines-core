@@ -77,7 +77,11 @@ impl Vocabulary {
         }
     }
 
-    /// Creates the vocabulary of pre-trained model from Hugging Face Hub.
+    /// Creates the vocabulary from Hugging Face Hub or a local model directory.
+    ///
+    /// Local directories must contain `tokenizer.json` and EOS token metadata in
+    /// `generation_config.json` or `tokenizer_config.json`. Hub parameters are
+    /// ignored when loading a local directory.
     #[cfg(feature = "hugginface-hub")]
     pub fn from_pretrained(
         model: &str,
@@ -93,7 +97,12 @@ impl Vocabulary {
         model: &str,
         parameters: Option<FromPretrainedParameters>,
     ) -> Result<Self> {
-        let mut tokenizer = Tokenizer::from_pretrained(model, parameters.clone())?;
+        let path = std::path::Path::new(model);
+        let mut tokenizer = if path.is_dir() {
+            Tokenizer::from_file(path.join("tokenizer.json"))?
+        } else {
+            Tokenizer::from_pretrained(model, parameters.clone())?
+        };
         Self::filter_prepend_normalizers(&mut tokenizer);
 
         // Locate eos_token_id in defined locations.

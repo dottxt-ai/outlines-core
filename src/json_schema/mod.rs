@@ -48,7 +48,8 @@
 //! - `maxLength`
 //!     - Maximum string length.
 //! - `pattern`
-//!     - Regular expression the string must match.
+//!     - Regular expression the string must match. When `pattern` is present,
+//!       `minLength` and `maxLength` are not enforced.
 //! - `format`
 //!     - Specifies a pre-defined format, these are supported [`FormatType`]
 //!
@@ -519,6 +520,12 @@ mod tests {
                 r#"{"title": "Foo", "type": "string", "pattern": "^[a-z]$"}"#,
                 r#"("[a-z]")"#,
                 vec![r#""a""#], vec![r#""1""#],
+            ),
+            // A pattern is kept when a length bound is also present
+            (
+                r#"{"title": "Foo", "type": "string", "pattern": "^[A-F0-9]{8}$", "maxLength": 8}"#,
+                r#"("[A-F0-9]{8}")"#,
+                vec![r#""0123ABCD""#], vec![r#""zzz""#, r#""0123ABC""#],
             ),
             // Make sure strings are escaped with regex escaping
             (

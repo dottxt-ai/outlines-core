@@ -378,7 +378,17 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_string_type(&mut self, obj: &serde_json::Map<String, Value>) -> Result<String> {
-        if obj.contains_key("maxLength") || obj.contains_key("minLength") {
+        // `pattern` is checked before the length bounds: a regular expression cannot be
+        // intersected with a length bound here, and the pattern is usually the stronger
+        // constraint, so dropping it in favour of the length would accept strings the
+        // schema rejects.
+        if let Some(pattern) = obj.get("pattern").and_then(Value::as_str) {
+            if pattern.starts_with('^') && pattern.ends_with('$') {
+                Ok(format!(r#"("{}")"#, &pattern[1..pattern.len() - 1]))
+            } else {
+                Ok(format!(r#"("{}")"#, pattern))
+            }
+        } else if obj.contains_key("maxLength") || obj.contains_key("minLength") {
             let max_items = obj.get("maxLength");
             let min_items = obj.get("minLength");
 
@@ -402,12 +412,6 @@ impl<'a> Parser<'a> {
                 formatted_min,
                 formatted_max,
             ))
-        } else if let Some(pattern) = obj.get("pattern").and_then(Value::as_str) {
-            if pattern.starts_with('^') && pattern.ends_with('$') {
-                Ok(format!(r#"("{}")"#, &pattern[1..pattern.len() - 1]))
-            } else {
-                Ok(format!(r#"("{}")"#, pattern))
-            }
         } else if let Some(format) = obj.get("format").and_then(Value::as_str) {
             match types::FormatType::from_str(format) {
                 Some(format_type) => Ok(format_type.to_regex().to_string()),

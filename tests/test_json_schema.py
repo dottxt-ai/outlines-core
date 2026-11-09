@@ -62,3 +62,48 @@ def test_types_presence_and_not_emptyness():
     assert URI
     assert UUID
     assert WHITESPACE
+
+
+def test_required_only_anyof_with_properties():
+    schema = {
+        "type": "object",
+        "properties": {"modifier": {"enum": ["", "dark"]}},
+        "anyOf": [{"required": ["modifier"]}],
+        "additionalProperties": False,
+    }
+    regex = build_regex_from_schema(json.dumps(schema))
+    assert re.fullmatch(regex, '{"modifier":"dark"}')
+    assert re.fullmatch(regex, '{"modifier":""}')
+    assert not re.fullmatch(regex, "{}")
+    assert not re.fullmatch(regex, '{"modifier":"light"}')
+
+
+def test_required_only_anyof_combines_parent_and_alternatives():
+    schema = {
+        "properties": {
+            "base": {"const": 1},
+            "a": {"const": 2},
+            "b": {"const": 3},
+        },
+        "required": ["base"],
+        "anyOf": [{"required": ["a", "a"]}, {"required": ["b"]}],
+    }
+    regex = build_regex_from_schema(json.dumps(schema))
+    assert re.fullmatch(regex, '{"base":1,"a":2}')
+    assert re.fullmatch(regex, '{"base":1,"b":3}')
+    assert re.fullmatch(regex, '{"base":1,"a":2,"b":3}')
+    assert not re.fullmatch(regex, '{"base":1}')
+    assert not re.fullmatch(regex, '{"a":2}')
+
+
+def test_required_only_anyof_reference_depth_is_independent():
+    schema = {
+        "$id": "urn:fixture",
+        "$defs": {"v": {"const": 1}},
+        "properties": {"a": {"$ref": "urn:fixture#/$defs/v"}},
+        "anyOf": [{"required": ["a"]} for _ in range(5)],
+    }
+    regex = build_regex_from_schema(json.dumps(schema))
+    assert re.fullmatch(regex, '{"a":1}')
+    assert not re.fullmatch(regex, "{}")
+    assert not re.fullmatch(regex, '{"a":2}')

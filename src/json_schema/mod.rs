@@ -76,7 +76,9 @@
 //! - `allOf`
 //!     - Combines multiple schemas; all must be valid.
 //! - `anyOf`
-//!     - Combines multiple schemas; at least one must be valid.
+//!     - Combines multiple schemas; at least one must be valid. With `properties`,
+//!       only branches consisting solely of `required` arrays of declared property
+//!       names are combined; other branch shapes retain properties-first behavior.
 //! - `oneOf`
 //!     - Combines multiple schemas; exactly one must be valid.
 //!
@@ -230,6 +232,124 @@ mod tests {
             );
             assert_ne!(matched.range(), 0..value.len());
         }
+    }
+
+    #[test]
+    fn required_only_any_of_with_properties() {
+        let cases = [
+            (
+                r#"{"type":"object","properties":{"modifier":{"enum":["","dark"]}},"anyOf":[{"required":["modifier"]}],"additionalProperties":false}"#,
+                vec![r#"{"modifier":""}"#, r#"{"modifier":"dark"}"#],
+                vec!["{}", r#"{"modifier":"light"}"#],
+            ),
+            (
+                r#"{"properties":{"base":{"const":1},"a":{"const":2},"b":{"const":3}},"required":["base"],"anyOf":[{"required":["a","a"]},{"required":["b"]}]}"#,
+                vec![
+                    r#"{"base":1,"a":2}"#,
+                    r#"{"base":1,"b":3}"#,
+                    r#"{"base":1,"a":2,"b":3}"#,
+                ],
+                vec!["{}", r#"{"base":1}"#, r#"{"a":2}"#],
+            ),
+            (
+                r#"{"properties":{"a":{"const":1}},"anyOf":[{"required":["a"]},{"required":[]}]}"#,
+                vec!["{}", r#"{"a":1}"#],
+                vec![r#"{"a":2}"#],
+            ),
+            (
+                r##"{"$defs":{"inner":{"properties":{"value":{"$ref":"#/$defs/value"}},"anyOf":[{"required":["value"]}]} ,"value":{"enum":["ok"]}},"properties":{"item":{"$ref":"#/$defs/inner"}},"required":["item"]}"##,
+                vec![r#"{"item":{"value":"ok"}}"#],
+                vec![r#"{"item":{}}"#, r#"{"item":{"value":"bad"}}"#],
+            ),
+            (
+                r#"{"properties":{"a":{"const":1}}}"#,
+                vec!["{}", r#"{"a":1}"#],
+                vec![r#"{"a":2}"#],
+            ),
+        ];
+        for (schema, matches, rejects) in cases {
+            let pattern = regex_from_str(schema, None, None).unwrap();
+            let re = Regex::new(&format!("^(?:{})$", pattern)).unwrap();
+            for value in matches {
+                should_match(&re, value);
+            }
+            for value in rejects {
+                should_not_match(&re, value);
+            }
+        }
+    }
+
+    #[test]
+    fn required_only_any_of_scope_and_whitespace() {
+        let plain = r#"{"properties":{"a":{"const":1}}}"#;
+        let expected = regex_from_str(plain, None, None).unwrap();
+        for schema in [
+            r#"{"properties":{"a":{"const":1}},"anyOf":[{"required":["missing"]}]}"#,
+            r#"{"properties":{"a":{"const":1}},"required":["missing"],"anyOf":[{"required":["a"]}]}"#,
+            r#"{"properties":{"a":{"const":1}},"anyOf":[{"required":["a"],"title":"extra"}]}"#,
+            r#"{"properties":{"a":{"const":1}},"anyOf":[{"required":[1]}]}"#,
+        ] {
+            assert_eq!(regex_from_str(schema, None, None).unwrap(), expected);
+        }
+        let schema = r#"{"properties":{"a":{"const":1}},"anyOf":[{"required":["a"]}]}"#;
+        let pattern = regex_from_str(schema, Some(r"\s*"), Some(5)).unwrap();
+        let re = Regex::new(&format!("^(?:{})$", pattern)).unwrap();
+        should_match(&re, "{\n\"a\" : 1\n}");
+        should_not_match(&re, "{\n}");
+    }
+
+    #[test]
+    fn required_only_any_of_reference_depth_is_independent() {
+        let schema = r##"{
+            "$id":"urn:fixture", "$defs":{"v":{"const":1}},
+            "properties":{"a":{"$ref":"urn:fixture#/$defs/v"}},
+            "anyOf":[{"required":["a"]},{"required":["a"]},{"required":["a"]},{"required":["a"]},{"required":["a"]}]
+        }"##;
+        let regex = regex_from_str(schema, None, None).unwrap();
+        let re = Regex::new(&format!("^(?:{})$", regex)).unwrap();
+        should_match(&re, r#"{"a":1}"#);
+        should_not_match(&re, "{}");
+        should_not_match(&re, r#"{"a":2}"#);
+
+        let nested = r##"{
+            "$id":"urn:fixture", "$defs":{"v":{"const":1}},
+            "properties":{"outer":{"properties":{"a":{"$ref":"urn:fixture#/$defs/v"}},
+                "anyOf":[{"required":["a"]},{"required":["a"]}]}},
+            "required":["outer"]
+        }"##;
+        let regex = regex_from_str(nested, None, Some(0)).unwrap();
+        let re = Regex::new(&format!("^(?:{})$", regex)).unwrap();
+        should_match(&re, r#"{"outer":{"a":1}}"#);
+        should_not_match(&re, r#"{"outer":{}}"#);
+
+        let recursive = r##"{
+            "properties":{"value":{"const":1},"next":{"$ref":"#"}},
+            "anyOf":[{"required":["value"]},{"required":["value"]}]
+        }"##;
+        let regex = regex_from_str(recursive, None, Some(0)).unwrap();
+        let re = Regex::new(&format!("^(?:{})$", regex)).unwrap();
+        should_match(&re, r#"{"value":1,"next":{"value":1}}"#);
+        should_not_match(&re, r#"{"value":1,"next":{"value":1,"next":{"value":1}}}"#);
+    }
+
+    #[test]
+    fn required_only_any_of_index_blocks_early_eos() {
+        use crate::{index::Index, vocabulary::Vocabulary};
+
+        let schema = r#"{"properties":{"modifier":{"enum":["","dark"]}},"anyOf":[{"required":["modifier"]}]}"#;
+        let pattern = regex_from_str(schema, None, None).unwrap();
+        let mut vocabulary = Vocabulary::new(3);
+        for (token, id) in [("{", 0), ("}", 1), (r#""modifier":"dark"}"#, 2)] {
+            vocabulary.try_insert(token, id).unwrap();
+        }
+        let index = Index::new(&pattern, &vocabulary).unwrap();
+        let state = index.next_state(&index.initial_state(), &0).unwrap();
+        let allowed = index.allowed_tokens(&state).unwrap();
+        assert!(!allowed.contains(&1));
+        assert!(!allowed.contains(&3));
+        let final_state = index.next_state(&state, &2).unwrap();
+        assert!(index.is_final_state(&final_state));
+        assert!(index.allowed_tokens(&final_state).unwrap().contains(&3));
     }
 
     #[test]

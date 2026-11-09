@@ -87,8 +87,6 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_properties(&mut self, obj: &serde_json::Map<String, Value>) -> Result<String> {
-        let mut regex = String::from(r"\{");
-
         let properties = obj
             .get("properties")
             .and_then(Value::as_object)
@@ -100,6 +98,66 @@ impl<'a> Parser<'a> {
             .map(|arr| arr.iter().filter_map(Value::as_str).collect::<Vec<_>>())
             .unwrap_or_default();
 
+        // Only distribute required-only alternatives whose names are declared here.
+        // Other anyOf shapes retain the existing properties-first behavior.
+        let branches = obj
+            .get("anyOf")
+            .and_then(Value::as_array)
+            .filter(|a| !a.is_empty());
+        let parent_names_declared = obj.get("required").is_none_or(|required| {
+            required.as_array().is_some_and(|names| {
+                names
+                    .iter()
+                    .all(|name| name.as_str().is_some_and(|s| properties.contains_key(s)))
+            })
+        });
+        if let Some(branches) = branches.filter(|branches| {
+            parent_names_declared
+                && branches.iter().all(|branch| {
+                    branch.as_object().is_some_and(|branch| {
+                        branch.len() == 1
+                            && branch
+                                .get("required")
+                                .and_then(Value::as_array)
+                                .is_some_and(|names| {
+                                    names.iter().all(|name| {
+                                        name.as_str().is_some_and(|s| properties.contains_key(s))
+                                    })
+                                })
+                    })
+                })
+        }) {
+            let patterns = branches
+                .iter()
+                .map(|branch| {
+                    let names = branch["required"].as_array().unwrap();
+                    let mut required = required_properties.clone();
+                    for name in names {
+                        let name = name.as_str().unwrap();
+                        if !required.contains(&name) {
+                            required.push(name);
+                        }
+                    }
+                    // Alternatives start at the same recursion depth, even if a
+                    // reference in another alternative left that depth changed.
+                    let depth = self.recursion_depth;
+                    let result = self.parse_properties_with_required(properties, &required);
+                    self.recursion_depth = depth;
+                    result
+                })
+                .collect::<Result<Vec<_>>>()?;
+            return Ok(format!("({})", patterns.join("|")));
+        }
+
+        self.parse_properties_with_required(properties, &required_properties)
+    }
+
+    fn parse_properties_with_required(
+        &mut self,
+        properties: &serde_json::Map<String, Value>,
+        required_properties: &[&str],
+    ) -> Result<String> {
+        let mut regex = String::from(r"\{");
         let is_required: Vec<bool> = properties
             .keys()
             .map(|item| required_properties.contains(&item.as_str()))

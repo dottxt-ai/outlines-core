@@ -1323,6 +1323,117 @@ mod tests {
     }
 
     #[test]
+    fn additional_properties_with_properties() {
+        for (schema, a_match, not_a_match) in [
+            // `true` allows extra keys with any value after the declared ones
+            (
+                r#"{
+                    "type": "object",
+                    "properties": {"a": {"type": "integer"}},
+                    "required": ["a"],
+                    "additionalProperties": true
+                }"#,
+                vec![
+                    r#"{"a": 1}"#,
+                    r#"{"a": 1, "b": "x"}"#,
+                    r#"{"a": 1, "b": {"c": [1, null]}, "d": false}"#,
+                    r#"{"a": 1, "ab": 2, "": 3}"#,
+                ],
+                vec![
+                    r#"{"b": "x"}"#,         // missing required "a"
+                    r#"{"a": "x"}"#,         // "a" must be an integer
+                    r#"{"a": 1, "a": "x"}"#, // "a" can't come back as an extra key
+                    r#"{"a": 1,}"#,
+                ],
+            ),
+            // `{}` behaves like `true`
+            (
+                r#"{
+                    "type": "object",
+                    "properties": {"a": {"type": "integer"}},
+                    "required": ["a"],
+                    "additionalProperties": {}
+                }"#,
+                vec![r#"{"a": 1}"#, r#"{"a": 1, "b": [true]}"#],
+                vec![r#"{"a": 1, "a": 2}"#],
+            ),
+            // A sub-schema constrains the values of extra keys
+            (
+                r#"{
+                    "type": "object",
+                    "properties": {"a": {"type": "string"}, "b": {"type": "string"}},
+                    "additionalProperties": {"type": "integer"}
+                }"#,
+                vec![
+                    "{}",
+                    r#"{"a": "x"}"#,
+                    r#"{"b": "y"}"#,
+                    r#"{"x": 1}"#,
+                    r#"{"x": 1, "y": 2}"#,
+                    r#"{"a": "x", "b": "y", "c": 3}"#,
+                    r#"{"b": "y", "aa": 3}"#,
+                ],
+                vec![
+                    r#"{"x": "s"}"#,           // extra values must be integers
+                    r#"{"a": "x", "c": "s"}"#, // same, after a declared key
+                    r#"{"a": 1}"#,             // "a" is declared as a string
+                    r#"{"a": "x", "b": 2}"#,   // "b" is declared as a string
+                    r#"{, "x": 1}"#,
+                ],
+            ),
+            // A declared key can't come back as an extra key through an escape either
+            (
+                r#"{
+                    "type": "object",
+                    "properties": {"a/b": {"type": "string"}},
+                    "additionalProperties": {"type": "integer"}
+                }"#,
+                vec![
+                    r#"{"a/b": "x"}"#,
+                    r#"{"a\/c": 1}"#,
+                    r#"{"a/\"b": 1}"#,
+                    r#"{"a/b": "x", "a/bc": 1}"#,
+                ],
+                vec![
+                    r#"{"a/b": 1}"#,
+                    r#"{"a\/b": 1}"#,
+                    r#"{"a/b": "x", "a\/b": 1}"#,
+                ],
+            ),
+            // `false` keeps the object closed
+            (
+                r#"{
+                    "type": "object",
+                    "properties": {"a": {"type": "integer"}},
+                    "required": ["a"],
+                    "additionalProperties": false
+                }"#,
+                vec![r#"{"a": 1}"#],
+                vec![r#"{"a": 1, "b": 2}"#],
+            ),
+            // Absent `additionalProperties` keeps the current behavior (closed)
+            (
+                r#"{
+                    "type": "object",
+                    "properties": {"a": {"type": "integer"}},
+                    "required": ["a"]
+                }"#,
+                vec![r#"{"a": 1}"#],
+                vec![r#"{"a": 1, "b": 2}"#],
+            ),
+        ] {
+            let regex = regex_from_str(schema, None, None).expect("To regex failed");
+            let re = Regex::new(&regex).expect("Regex failed");
+            for m in a_match {
+                should_match(&re, m);
+            }
+            for not_m in not_a_match {
+                should_not_match(&re, not_m);
+            }
+        }
+    }
+
+    #[test]
     fn with_whitespace_patterns() {
         let schema = r#"{
             "title": "Foo",

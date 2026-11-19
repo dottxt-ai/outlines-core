@@ -62,3 +62,35 @@ def test_types_presence_and_not_emptyness():
     assert URI
     assert UUID
     assert WHITESPACE
+
+
+@pytest.mark.parametrize(
+    "additional_properties, accepted, rejected",
+    [
+        (
+            True,
+            ['{"a": 1}', '{"a": 1, "b": "x"}', '{"a": 1, "b": {"c": [1]}}'],
+            ['{"b": "x"}', '{"a": 1, "a": "x"}'],
+        ),
+        (
+            {"type": "integer"},
+            ['{"a": 1}', '{"a": 1, "b": 2, "c": 3}'],
+            ['{"a": 1, "b": "x"}', '{"a": 1, "a": 2}'],
+        ),
+        (False, ['{"a": 1}'], ['{"a": 1, "b": 2}']),
+    ],
+)
+def test_additional_properties_with_properties(
+    additional_properties, accepted, rejected
+):
+    schema = {
+        "type": "object",
+        "properties": {"a": {"type": "integer"}},
+        "required": ["a"],
+        "additionalProperties": additional_properties,
+    }
+    regex = build_regex_from_schema(json.dumps(schema))
+    for value in accepted:
+        assert re.fullmatch(regex, value), value
+    for value in rejected:
+        assert not re.fullmatch(regex, value), value

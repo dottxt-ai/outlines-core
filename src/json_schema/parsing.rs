@@ -105,6 +105,9 @@ impl<'a> Parser<'a> {
             .map(|item| required_properties.contains(&item.as_str()))
             .collect();
 
+        let declared: Vec<&str> = properties.keys().map(String::as_str).collect();
+        let additional_property = self.parse_additional_property(obj, &declared)?;
+
         if is_required.iter().any(|&x| x) {
             let last_required_pos = is_required
                 .iter()
@@ -137,6 +140,9 @@ impl<'a> Parser<'a> {
                     format!("({})?", subregex)
                 };
             }
+            if let Some(extra) = &additional_property {
+                regex += &format!("({0},{extra})*", self.whitespace_pattern);
+            }
         } else {
             let mut property_subregexes = Vec::new();
             for (name, value) in properties.iter() {
@@ -160,11 +166,155 @@ impl<'a> Parser<'a> {
                 possible_patterns.push(pattern);
             }
 
-            regex += &format!("({})?", possible_patterns.join("|"));
+            if let Some(extra) = &additional_property {
+                let extras = format!("({0},{extra})*", self.whitespace_pattern);
+                if possible_patterns.is_empty() {
+                    regex += &format!("({extra}{extras})?");
+                } else {
+                    regex += &format!(
+                        "(({}){extras}|{extra}{extras})?",
+                        possible_patterns.join("|")
+                    );
+                }
+            } else {
+                regex += &format!("({})?", possible_patterns.join("|"));
+            }
         }
 
         regex += &format!("{}\\}}", self.whitespace_pattern);
         Ok(regex)
+    }
+
+    /// Regex for one `"key": value` pair allowed by `additionalProperties`, placed after
+    /// the declared properties. Returns `None` when extra keys are not allowed, which is
+    /// the case for `false` and, as before, when `additionalProperties` is absent.
+    fn parse_additional_property(
+        &mut self,
+        obj: &serde_json::Map<String, Value>,
+        declared: &[&str],
+    ) -> Result<Option<String>> {
+        let value_regex = match obj.get("additionalProperties") {
+            Some(schema @ Value::Object(o)) if !o.is_empty() => self.to_regex(schema),
+            // `true` and `{}` accept any value
+            Some(Value::Bool(true)) | Some(Value::Object(_)) => {
+                let depth = obj.get("depth").and_then(Value::as_u64).unwrap_or(2);
+                self.parse_any_value(depth)
+            }
+            _ => return Ok(None),
+        };
+        let value_regex = match value_regex {
+            Ok(regex) => regex,
+            Err(e) if e.is_recursion_limit() => return Ok(None),
+            Err(e) => return Err(e),
+        };
+        Ok(Some(format!(
+            r#"{0}"{1}"{0}:{0}({value_regex})"#,
+            self.whitespace_pattern,
+            Self::key_not_in(declared),
+        )))
+    }
+
+    /// Regex for the inside of a JSON string key that is NOT one of `names`.
+    ///
+    /// Declared properties are validated by their own schema, so they must not come
+    /// back as extra keys. The regex has no lookarounds, so we walk a trie of the
+    /// declared names: at each node the key either ends (if no name ends there), takes
+    /// a character that leaves the trie and then anything, or follows a child.
+    fn key_not_in(names: &[&str]) -> String {
+        #[derive(Default)]
+        struct Node {
+            terminal: bool,
+            children: std::collections::BTreeMap<char, Node>,
+        }
+
+        // Ways a decoded character can be written inside a JSON string, following
+        // `types::STRING_INNER`. Empty if it can't be written at all.
+        fn spellings(c: char) -> Vec<String> {
+            match c {
+                '"' => vec![r#"\\""#.into()],
+                '\\' => vec![r"\\\\".into()],
+                '/' => vec!["/".into(), r"\\/".into()],
+                '\u{08}' => vec![r"\\b".into()],
+                '\u{0C}' => vec![r"\\f".into()],
+                '\n' => vec![r"\\n".into()],
+                '\r' => vec![r"\\r".into()],
+                '\t' => vec![r"\\t".into()],
+                '\u{00}'..='\u{1F}' | '\u{7F}'..='\u{9F}' => vec![],
+                c => vec![escape(&c.to_string())],
+            }
+        }
+
+        fn build(node: &Node) -> String {
+            // Any single JSON string character that doesn't decode to a child's char.
+            let mut literal = String::from(r#"[^"\\\x00-\x1F\x7F-\x9F"#);
+            for &c in node.children.keys() {
+                if c.is_ascii_alphanumeric() {
+                    literal.push(c);
+                } else if !matches!(c, '"' | '\\' | '\u{00}'..='\u{1F}' | '\u{7F}'..='\u{9F}') {
+                    literal += &format!(r"\U{:08X}", c as u32);
+                }
+            }
+            literal.push(']');
+            let mut escaped = String::new();
+            for (letter, decoded) in [
+                (r#"""#, '"'),
+                (r"\\", '\\'),
+                ("/", '/'),
+                ("b", '\u{08}'),
+                ("f", '\u{0C}'),
+                ("n", '\n'),
+                ("r", '\r'),
+                ("t", '\t'),
+            ] {
+                if !node.children.contains_key(&decoded) {
+                    escaped += letter;
+                }
+            }
+            let other = if escaped.is_empty() {
+                literal
+            } else {
+                format!(r"({literal}|\\[{escaped}])")
+            };
+
+            let mut branches = vec![format!("{other}{}*", types::STRING_INNER)];
+            for (&c, child) in &node.children {
+                let spelled = spellings(c);
+                if !spelled.is_empty() {
+                    branches.push(format!("({}){}", spelled.join("|"), build(child)));
+                }
+            }
+            let branches = branches.join("|");
+            if node.terminal {
+                format!("({branches})")
+            } else {
+                format!("({branches})?")
+            }
+        }
+
+        let mut root = Node::default();
+        for name in names {
+            let mut node = &mut root;
+            for c in name.chars() {
+                node = node.children.entry(c).or_default();
+            }
+            node.terminal = true;
+        }
+        build(&root)
+    }
+
+    /// Regex for any JSON value, nesting objects and arrays at most `depth` levels.
+    fn parse_any_value(&mut self, depth: u64) -> Result<String> {
+        let mut legal_types = vec![
+            json!({"type": "string"}),
+            json!({"type": "number"}),
+            json!({"type": "boolean"}),
+            json!({"type": "null"}),
+        ];
+        if depth > 0 {
+            legal_types.push(json!({"type": "object", "depth": depth - 1}));
+            legal_types.push(json!({"type": "array", "depth": depth - 1}));
+        }
+        self.to_regex(&json!({"anyOf": legal_types}))
     }
 
     fn parse_all_of(&mut self, obj: &serde_json::Map<String, Value>) -> Result<String> {
@@ -536,21 +686,8 @@ impl<'a> Parser<'a> {
 
         let value_pattern = match additional_properties {
             None | Some(&Value::Bool(true)) => {
-                let mut legal_types = vec![
-                    json!({"type": "string"}),
-                    json!({"type": "number"}),
-                    json!({"type": "boolean"}),
-                    json!({"type": "null"}),
-                ];
-
                 let depth = obj.get("depth").and_then(|v| v.as_u64()).unwrap_or(2);
-                if depth > 0 {
-                    legal_types.push(json!({"type": "object", "depth": depth - 1}));
-                    legal_types.push(json!({"type": "array", "depth": depth - 1}));
-                }
-
-                let any_of = json!({"anyOf": &legal_types});
-                self.to_regex(&any_of)?
+                self.parse_any_value(depth)?
             }
             Some(props) => self.to_regex(props)?,
         };

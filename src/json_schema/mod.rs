@@ -1269,6 +1269,52 @@ mod tests {
     }
 
     #[test]
+    fn uri_format_never_matches_invalid_json_strings() {
+        let schema = r#"{
+            "type": "object",
+            "properties": {
+                "u": {"type": "string", "format": "uri"},
+                "n": {"type": "integer"}
+            },
+            "required": ["u", "n"]
+        }"#;
+        let regex = regex_from_str(schema, None, None).expect("To regex failed");
+        let re = Regex::new(&format!("^(?:{regex})$")).expect("Regex failed");
+
+        for valid in [
+            r#"{"u": "http://a.bc/x", "n": 1}"#,
+            r#"{"u": "https://user:pw@a.bc:8080/p?q=1#f", "n": 1}"#,
+            r#"{"u": "urn:a:b", "n": 1}"#,
+        ] {
+            assert!(re.is_match(valid), "Should match: {valid}");
+        }
+        for invalid in [
+            // A backslash right before the closing quote escapes it.
+            r#"{"u": "http://a.bc/x\", "n": 1}"#,
+            // Unescaped quotes inside the uri string.
+            r#"{"u": "urn:a:b"c", "n": 1}"#,
+            r#"{"u": "http://a.bc/x"y", "n": 1}"#,
+            r#"{"u": "http://a.bc/x?q"y", "n": 1}"#,
+            r#"{"u": "http://a.bc/x#f"y", "n": 1}"#,
+            r#"{"u": "http://u"s@a.bc/", "n": 1}"#,
+            // Unescaped quote in the password part of the userinfo.
+            r#"{"u": "http://u:p"w@a.bc/", "n": 1}"#,
+            // Invalid JSON escape.
+            r#"{"u": "http://a.bc/\x", "n": 1}"#,
+            // Raw control character (U+0001) inside the uri string.
+            "{\"u\": \"http://a.bc/x\u{1}\", \"n\": 1}",
+        ] {
+            assert!(!re.is_match(invalid), "Should not match: {invalid}");
+        }
+
+        let array = r#"{"type": "array", "items": {"type": "string", "format": "uri"}}"#;
+        let regex = regex_from_str(array, None, None).expect("To regex failed");
+        let re = Regex::new(&format!("^(?:{regex})$")).expect("Regex failed");
+        assert!(re.is_match(r#"["http://a.bc/c", "http://a.bc/c"]"#));
+        assert!(!re.is_match(r#"["http://a.bc/c",null,"http://a.bc/c"]"#));
+    }
+
+    #[test]
     fn test_unconstrained_others() {
         for (schema, a_match, not_a_match) in [
             // Unconstrained Object
